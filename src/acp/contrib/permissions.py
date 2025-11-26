@@ -4,7 +4,7 @@ from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
 from ..helpers import text_block, tool_content
-from ..schema import PermissionOption, RequestPermissionRequest, RequestPermissionResponse, ToolCall
+from ..schema import PermissionOption, RequestPermissionRequest, RequestPermissionResponse, ToolCallUpdate
 from .tool_calls import ToolCallTracker, _copy_model_list
 
 
@@ -29,9 +29,9 @@ class MissingPermissionOptionsError(PermissionBrokerError):
 def default_permission_options() -> tuple[PermissionOption, PermissionOption, PermissionOption]:
     """Return a standard approval/reject option set."""
     return (
-        PermissionOption(optionId="approve", name="Approve", kind="allow_once"),
-        PermissionOption(optionId="approve_for_session", name="Approve for session", kind="allow_always"),
-        PermissionOption(optionId="reject", name="Reject", kind="reject_once"),
+        PermissionOption(option_id="approve", name="Approve", kind="allow_once"),
+        PermissionOption(option_id="approve_for_session", name="Approve for session", kind="allow_always"),
+        PermissionOption(option_id="reject", name="Reject", kind="reject_once"),
     )
 
 
@@ -60,7 +60,7 @@ class PermissionBroker:
         description: str | None = None,
         options: Sequence[PermissionOption] | None = None,
         content: Sequence[Any] | None = None,
-        tool_call: ToolCall | None = None,
+        tool_call: ToolCallUpdate | None = None,
     ) -> RequestPermissionResponse:
         """Request user approval for a tool call."""
         if tool_call is None:
@@ -83,8 +83,8 @@ class PermissionBroker:
             raise MissingPermissionOptionsError()
 
         request = RequestPermissionRequest(
-            sessionId=self._session_id,
-            toolCall=tool_call,
+            session_id=self._session_id,
+            tool_call=tool_call,
             options=list(option_set),
         )
         return await self._requester(request)

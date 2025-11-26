@@ -1,13 +1,12 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import argparse
 import ast
 import json
 import re
-import shutil
 import subprocess
 import sys
+import textwrap
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -29,7 +28,7 @@ DESCRIPTION_PATTERN = re.compile(
 
 STDIO_TYPE_LITERAL = 'Literal["2#-datamodel-code-generator-#-object-#-special-#"]'
 STDIO_TYPE_PATTERN = re.compile(
-    r"^    type:\s*Literal\[['\"]2#-datamodel-code-generator-#-object-#-special-#['\"]\]"
+    r"^    type:\s*Literal\[['\"]McpServerStdio['\"]\]"
     r"(?:\s*=\s*['\"][^'\"]+['\"])?\s*$",
     re.MULTILINE,
 )
@@ -41,7 +40,6 @@ RENAME_MAP: dict[str, str] = {
     "AgentOutgoingMessage2": "AgentResponseMessage",
     "AgentOutgoingMessage3": "AgentErrorMessage",
     "AgentOutgoingMessage4": "AgentNotificationMessage",
-    "AvailableCommandInput1": "CommandInputHint",
     "ClientOutgoingMessage1": "ClientRequestMessage",
     "ClientOutgoingMessage2": "ClientResponseMessage",
     "ClientOutgoingMessage3": "ClientErrorMessage",
@@ -53,7 +51,6 @@ RENAME_MAP: dict[str, str] = {
     "ContentBlock5": "EmbeddedResourceContentBlock",
     "McpServer1": "HttpMcpServer",
     "McpServer2": "SseMcpServer",
-    "McpServer3": "StdioMcpServer",
     "RequestPermissionOutcome1": "DeniedOutcome",
     "RequestPermissionOutcome2": "AllowedOutcome",
     "SessionUpdate1": "UserMessageChunk",
@@ -67,6 +64,10 @@ RENAME_MAP: dict[str, str] = {
     "ToolCallContent1": "ContentToolCallContent",
     "ToolCallContent2": "FileEditToolCallContent",
     "ToolCallContent3": "TerminalToolCallContent",
+}
+
+ALIASES_MAP = {
+    "StdioMcpServer": "McpServerStdio",
 }
 
 ENUM_LITERAL_MAP: dict[str, tuple[str, ...]] = {
@@ -87,33 +88,32 @@ FIELD_TYPE_OVERRIDES: tuple[tuple[str, str, str, bool], ...] = (
     ("PermissionOption", "kind", "PermissionOptionKind", False),
     ("PlanEntry", "priority", "PlanEntryPriority", False),
     ("PlanEntry", "status", "PlanEntryStatus", False),
-    ("PromptResponse", "stopReason", "StopReason", False),
-    ("ToolCallProgress", "kind", "ToolKind", True),
-    ("ToolCallProgress", "status", "ToolCallStatus", True),
-    ("ToolCallStart", "kind", "ToolKind", True),
-    ("ToolCallStart", "status", "ToolCallStatus", True),
+    ("PromptResponse", "stop_reason", "StopReason", False),
     ("ToolCall", "kind", "ToolKind", True),
     ("ToolCall", "status", "ToolCallStatus", True),
+    ("ToolCallUpdate", "kind", "ToolKind", True),
+    ("ToolCallUpdate", "status", "ToolCallStatus", True),
 )
 
 DEFAULT_VALUE_OVERRIDES: tuple[tuple[str, str, str], ...] = (
-    ("AgentCapabilities", "mcpCapabilities", "McpCapabilities(http=False, sse=False)"),
+    ("AgentCapabilities", "mcp_capabilities", "McpCapabilities()"),
+    ("AgentCapabilities", "session_capabilities", "SessionCapabilities()"),
     (
         "AgentCapabilities",
-        "promptCapabilities",
-        "PromptCapabilities(audio=False, embeddedContext=False, image=False)",
+        "prompt_capabilities",
+        "PromptCapabilities()",
     ),
-    ("ClientCapabilities", "fs", "FileSystemCapability(readTextFile=False, writeTextFile=False)"),
+    ("ClientCapabilities", "fs", "FileSystemCapability()"),
     ("ClientCapabilities", "terminal", "False"),
     (
         "InitializeRequest",
-        "clientCapabilities",
-        "ClientCapabilities(fs=FileSystemCapability(readTextFile=False, writeTextFile=False), terminal=False)",
+        "client_capabilities",
+        "ClientCapabilities()",
     ),
     (
         "InitializeResponse",
-        "agentCapabilities",
-        "AgentCapabilities(loadSession=False, mcpCapabilities=McpCapabilities(http=False, sse=False), promptCapabilities=PromptCapabilities(audio=False, embeddedContext=False, image=False))",
+        "agent_capabilities",
+        "AgentCapabilities()",
     ),
 )
 
@@ -126,30 +126,11 @@ class _ProcessingStep:
     apply: Callable[[str], str]
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate src/acp/schema.py from the ACP JSON schema.")
-    parser.add_argument(
-        "--format",
-        dest="format_output",
-        action="store_true",
-        help="Format generated files with 'uv run ruff format'.",
-    )
-    parser.add_argument(
-        "--no-format",
-        dest="format_output",
-        action="store_false",
-        help="Disable formatting with ruff.",
-    )
-    parser.set_defaults(format_output=True)
-    return parser.parse_args()
-
-
 def main() -> None:
-    args = parse_args()
-    generate_schema(format_output=args.format_output)
+    generate_schema()
 
 
-def generate_schema(*, format_output: bool = True) -> None:
+def generate_schema() -> None:
     if not SCHEMA_JSON.exists():
         print(
             "Schema file missing. Ensure schema/schema.json exists (run gen_all.py --version to download).",
@@ -173,15 +154,13 @@ def generate_schema(*, format_output: bool = True) -> None:
         "--output-model-type",
         "pydantic_v2.BaseModel",
         "--use-annotated",
+        "--snake-case-field",
     ]
 
     subprocess.check_call(cmd)  # noqa: S603
     warnings = postprocess_generated_schema(SCHEMA_OUT)
     for warning in warnings:
         print(f"Warning: {warning}", file=sys.stderr)
-
-    if format_output:
-        format_with_ruff(SCHEMA_OUT)
 
 
 def postprocess_generated_schema(output_path: Path) -> list[str]:
@@ -244,6 +223,7 @@ def _build_header_block() -> str:
 
 def _build_alias_block() -> str:
     alias_lines = [f"{old} = {new}" for old, new in sorted(RENAME_MAP.items())]
+    alias_lines += [f"{old} = {new}" for old, new in sorted(ALIASES_MAP.items())]
     return BACKCOMPAT_MARKER + "\n" + "\n".join(alias_lines) + "\n"
 
 
@@ -350,11 +330,20 @@ def _ensure_custom_base_model(content: str) -> str:
         if not has_config:
             new_imports.append("ConfigDict")
         lines[idx] = "from pydantic import " + ", ".join(new_imports)
+        to_insert = textwrap.dedent("""\
+            class BaseModel(_BaseModel):
+                model_config = ConfigDict(populate_by_name=True)
+
+                def __getattr__(self, item: str) -> Any:
+                    if item.lower() != item:
+                        snake_cased = "".join("_" + c.lower() if c.isupper() and i > 0 else c.lower() for i, c in enumerate(item))
+                        return getattr(self, snake_cased)
+                    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
+        """)
         insert_idx = idx + 1
         lines.insert(insert_idx, "")
-        lines.insert(insert_idx + 1, "class BaseModel(_BaseModel):")
-        lines.insert(insert_idx + 2, "    model_config = ConfigDict(populate_by_name=True)")
-        lines.insert(insert_idx + 3, "")
+        for offset, line in enumerate(to_insert.splitlines(), 1):
+            lines.insert(insert_idx + offset, line)
         break
     return "\n".join(lines) + "\n"
 
@@ -434,6 +423,7 @@ def _normalize_stdio_model(content: str) -> str:
     replacement_line = '    type: Literal["stdio"] = "stdio"'
     new_content, count = STDIO_TYPE_PATTERN.subn(replacement_line, content)
     if count == 0:
+        print("Warning: stdio type placeholder not found; no replacements made.", file=sys.stderr)
         return content
     if count > 1:
         print(
@@ -526,17 +516,6 @@ def _inject_enum_aliases(content: str) -> str:
         return content
     insertion_point = class_index + 1  # include leading newline
     return content[:insertion_point] + block + content[insertion_point:]
-
-
-def format_with_ruff(file_path: Path) -> None:
-    uv_executable = shutil.which("uv")
-    if uv_executable is None:
-        print("Warning: 'uv' executable not found; skipping formatting.", file=sys.stderr)
-        return
-    try:
-        subprocess.check_call([uv_executable, "run", "ruff", "format", str(file_path)])  # noqa: S603
-    except (FileNotFoundError, subprocess.CalledProcessError) as exc:  # pragma: no cover - best effort
-        print(f"Warning: failed to format {file_path}: {exc}", file=sys.stderr)
 
 
 if __name__ == "__main__":
