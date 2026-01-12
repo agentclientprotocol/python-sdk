@@ -1,0 +1,62 @@
+[info]
+title=AI Agents
+desc=Connect to AI coding agents via the Agent Client Protocol (ACP). Supports Gemini CLI, Qwen CLI, OpenCode, Claude Code, and other ACP-compatible agents. Agents can help with coding, debugging, refactoring, and other development tasks. Some agents offer generous free usage like Gemini and Qwen.
+type=cudatext-plugin
+subdir=cuda_ai_agents
+homepage=
+
+
+[item1]
+section=events
+events=on_exit
+
+
+[item11]
+section=commands
+caption=AI Agents\Start New Chat Session
+method=plugin_start_new_chat_window
+
+[item12]
+section=commands
+caption=AI Agents\List all agents
+method=plugin_list_all_agents
+
+[item15]
+section=commands
+caption=AI Agents\Close all agents
+method=plugin_close_all_agents
+
+
+[item23]
+section=commands
+caption=AI Agents\-
+method=_
+
+[item24]
+section=commands
+caption=AI Agents\List Chat Backups
+method=plugin_list_backups
+
+[item25]
+section=commands
+caption=AI Agents\Restore Chat Backup
+method=plugin_restore_backup
+
+[item26]
+section=commands
+caption=AI Agents\Open Chat Backups Folder
+method=plugin_open_backup_folder
+
+
+
+[item100]
+section=commands
+caption=AI Agents\Open Config File
+method=plugin_open_config_file
+menu=o
+
+[item100]
+section=commands
+caption=AI Agents\Open user choices file
+method=config
+menu=o
