@@ -149,7 +149,7 @@ async def spawn_stdio_connection(
     cwd: Optional[Union[str, Path]] = None,
     observers: Optional[list[StreamObserver]] = None,
     **transport_kwargs: Any,
-) -> AsyncIterator[tuple[Connection, aio_subprocess.Process]]:
+) -> AsyncIterator[tuple[Connection, asyncio.subprocess.Process]]:
     """Spawn a subprocess and bind its stdio to a low-level Connection."""
     async with spawn_stdio_transport(command, *args, env=env, cwd=cwd, **transport_kwargs) as (reader, writer, process):
         conn = Connection(handler, writer, reader, observers=observers)
@@ -168,7 +168,7 @@ async def spawn_agent_process(
     cwd: Optional[Union[str, Path]] = None,
     transport_kwargs: Optional[Mapping[str, Any]] = None,
     **connection_kwargs: Any,
-) -> AsyncIterator[tuple[ClientSideConnection, aio_subprocess.Process]]:
+) -> AsyncIterator[tuple[ClientSideConnection, asyncio.subprocess.Process]]:
     """Spawn an ACP agent subprocess and return a ClientSideConnection to it."""
     async with spawn_stdio_transport(
         command,
@@ -193,7 +193,7 @@ async def spawn_client_process(
     cwd: Optional[Union[str, Path]] = None,
     transport_kwargs: Optional[Mapping[str, Any]] = None,
     **connection_kwargs: Any,
-) -> AsyncIterator[tuple[AgentSideConnection, aio_subprocess.Process]]:
+) -> AsyncIterator[tuple[AgentSideConnection, asyncio.subprocess.Process]]:
     """Spawn an ACP client subprocess and return an AgentSideConnection to it."""
     async with spawn_stdio_transport(
         command,

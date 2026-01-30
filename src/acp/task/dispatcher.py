@@ -19,8 +19,8 @@ __all__ = [
 ]
 
 
-RequestRunner = Callable[[dict[str, Any]], Awaitable[Any]]
-NotificationRunner = Callable[[dict[str, Any]], Awaitable[None]]
+RequestRunner = "Callable[[dict[str, Any]], Awaitable[Any]]"
+NotificationRunner = "Callable[[dict[str, Any]], Awaitable[None]]"
 
 
 class MessageDispatcher(Protocol):
@@ -79,7 +79,8 @@ class DefaultMessageDispatcher(MessageDispatcher):
 
         async def runner() -> None:
             try:
-                result = await self._request_runner(message)
+                # Use Any since request_runner is a string/Any
+                result = await self._request_runner(message) # type: ignore
             except Exception as exc:
                 self._store.fail_incoming(record, exc)
                 raise
@@ -90,6 +91,6 @@ class DefaultMessageDispatcher(MessageDispatcher):
 
     async def _dispatch_notification(self, message: dict[str, Any]) -> None:
         async def runner() -> None:
-            await self._notification_runner(message)
+            await self._notification_runner(message) # type: ignore
 
         self._supervisor.create(runner(), name="acp.Dispatcher.notification")

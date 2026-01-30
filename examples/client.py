@@ -94,7 +94,7 @@ class ExampleClient(Client):
     async def session_update(
         self,
         session_id: str,
-        update: Union[UserMessageChunk, Union[AgentMessageChunk], Union[AgentThoughtChunk], Union[ToolCallStart], Union[ToolCallProgress], Union[AgentPlanUpdate], Union[AvailableCommandsUpdate], CurrentModeUpdate],
+        update: Union[UserMessageChunk, AgentMessageChunk, AgentThoughtChunk, ToolCallStart, ToolCallProgress, AgentPlanUpdate, AvailableCommandsUpdate, CurrentModeUpdate],
         **kwargs: Any,
     ) -> None:
         if not isinstance(update, AgentMessageChunk):
@@ -172,8 +172,8 @@ async def main(argv: list[str]) -> int:
     proc = await asyncio.create_subprocess_exec(
         spawn_program,
         *spawn_args,
-        stdin=aio_subprocess.PIPE,
-        stdout=aio_subprocess.PIPE,
+        stdin=asyncio.subprocess.PIPE,
+        stdout=asyncio.subprocess.PIPE,
     )
 
     if proc.stdin is None or proc.stdout is None:

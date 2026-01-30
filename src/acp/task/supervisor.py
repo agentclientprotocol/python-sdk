@@ -8,8 +8,8 @@ from contextlib import suppress
 
 __all__ = ["TaskSupervisor"]
 
-# Use string forward reference to avoid evaluation issues on Python 3.8
-ErrorHandler = "Callable[[Task[Any], BaseException], None]"
+# Use Any for ErrorHandler to avoid evaluation issues on Python 3.8
+ErrorHandler = Any
 
 
 class TaskSupervisor:
@@ -22,11 +22,11 @@ class TaskSupervisor:
 
     def __init__(self, *, source: str) -> None:
         self._source = source
-        self._tasks: set[Task[Any]] = set()
+        self._tasks: set[Task[Any]] = builtins.set()
         self._closed = False
-        self._error_handlers: list[Any] = []
+        self._error_handlers: list[ErrorHandler] = builtins.list()
 
-    def add_error_handler(self, handler: Any) -> None:
+    def add_error_handler(self, handler: ErrorHandler) -> None:
         self._error_handlers.append(handler)
 
     def create(
@@ -34,7 +34,7 @@ class TaskSupervisor:
         coroutine: Awaitable[Any],
         *,
         name: Optional[str] = None,
-        on_error: Optional[Any] = None,
+        on_error: Optional[ErrorHandler] = None,
     ) -> Task[Any]:
         if self._closed:
             msg = f"TaskSupervisor for {self._source} already closed"
@@ -44,7 +44,7 @@ class TaskSupervisor:
         task.add_done_callback(lambda t: self._on_done(t, on_error))
         return task
 
-    def _on_done(self, task: Task[Any], on_error: Optional[Any]) -> None:
+    def _on_done(self, task: Task[Any], on_error: Optional[ErrorHandler]) -> None:
         self._tasks.discard(task)
         if task.cancelled():
             return
@@ -72,7 +72,7 @@ class TaskSupervisor:
         self._closed = True
         if not self._tasks:
             return
-        tasks = list(self._tasks)
+        tasks = builtins.list(self._tasks)
         for task in tasks:
             task.cancel()
         for task in tasks:

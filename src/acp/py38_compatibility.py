@@ -10,7 +10,7 @@ if sys.version_info < (3, 9):
     import builtins
     import typing
     import typing_extensions
-    from typing_extensions import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final
+    from typing_extensions import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final, get_type_hints
 
     def _make_generic_constructor(origin, typing_type):
         class Meta(type):
@@ -60,7 +60,7 @@ else:
     tuple = builtins.tuple
     set = builtins.set
     type = builtins.type
-    from typing import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final
+    from typing import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final, get_type_hints
     import asyncio
     Task = asyncio.Task
     Future = asyncio.Future

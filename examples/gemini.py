@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import argparse
 import asyncio
-import asyncio.subprocess
+import asyncio.subprocess as aio_subprocess
 import contextlib
 import json
 import os
@@ -115,7 +115,7 @@ class GeminiClient(Client):
     async def session_update(  # noqa: C901
         self,
         session_id: str,
-        update: Union[UserMessageChunk, Union[AgentMessageChunk], Union[AgentThoughtChunk], Union[ToolCallStart], Union[ToolCallProgress], Union[AgentPlanUpdate], Union[AvailableCommandsUpdate], CurrentModeUpdate],
+        update: Union[UserMessageChunk, AgentMessageChunk, AgentThoughtChunk, ToolCallStart, ToolCallProgress, AgentPlanUpdate, AvailableCommandsUpdate, CurrentModeUpdate],
         **kwargs: Any,
     ) -> None:
         if isinstance(update, AgentMessageChunk):
