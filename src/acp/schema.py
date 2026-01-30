@@ -2,11 +2,11 @@
 # Schema ref: refs/tags/v0.10.5
 
 from __future__ import annotations
+from .py38_compatibility import *
 
 from enum import Enum
-from typing import Annotated, Any, Dict, List, Literal, Optional, Union
-
-from pydantic import BaseModel as _BaseModel, Field, RootModel, ConfigDict
+from typing import Any, Annotated, Literal, Union, Optional, Protocol
+from .pydantic_shim import BaseModel as _BaseModel, Field, RootModel, ConfigDict
 
 PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
 PlanEntryPriority = Literal["high", "medium", "low"]

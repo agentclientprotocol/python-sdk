@@ -1,10 +1,11 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 from collections.abc import Callable, Sequence
 from contextlib import suppress
-from typing import Any
+from typing import Any, Optional
 
-from pydantic import BaseModel, ConfigDict
+from ..pydantic_shim import BaseModel, ConfigDict
 
 from ..schema import (
     AgentMessageChunk,
@@ -39,7 +40,7 @@ class SessionSnapshotUnavailableError(RuntimeError):
         super().__init__("SessionAccumulator has not processed any notifications yet")
 
 
-def _copy_model_list(items: Sequence[Any] | None) -> list[Any] | None:
+def _copy_model_list(items: Optional[Sequence[Any]]) -> Optional[list[Any]]:
     if items is None:
         return None
     return [item.model_copy(deep=True) for item in items]
@@ -48,11 +49,11 @@ def _copy_model_list(items: Sequence[Any] | None) -> list[Any] | None:
 class _MutableToolCallState:
     def __init__(self, tool_call_id: str) -> None:
         self.tool_call_id = tool_call_id
-        self.title: str | None = None
-        self.kind: ToolKind | None = None
-        self.status: ToolCallStatus | None = None
-        self.content: list[Any] | None = None
-        self.locations: list[ToolCallLocation] | None = None
+        self.title: Optional[str] = None
+        self.kind: Optional[ToolKind] = None
+        self.status: Optional[ToolCallStatus] = None
+        self.content: Optional[list[Any]] = None
+        self.locations: Optional[list[ToolCallLocation]] = None
         self.raw_input: Any = None
         self.raw_output: Any = None
 
@@ -100,11 +101,11 @@ class ToolCallView(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     tool_call_id: str
-    title: str | None
-    kind: ToolKind | None
-    status: ToolCallStatus | None
-    content: tuple[Any, ...] | None
-    locations: tuple[ToolCallLocation, ...] | None
+    title: Optional[str]
+    kind: Optional[ToolKind]
+    status: Optional[ToolCallStatus]
+    content: Optional[tuple[Any, ...]]
+    locations: Optional[tuple[ToolCallLocation, ...]]
     raw_input: Any
     raw_output: Any
 
@@ -117,7 +118,7 @@ class SessionSnapshot(BaseModel):
     session_id: str
     tool_calls: dict[str, ToolCallView]
     plan_entries: tuple[PlanEntry, ...]
-    current_mode_id: str | None
+    current_mode_id: Optional[str]
     available_commands: tuple[AvailableCommand, ...]
     user_messages: tuple[UserMessageChunk, ...]
     agent_messages: tuple[AgentMessageChunk, ...]
@@ -139,10 +140,10 @@ class SessionAccumulator:
 
     def __init__(self, *, auto_reset_on_session_change: bool = True) -> None:
         self._auto_reset = auto_reset_on_session_change
-        self.session_id: str | None = None
+        self.session_id: Optional[str] = None
         self._tool_calls: dict[str, _MutableToolCallState] = {}
         self._plan_entries: list[PlanEntry] = []
-        self._current_mode_id: str | None = None
+        self._current_mode_id: Optional[str] = None
         self._available_commands: list[AvailableCommand] = []
         self._user_messages: list[UserMessageChunk] = []
         self._agent_messages: list[AgentMessageChunk] = []

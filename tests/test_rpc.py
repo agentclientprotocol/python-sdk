@@ -456,7 +456,8 @@ async def test_spawn_agent_process_roundtrip(tmp_path):
 
     test_client = TestClient()
 
-    async with spawn_agent_process(test_client, sys.executable, str(script)) as (client_conn, process):
+    env = {"PYTHONPATH": "src"}
+    async with spawn_agent_process(test_client, sys.executable, str(script), env=env) as (client_conn, process):
         init = await client_conn.initialize(protocol_version=1)
         assert isinstance(init, InitializeResponse)
         session = await client_conn.new_session(mcp_servers=[], cwd=str(tmp_path))

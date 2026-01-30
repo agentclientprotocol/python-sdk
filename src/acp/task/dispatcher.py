@@ -1,9 +1,10 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import Any, Protocol
+from typing import Any, Optional, Protocol
 
 from . import RpcTaskKind
 from .queue import MessageQueue
@@ -45,7 +46,7 @@ class DefaultMessageDispatcher(MessageDispatcher):
         self._store = store
         self._request_runner = request_runner
         self._notification_runner = notification_runner
-        self._task: asyncio.Task[None] | None = None
+        self._task: Optional[asyncio.Task[None]] = None
 
     def start(self) -> None:
         if self._task is not None:

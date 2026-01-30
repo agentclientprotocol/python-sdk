@@ -1,3 +1,4 @@
+from __future__ import annotations
 """Compatibility re-exports for historical imports.
 
 The project now keeps implementation in dedicated modules mirroring the
@@ -5,7 +6,6 @@ agent-client-protocol Rust structure, but external callers may still import
 from ``acp.core``. Keep the surface API stable by forwarding to the new homes.
 """
 
-from __future__ import annotations
 
 from typing import Any
 

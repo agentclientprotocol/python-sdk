@@ -8,11 +8,13 @@ authors = [
 ]
 readme = "README.md"
 keywords = ['python']
-requires-python = ">=3.10,<3.15"
+requires-python = ">=3.8,<3.15"
 classifiers = [
     "Intended Audience :: Developers",
     "Programming Language :: Python",
     "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
@@ -21,7 +23,9 @@ classifiers = [
     "Topic :: Software Development :: Libraries :: Python Modules",
 ]
 dependencies = [
-    "pydantic>=2.7",
+    "attrs>=23.1.0",
+    "cattrs>=23.1.0",
+    "typing-extensions>=4.0.0",
 ]
 
 
@@ -58,13 +62,13 @@ source-includes = ["examples/", "tests/"]
 
 [tool.ty.environment]
 python = "./.venv"
-python-version = "3.10"
+python-version = "3.8"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
 [tool.ruff]
-target-version = "py310"
+target-version = "py38"
 line-length = 120
 fix = true
 

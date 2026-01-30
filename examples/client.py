@@ -5,7 +5,7 @@ import logging
 import os
 import sys
 from pathlib import Path
-from typing import Any
+from typing import Any, Union, Optional
 
 from acp import (
     PROTOCOL_VERSION,
@@ -53,11 +53,11 @@ class ExampleClient(Client):
 
     async def write_text_file(
         self, content: str, path: str, session_id: str, **kwargs: Any
-    ) -> WriteTextFileResponse | None:
+    ) -> Optional[WriteTextFileResponse]:
         raise RequestError.method_not_found("fs/write_text_file")
 
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, path: str, session_id: str, limit: Optional[int] = None, line: Optional[int] = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         raise RequestError.method_not_found("fs/read_text_file")
 
@@ -65,10 +65,10 @@ class ExampleClient(Client):
         self,
         command: str,
         session_id: str,
-        args: list[str] | None = None,
-        cwd: str | None = None,
-        env: list[EnvVariable] | None = None,
-        output_byte_limit: int | None = None,
+        args: Optional[list[str]] = None,
+        cwd: Optional[str] = None,
+        env: Optional[list[EnvVariable]] = None,
+        output_byte_limit: Optional[int] = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:
         raise RequestError.method_not_found("terminal/create")
@@ -78,7 +78,7 @@ class ExampleClient(Client):
 
     async def release_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> ReleaseTerminalResponse | None:
+    ) -> Optional[ReleaseTerminalResponse]:
         raise RequestError.method_not_found("terminal/release")
 
     async def wait_for_terminal_exit(
@@ -88,20 +88,13 @@ class ExampleClient(Client):
 
     async def kill_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> KillTerminalCommandResponse | None:
+    ) -> Optional[KillTerminalCommandResponse]:
         raise RequestError.method_not_found("terminal/kill")
 
     async def session_update(
         self,
         session_id: str,
-        update: UserMessageChunk
-        | AgentMessageChunk
-        | AgentThoughtChunk
-        | ToolCallStart
-        | ToolCallProgress
-        | AgentPlanUpdate
-        | AvailableCommandsUpdate
-        | CurrentModeUpdate,
+        update: Union[UserMessageChunk, Union[AgentMessageChunk], Union[AgentThoughtChunk], Union[ToolCallStart], Union[ToolCallProgress], Union[AgentPlanUpdate], Union[AvailableCommandsUpdate], CurrentModeUpdate],
         **kwargs: Any,
     ) -> None:
         if not isinstance(update, AgentMessageChunk):

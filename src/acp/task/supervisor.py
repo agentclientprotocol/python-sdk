@@ -1,10 +1,11 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import Any
+from typing import Any, Optional
 
 __all__ = ["TaskSupervisor"]
 
@@ -32,8 +33,8 @@ class TaskSupervisor:
         self,
         coroutine: Awaitable[Any],
         *,
-        name: str | None = None,
-        on_error: ErrorHandler | None = None,
+        name: Optional[str] = None,
+        on_error: Optional[ErrorHandler] = None,
     ) -> asyncio.Task[Any]:
         if self._closed:
             msg = f"TaskSupervisor for {self._source} already closed"
@@ -43,7 +44,7 @@ class TaskSupervisor:
         task.add_done_callback(lambda t: self._on_done(t, on_error))
         return task
 
-    def _on_done(self, task: asyncio.Task[Any], on_error: ErrorHandler | None) -> None:
+    def _on_done(self, task: asyncio.Task[Any], on_error: Optional[ErrorHandler]) -> None:
         self._tasks.discard(task)
         if task.cancelled():
             return

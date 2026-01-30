@@ -1,9 +1,10 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
 import os
 from collections.abc import Mapping
 from contextlib import AbstractContextManager, ExitStack, nullcontext
-from typing import Any, cast
+from typing import Any, cast, Optional
 
 try:
     from logfire import span as logfire_span  # type: ignore[unresolved-import]
@@ -21,14 +22,14 @@ DEFAULT_TAGS = ["acp"]
 TRACER = otel_get_tracer(__name__) if otel_get_tracer else None
 
 
-def _start_tracer_span(name: str, *, attributes: Mapping[str, Any] | None = None) -> AbstractContextManager[Any]:
+def _start_tracer_span(name: str, *, attributes: Mapping[str, Optional[Any]] = None) -> AbstractContextManager[Any]:
     if TRACER is None:
         return nullcontext()
     attrs = dict(attributes or {})
     return TRACER.start_as_current_span(name, attributes=attrs)
 
 
-def span_context(name: str, *, attributes: Mapping[str, Any] | None = None) -> AbstractContextManager[None]:
+def span_context(name: str, *, attributes: Mapping[str, Optional[Any]] = None) -> AbstractContextManager[None]:
     if logfire_span is None and TRACER is None:
         return nullcontext()
     stack = ExitStack()

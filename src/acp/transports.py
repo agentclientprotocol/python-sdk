@@ -1,4 +1,6 @@
 from __future__ import annotations
+from typing import Union, Optional
+from .py38_compatibility import *
 
 import asyncio
 import asyncio.subprocess as aio_subprocess
@@ -48,10 +50,10 @@ def default_environment() -> dict[str, str]:
 async def spawn_stdio_transport(
     command: str,
     *args: str,
-    env: Mapping[str, str] | None = None,
-    cwd: str | Path | None = None,
-    stderr: int | None = aio_subprocess.PIPE,
-    limit: int | None = None,
+    env: Mapping[str, Optional[str]] = None,
+    cwd: Union[str, Path, None] = None,
+    stderr: Optional[int] = aio_subprocess.PIPE,
+    limit: Optional[int] = None,
     shutdown_timeout: float = 2.0,
 ) -> AsyncIterator[tuple[asyncio.StreamReader, asyncio.StreamWriter, aio_subprocess.Process]]:
     """Launch a subprocess and expose its stdio streams as asyncio transports.

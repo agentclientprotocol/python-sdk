@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
-from __future__ import annotations
 
+from __future__ import annotations
 import ast
 import json
 import re

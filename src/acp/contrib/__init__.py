@@ -1,3 +1,5 @@
+from __future__ import annotations
+from typing import Protocol
 """
 Experimental helpers for Agent Client Protocol integrations.
 
@@ -10,7 +12,7 @@ The helpers live in ``acp.contrib`` so consuming applications must opt-in
 explicitly, making it clear that the APIs are incubating.
 """
 
-from __future__ import annotations
+from ..py38_compatibility import *
 
 from .permissions import PermissionBroker, default_permission_options
 from .session_state import SessionAccumulator, SessionSnapshot, ToolCallView

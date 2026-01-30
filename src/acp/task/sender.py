@@ -1,12 +1,12 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
 import contextlib
 import json
 import logging
 from collections.abc import Callable
-from dataclasses import dataclass
-from typing import Any
+from typing import Any, Union
 
 from .supervisor import TaskSupervisor
 
@@ -16,7 +16,7 @@ __all__ = ["MessageSender", "SenderFactory"]
 SenderFactory = Callable[[asyncio.StreamWriter, TaskSupervisor], "MessageSender"]
 
 
-@dataclass(slots=True)
+@dataclass_with_slots(slots=True)
 class _PendingSend:
     payload: bytes
     future: asyncio.Future[None]
@@ -25,7 +25,7 @@ class _PendingSend:
 class MessageSender:
     def __init__(self, writer: asyncio.StreamWriter, supervisor: TaskSupervisor) -> None:
         self._writer = writer
-        self._queue: asyncio.Queue[_PendingSend | None] = asyncio.Queue()
+        self._queue: asyncio.Queue = asyncio.Queue()
         self._closed = False
         self._task = supervisor.create(self._loop(), name="acp.Sender.loop", on_error=self._on_error)
 

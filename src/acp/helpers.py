@@ -1,7 +1,8 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
 from collections.abc import Iterable, Sequence
-from typing import Any
+from typing import Any, Union, Optional
 
 from .schema import (
     AgentMessageChunk,
@@ -33,21 +34,14 @@ from .schema import (
 )
 
 ContentBlock = (
-    TextContentBlock | ImageContentBlock | AudioContentBlock | ResourceContentBlock | EmbeddedResourceContentBlock
+    Union[TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock]
 )
 
 SessionUpdate = (
-    AgentMessageChunk
-    | AgentPlanUpdate
-    | AgentThoughtChunk
-    | AvailableCommandsUpdate
-    | CurrentModeUpdate
-    | UserMessageChunk
-    | ToolCallStart
-    | ToolCallProgress
+    Union[AgentMessageChunk, AgentPlanUpdate, AgentThoughtChunk, AvailableCommandsUpdate, CurrentModeUpdate, UserMessageChunk, ToolCallStart, ToolCallProgress]
 )
 
-ToolCallContentVariant = ContentToolCallContent | FileEditToolCallContent | TerminalToolCallContent
+ToolCallContentVariant = Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent]
 
 __all__ = [
     "audio_block",
@@ -82,7 +76,7 @@ def text_block(text: str) -> TextContentBlock:
     return TextContentBlock(type="text", text=text)
 
 
-def image_block(data: str, mime_type: str, *, uri: str | None = None) -> ImageContentBlock:
+def image_block(data: str, mime_type: str, *, uri: Optional[str] = None) -> ImageContentBlock:
     return ImageContentBlock(type="image", data=data, mime_type=mime_type, uri=uri)
 
 
@@ -94,10 +88,10 @@ def resource_link_block(
     name: str,
     uri: str,
     *,
-    mime_type: str | None = None,
-    size: int | None = None,
-    description: str | None = None,
-    title: str | None = None,
+    mime_type: Optional[str] = None,
+    size: Optional[int] = None,
+    description: Optional[str] = None,
+    title: Optional[str] = None,
 ) -> ResourceContentBlock:
     return ResourceContentBlock(
         type="resource_link",
@@ -110,16 +104,16 @@ def resource_link_block(
     )
 
 
-def embedded_text_resource(uri: str, text: str, *, mime_type: str | None = None) -> TextResourceContents:
+def embedded_text_resource(uri: str, text: str, *, mime_type: Optional[str] = None) -> TextResourceContents:
     return TextResourceContents(uri=uri, text=text, mime_type=mime_type)
 
 
-def embedded_blob_resource(uri: str, blob: str, *, mime_type: str | None = None) -> BlobResourceContents:
+def embedded_blob_resource(uri: str, blob: str, *, mime_type: Optional[str] = None) -> BlobResourceContents:
     return BlobResourceContents(uri=uri, blob=blob, mime_type=mime_type)
 
 
 def resource_block(
-    resource: TextResourceContents | BlobResourceContents,
+    resource: Union[TextResourceContents, BlobResourceContents],
 ) -> EmbeddedResourceContentBlock:
     return EmbeddedResourceContentBlock(type="resource", resource=resource)
 
@@ -128,7 +122,7 @@ def tool_content(block: ContentBlock) -> ContentToolCallContent:
     return ContentToolCallContent(type="content", content=block)
 
 
-def tool_diff_content(path: str, new_text: str, old_text: str | None = None) -> FileEditToolCallContent:
+def tool_diff_content(path: str, new_text: str, old_text: Optional[str] = None) -> FileEditToolCallContent:
     return FileEditToolCallContent(type="diff", path=path, new_text=new_text, old_text=old_text)
 
 
@@ -192,12 +186,12 @@ def start_tool_call(
     tool_call_id: str,
     title: str,
     *,
-    kind: ToolKind | None = None,
-    status: ToolCallStatus | None = None,
-    content: Sequence[ToolCallContentVariant] | None = None,
-    locations: Sequence[ToolCallLocation] | None = None,
-    raw_input: Any | None = None,
-    raw_output: Any | None = None,
+    kind: Optional[ToolKind] = None,
+    status: Optional[ToolCallStatus] = None,
+    content: Optional[Sequence[ToolCallContentVariant]] = None,
+    locations: Optional[Sequence[ToolCallLocation]] = None,
+    raw_input: Optional[Any] = None,
+    raw_output: Optional[Any] = None,
 ) -> ToolCallStart:
     return ToolCallStart(
         session_update="tool_call",
@@ -217,7 +211,7 @@ def start_read_tool_call(
     title: str,
     path: str,
     *,
-    extra_options: Sequence[ToolCallContentVariant] | None = None,
+    extra_options: Optional[Sequence[ToolCallContentVariant]] = None,
 ) -> ToolCallStart:
     content = list(extra_options) if extra_options is not None else None
     locations = [ToolCallLocation(path=path)]
@@ -239,7 +233,7 @@ def start_edit_tool_call(
     path: str,
     content: Any,
     *,
-    extra_options: Sequence[ToolCallContentVariant] | None = None,
+    extra_options: Optional[Sequence[ToolCallContentVariant]] = None,
 ) -> ToolCallStart:
     locations = [ToolCallLocation(path=path)]
     raw_input = {"path": path, "content": content}
@@ -257,13 +251,13 @@ def start_edit_tool_call(
 def update_tool_call(
     tool_call_id: str,
     *,
-    title: str | None = None,
-    kind: ToolKind | None = None,
-    status: ToolCallStatus | None = None,
-    content: Sequence[ToolCallContentVariant] | None = None,
-    locations: Sequence[ToolCallLocation] | None = None,
-    raw_input: Any | None = None,
-    raw_output: Any | None = None,
+    title: Optional[str] = None,
+    kind: Optional[ToolKind] = None,
+    status: Optional[ToolCallStatus] = None,
+    content: Optional[Sequence[ToolCallContentVariant]] = None,
+    locations: Optional[Sequence[ToolCallLocation]] = None,
+    raw_input: Optional[Any] = None,
+    raw_output: Optional[Any] = None,
 ) -> ToolCallProgress:
     return ToolCallProgress(
         session_update="tool_call_update",

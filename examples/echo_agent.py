@@ -1,5 +1,5 @@
 import asyncio
-from typing import Any
+from typing import Any, Union, Optional
 from uuid import uuid4
 
 from acp import (
@@ -35,25 +35,27 @@ class EchoAgent(Agent):
     async def initialize(
         self,
         protocol_version: int,
-        client_capabilities: ClientCapabilities | None = None,
-        client_info: Implementation | None = None,
+        client_capabilities: Optional[ClientCapabilities] = None,
+        client_info: Optional[Implementation] = None,
         **kwargs: Any,
     ) -> InitializeResponse:
         return InitializeResponse(protocol_version=protocol_version)
 
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], **kwargs: Any
     ) -> NewSessionResponse:
         return NewSessionResponse(session_id=uuid4().hex)
 
     async def prompt(
         self,
         prompt: list[
-            TextContentBlock
-            | ImageContentBlock
-            | AudioContentBlock
-            | ResourceContentBlock
-            | EmbeddedResourceContentBlock
+            Union[
+                TextContentBlock,
+                ImageContentBlock,
+                AudioContentBlock,
+                ResourceContentBlock,
+                EmbeddedResourceContentBlock,
+            ]
         ],
         session_id: str,
         **kwargs: Any,

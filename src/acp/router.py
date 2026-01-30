@@ -1,12 +1,12 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
 import inspect
 import warnings
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
-from typing import Any, Literal, TypeVar
+from typing import Any, TypeVar, Literal, Optional
 
-from pydantic import BaseModel
+from .pydantic_shim import BaseModel
 
 from acp.utils import to_camel_case
 
@@ -15,19 +15,19 @@ from .exceptions import RequestError
 __all__ = ["MessageRouter", "Route"]
 
 
-AsyncHandler = Callable[[Any], Awaitable[Any | None]]
+AsyncHandler = Callable[[Any], Awaitable[Optional[Any]]]
 RequestHandler = Callable[[str, dict[str, Any]], Awaitable[Any]]
 HandlerT = TypeVar("HandlerT", bound=RequestHandler)
 
 
-@dataclass(slots=True)
+@dataclass_with_slots(slots=True)
 class Route:
     method: str
-    func: AsyncHandler | None
+    func: Optional[AsyncHandler]
     kind: Literal["request", "notification"]
     optional: bool = False
     default_result: Any = None
-    adapt_result: Callable[[Any | None], Any] | None = None
+    adapt_result: Optional[Callable[[Optional[Any]], Any]] = None
     warn_unstable: bool = False
 
     async def handle(self, params: Any) -> Any:
@@ -52,8 +52,8 @@ class MessageRouter:
     def __init__(self, use_unstable_protocol: bool = False) -> None:
         self._requests: dict[str, Route] = {}
         self._notifications: dict[str, Route] = {}
-        self._request_extensions: RequestHandler | None = None
-        self._notification_extensions: RequestHandler | None = None
+        self._request_extensions: Optional[RequestHandler] = None
+        self._notification_extensions: Optional[RequestHandler] = None
         self._use_unstable_protocol = use_unstable_protocol
 
     def add_route(self, route: Route) -> None:
@@ -62,7 +62,7 @@ class MessageRouter:
         else:
             self._notifications[route.method] = route
 
-    def _make_func(self, model: type[BaseModel], obj: Any, attr: str) -> AsyncHandler | None:
+    def _make_func(self, model: type[BaseModel], obj: Any, attr: str) -> Optional[AsyncHandler]:
         legacy_api = False
         func = getattr(obj, attr, None)
         if func is None and "_" in attr:
@@ -106,7 +106,7 @@ class MessageRouter:
         attr: str,
         optional: bool = False,
         default_result: Any = None,
-        adapt_result: Callable[[Any | None], Any] | None = None,
+        adapt_result: Optional[Callable[[Optional[Any]], Any]] = None,
         unstable: bool = False,
     ) -> Route:
         """Register a request route with obj and attribute name."""
@@ -152,7 +152,7 @@ class MessageRouter:
         self._notification_extensions = handler
         return handler
 
-    async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
+    async def __call__(self, method: str, params: Optional[Any], is_notification: bool) -> Any:
         """The main router call to handle a request or notification."""
         if is_notification:
             ext_handler = self._notification_extensions

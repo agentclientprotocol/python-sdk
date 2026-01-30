@@ -1,6 +1,6 @@
 import asyncio
 import logging
-from typing import Any
+from typing import Any, Union, Optional
 
 from acp import (
     PROTOCOL_VERSION,
@@ -49,8 +49,8 @@ class ExampleAgent(Agent):
     async def initialize(
         self,
         protocol_version: int,
-        client_capabilities: ClientCapabilities | None = None,
-        client_info: Implementation | None = None,
+        client_capabilities: Optional[ClientCapabilities] = None,
+        client_info: Optional[Implementation] = None,
         **kwargs: Any,
     ) -> InitializeResponse:
         logging.info("Received initialize request")
@@ -60,12 +60,12 @@ class ExampleAgent(Agent):
             agent_info=Implementation(name="example-agent", title="Example Agent", version="0.1.0"),
         )
 
-    async def authenticate(self, method_id: str, **kwargs: Any) -> AuthenticateResponse | None:
+    async def authenticate(self, method_id: str, **kwargs: Any) -> Optional[AuthenticateResponse]:
         logging.info("Received authenticate request %s", method_id)
         return AuthenticateResponse()
 
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], **kwargs: Any
     ) -> NewSessionResponse:
         logging.info("Received new session request")
         session_id = str(self._next_session_id)
@@ -74,24 +74,26 @@ class ExampleAgent(Agent):
         return NewSessionResponse(session_id=session_id, modes=None)
 
     async def load_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
-    ) -> LoadSessionResponse | None:
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], session_id: str, **kwargs: Any
+    ) -> Optional[LoadSessionResponse]:
         logging.info("Received load session request %s", session_id)
         self._sessions.add(session_id)
         return LoadSessionResponse()
 
-    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None:
+    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> Optional[SetSessionModeResponse]:
         logging.info("Received set session mode request %s -> %s", session_id, mode_id)
         return SetSessionModeResponse()
 
     async def prompt(
         self,
         prompt: list[
-            TextContentBlock
-            | ImageContentBlock
-            | AudioContentBlock
-            | ResourceContentBlock
-            | EmbeddedResourceContentBlock
+            Union[
+                TextContentBlock,
+                ImageContentBlock,
+                AudioContentBlock,
+                ResourceContentBlock,
+                EmbeddedResourceContentBlock,
+            ]
         ],
         session_id: str,
         **kwargs: Any,

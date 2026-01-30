@@ -1,10 +1,11 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import uuid
 from collections.abc import Callable, Sequence
-from typing import Any, cast
+from typing import Any, cast, Optional
 
-from pydantic import BaseModel, ConfigDict
+from ..pydantic_shim import BaseModel, ConfigDict
 
 from ..helpers import text_block, tool_content
 from ..schema import (
@@ -35,7 +36,7 @@ class _UnknownToolCallError(KeyError):
         return f"Unknown tool call id: {self.external_id}"
 
 
-def _copy_model_list(items: Sequence[Any] | None) -> list[Any] | None:
+def _copy_model_list(items: Optional[Sequence[Any]]) -> Optional[list[Any]]:
     if items is None:
         return None
     return [item.model_copy(deep=True) for item in items]
@@ -54,11 +55,11 @@ class TrackedToolCallView(BaseModel):
     model_config = ConfigDict(frozen=True)
 
     tool_call_id: str
-    title: str | None
-    kind: ToolKind | None
-    status: ToolCallStatus | None
-    content: tuple[Any, ...] | None
-    locations: tuple[ToolCallLocation, ...] | None
+    title: Optional[str]
+    kind: Optional[ToolKind]
+    status: Optional[ToolCallStatus]
+    content: Optional[tuple[Any, ...]]
+    locations: Optional[tuple[ToolCallLocation, ...]]
     raw_input: Any
     raw_output: Any
 
@@ -68,11 +69,11 @@ class _TrackedToolCall:
         self,
         *,
         tool_call_id: str,
-        title: str | None = None,
-        kind: ToolKind | None = None,
-        status: ToolCallStatus | None = None,
-        content: Sequence[Any] | None = None,
-        locations: Sequence[ToolCallLocation] | None = None,
+        title: Optional[str] = None,
+        kind: Optional[ToolKind] = None,
+        status: Optional[ToolCallStatus] = None,
+        content: Optional[Sequence[Any]] = None,
+        locations: Optional[Sequence[ToolCallLocation]] = None,
         raw_input: Any = None,
         raw_output: Any = None,
     ) -> None:
@@ -84,7 +85,7 @@ class _TrackedToolCall:
         self.locations = _copy_model_list(locations)
         self.raw_input = raw_input
         self.raw_output = raw_output
-        self._stream_buffer: str | None = None
+        self._stream_buffer: Optional[str] = None
 
     def to_view(self) -> TrackedToolCallView:
         return TrackedToolCallView(
@@ -138,22 +139,22 @@ class _TrackedToolCall:
     ) -> ToolCallProgress:
         kwargs: dict[str, Any] = {}
         if title is not UNSET:
-            self.title = cast(str | None, title)
+            self.title = cast(Optional[str], title)
             kwargs["title"] = self.title
         if kind is not UNSET:
-            self.kind = cast(ToolKind | None, kind)
+            self.kind = cast(Optional[ToolKind], kind)
             kwargs["kind"] = self.kind
         if status is not UNSET:
-            self.status = cast(ToolCallStatus | None, status)
+            self.status = cast(Optional[ToolCallStatus], status)
             kwargs["status"] = self.status
         if content is not UNSET:
-            seq_content = cast(Sequence[Any] | None, content)
+            seq_content = cast(Optional[Sequence[Any]], content)
             self.content = _copy_model_list(seq_content)
             kwargs["content"] = _copy_model_list(seq_content)
         if locations is not UNSET:
-            seq_locations = cast(Sequence[ToolCallLocation] | None, locations)
+            seq_locations = cast(Optional[Sequence[ToolCallLocation]], locations)
             self.locations = cast(
-                list[ToolCallLocation] | None,
+                Optional[list[ToolCallLocation]],
                 _copy_model_list(seq_locations),
             )
             kwargs["locations"] = _copy_model_list(seq_locations)
@@ -180,7 +181,7 @@ class _TrackedToolCall:
 class ToolCallTracker:
     """Utility for generating ACP tool call updates on the server side."""
 
-    def __init__(self, *, id_factory: Callable[[], str] | None = None) -> None:
+    def __init__(self, *, id_factory: Callable[[], Optional[str]] = None) -> None:
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)
         self._calls: dict[str, _TrackedToolCall] = {}
 
@@ -189,10 +190,10 @@ class ToolCallTracker:
         external_id: str,
         *,
         title: str,
-        kind: ToolKind | None = None,
-        status: ToolCallStatus | None = "in_progress",
-        content: Sequence[Any] | None = None,
-        locations: Sequence[ToolCallLocation] | None = None,
+        kind: Optional[ToolKind] = None,
+        status: Optional[ToolCallStatus] = "in_progress",
+        content: Optional[Sequence[Any]] = None,
+        locations: Optional[Sequence[ToolCallLocation]] = None,
         raw_input: Any = None,
         raw_output: Any = None,
     ) -> ToolCallStart:

@@ -1,10 +1,9 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
 from collections.abc import AsyncIterator
 from contextlib import suppress
-from typing import Protocol
-
 from . import RpcTask
 
 __all__ = ["InMemoryMessageQueue", "MessageQueue"]
@@ -26,7 +25,7 @@ class InMemoryMessageQueue:
     """Simple in-memory broker for RPC task dispatch."""
 
     def __init__(self, *, maxsize: int = 0) -> None:
-        self._queue: asyncio.Queue[RpcTask | None] = asyncio.Queue(maxsize=maxsize)
+        self._queue: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
         self._closed = False
 
     async def publish(self, task: RpcTask) -> None:

@@ -1,6 +1,7 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
-from typing import Any, Protocol
+from typing import Any, Union, Optional, Protocol
 
 from .schema import (
     AgentMessageChunk,
@@ -80,27 +81,18 @@ class Client(Protocol):
     async def session_update(
         self,
         session_id: str,
-        update: UserMessageChunk
-        | AgentMessageChunk
-        | AgentThoughtChunk
-        | ToolCallStart
-        | ToolCallProgress
-        | AgentPlanUpdate
-        | AvailableCommandsUpdate
-        | CurrentModeUpdate
-        | ConfigOptionUpdate
-        | SessionInfoUpdate,
+        update: Union[UserMessageChunk, AgentMessageChunk, AgentThoughtChunk, ToolCallStart, ToolCallProgress, AgentPlanUpdate, AvailableCommandsUpdate, CurrentModeUpdate, ConfigOptionUpdate, SessionInfoUpdate],
         **kwargs: Any,
     ) -> None: ...
 
     @param_model(WriteTextFileRequest)
     async def write_text_file(
         self, content: str, path: str, session_id: str, **kwargs: Any
-    ) -> WriteTextFileResponse | None: ...
+    ) -> Optional[WriteTextFileResponse]: ...
 
     @param_model(ReadTextFileRequest)
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, path: str, session_id: str, limit: Optional[int] = None, line: Optional[int] = None, **kwargs: Any
     ) -> ReadTextFileResponse: ...
 
     @param_model(CreateTerminalRequest)
@@ -108,10 +100,10 @@ class Client(Protocol):
         self,
         command: str,
         session_id: str,
-        args: list[str] | None = None,
-        cwd: str | None = None,
-        env: list[EnvVariable] | None = None,
-        output_byte_limit: int | None = None,
+        args: Optional[list[str]] = None,
+        cwd: Optional[str] = None,
+        env: Optional[list[EnvVariable]] = None,
+        output_byte_limit: Optional[int] = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse: ...
 
@@ -121,7 +113,7 @@ class Client(Protocol):
     @param_model(ReleaseTerminalRequest)
     async def release_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> ReleaseTerminalResponse | None: ...
+    ) -> Optional[ReleaseTerminalResponse]: ...
 
     @param_model(WaitForTerminalExitRequest)
     async def wait_for_terminal_exit(
@@ -131,7 +123,7 @@ class Client(Protocol):
     @param_model(KillTerminalCommandRequest)
     async def kill_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> KillTerminalCommandResponse | None: ...
+    ) -> Optional[KillTerminalCommandResponse]: ...
 
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]: ...
 
@@ -145,46 +137,42 @@ class Agent(Protocol):
     async def initialize(
         self,
         protocol_version: int,
-        client_capabilities: ClientCapabilities | None = None,
-        client_info: Implementation | None = None,
+        client_capabilities: Optional[ClientCapabilities] = None,
+        client_info: Optional[Implementation] = None,
         **kwargs: Any,
     ) -> InitializeResponse: ...
 
     @param_model(NewSessionRequest)
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], **kwargs: Any
     ) -> NewSessionResponse: ...
 
     @param_model(LoadSessionRequest)
     async def load_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
-    ) -> LoadSessionResponse | None: ...
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], session_id: str, **kwargs: Any
+    ) -> Optional[LoadSessionResponse]: ...
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
+        self, cursor: Optional[str] = None, cwd: Optional[str] = None, **kwargs: Any
     ) -> ListSessionsResponse: ...
 
     @param_model(SetSessionModeRequest)
-    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None: ...
+    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> Optional[SetSessionModeResponse]: ...
 
     @param_model(SetSessionModelRequest)
     async def set_session_model(
         self, model_id: str, session_id: str, **kwargs: Any
-    ) -> SetSessionModelResponse | None: ...
+    ) -> Optional[SetSessionModelResponse]: ...
 
     @param_model(AuthenticateRequest)
-    async def authenticate(self, method_id: str, **kwargs: Any) -> AuthenticateResponse | None: ...
+    async def authenticate(self, method_id: str, **kwargs: Any) -> Optional[AuthenticateResponse]: ...
 
     @param_model(PromptRequest)
     async def prompt(
         self,
         prompt: list[
-            TextContentBlock
-            | ImageContentBlock
-            | AudioContentBlock
-            | ResourceContentBlock
-            | EmbeddedResourceContentBlock
+            Union[TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock]
         ],
         session_id: str,
         **kwargs: Any,
@@ -195,7 +183,7 @@ class Agent(Protocol):
         self,
         cwd: str,
         session_id: str,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: Optional[list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]]] = None,
         **kwargs: Any,
     ) -> ForkSessionResponse: ...
 
@@ -204,7 +192,7 @@ class Agent(Protocol):
         self,
         cwd: str,
         session_id: str,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: Optional[list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]]] = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse: ...
 

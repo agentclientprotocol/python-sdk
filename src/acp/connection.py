@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
 import asyncio
 import contextlib
@@ -7,11 +8,10 @@ import inspect
 import json
 import logging
 from collections.abc import Awaitable, Callable
-from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, Optional
 
-from pydantic import BaseModel, ValidationError
+from .pydantic_shim import BaseModel, ValidationError
 
 from .exceptions import RequestError
 from .task import (
@@ -32,7 +32,7 @@ from .task import (
 from .telemetry import span_context
 
 JsonValue = Any
-MethodHandler = Callable[[str, JsonValue | None, bool], Awaitable[JsonValue | None]]
+MethodHandler = Callable[[str, Optional[JsonValue], bool], Awaitable[Optional[JsonValue]]]
 
 
 __all__ = ["Connection", "JsonValue", "MethodHandler", "StreamDirection", "StreamEvent"]
@@ -49,13 +49,13 @@ class StreamDirection(str, Enum):
     OUTGOING = "outgoing"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass_with_slots(frozen=True, slots=True)
 class StreamEvent:
     direction: StreamDirection
     message: dict[str, Any]
 
 
-StreamObserver = Callable[[StreamEvent], Awaitable[None] | None]
+StreamObserver = Callable[[StreamEvent], Optional[Awaitable[None]]]
 
 
 class Connection:
@@ -67,11 +67,11 @@ class Connection:
         writer: asyncio.StreamWriter,
         reader: asyncio.StreamReader,
         *,
-        queue: MessageQueue | None = None,
-        state_store: MessageStateStore | None = None,
-        dispatcher_factory: DispatcherFactory | None = None,
-        sender_factory: SenderFactory | None = None,
-        observers: list[StreamObserver] | None = None,
+        queue: Optional[MessageQueue] = None,
+        state_store: Optional[MessageStateStore] = None,
+        dispatcher_factory: Optional[DispatcherFactory] = None,
+        sender_factory: Optional[SenderFactory] = None,
+        observers: Optional[list[StreamObserver]] = None,
         listening: bool = True,
     ) -> None:
         self._handler = handler
@@ -131,7 +131,7 @@ class Connection:
         """Register a callback that receives every raw JSON-RPC message."""
         self._observers.append(observer)
 
-    async def send_request(self, method: str, params: JsonValue | None = None) -> Any:
+    async def send_request(self, method: str, params: Optional[JsonValue] = None) -> Any:
         request_id = self._next_request_id
         self._next_request_id += 1
         future = self._state.register_outgoing(request_id, method)
@@ -140,7 +140,7 @@ class Connection:
         self._notify_observers(StreamDirection.OUTGOING, payload)
         return await future
 
-    async def send_notification(self, method: str, params: JsonValue | None = None) -> None:
+    async def send_notification(self, method: str, params: Optional[JsonValue] = None) -> None:
         payload = {"jsonrpc": "2.0", "method": method, "params": params}
         await self._sender.send(payload)
         self._notify_observers(StreamDirection.OUTGOING, payload)
@@ -226,6 +226,7 @@ class Connection:
                 self._notify_observers(StreamDirection.OUTGOING, payload)
                 raise err from None
             except Exception as exc:
+                logging.exception("Error in _run_request")
                 try:
                     data = json.loads(str(exc))
                 except Exception:

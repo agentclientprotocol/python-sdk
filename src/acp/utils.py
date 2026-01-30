@@ -1,11 +1,12 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
 import functools
 import warnings
 from collections.abc import Callable
-from typing import Any, TypeVar
+from typing import Any, TypeVar, Optional
 
-from pydantic import BaseModel
+from .pydantic_shim import BaseModel
 
 from .connection import Connection
 
@@ -30,7 +31,7 @@ T = TypeVar("T")
 
 def serialize_params(params: BaseModel) -> dict[str, Any]:
     """Return a JSON-serializable representation used for RPC calls."""
-    return params.model_dump(by_alias=True, exclude_none=True, exclude_defaults=True)
+    return params.model_dump(by_alias=True, exclude_none=True, exclude_defaults=False)
 
 
 def normalize_result(payload: Any) -> dict[str, Any]:
@@ -57,7 +58,7 @@ def validate_model_from_dict(payload: Any, model_type: type[ModelT]) -> ModelT:
     return model_type.model_validate(ensure_dict(payload))
 
 
-def validate_optional_model(payload: Any, model_type: type[ModelT]) -> ModelT | None:
+def validate_optional_model(payload: Any, model_type: type[ModelT]) -> Optional[ModelT]:
     """Validate payload when it is a dict, otherwise return None."""
     if isinstance(payload, dict):
         return model_type.model_validate(payload)
@@ -91,7 +92,7 @@ async def request_optional_model(
     method: str,
     params: BaseModel,
     response_model: type[ModelT],
-) -> ModelT | None:
+) -> Optional[ModelT]:
     """Send a request and validate optional dict responses."""
     response = await conn.send_request(method, serialize_params(params))
     return validate_optional_model(response, response_model)

@@ -1,7 +1,8 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any
+from typing import Any, Optional
 
 from ..helpers import text_block, tool_content
 from ..schema import PermissionOption, RequestPermissionRequest, RequestPermissionResponse, ToolCallUpdate
@@ -43,8 +44,8 @@ class PermissionBroker:
         session_id: str,
         requester: Callable[[RequestPermissionRequest], Awaitable[RequestPermissionResponse]],
         *,
-        tracker: ToolCallTracker | None = None,
-        default_options: Sequence[PermissionOption] | None = None,
+        tracker: Optional[ToolCallTracker] = None,
+        default_options: Optional[Sequence[PermissionOption]] = None,
     ) -> None:
         self._session_id = session_id
         self._requester = requester
@@ -57,10 +58,10 @@ class PermissionBroker:
         self,
         external_id: str,
         *,
-        description: str | None = None,
-        options: Sequence[PermissionOption] | None = None,
-        content: Sequence[Any] | None = None,
-        tool_call: ToolCallUpdate | None = None,
+        description: Optional[str] = None,
+        options: Optional[Sequence[PermissionOption]] = None,
+        content: Optional[Sequence[Any]] = None,
+        tool_call: Optional[ToolCallUpdate] = None,
     ) -> RequestPermissionResponse:
         """Request user approval for a tool call."""
         if tool_call is None:

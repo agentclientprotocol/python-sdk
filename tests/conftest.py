@@ -1,7 +1,7 @@
 import asyncio
 import contextlib
 from collections.abc import AsyncGenerator, Callable
-from typing import Any
+from typing import Any, Optional
 
 import pytest
 import pytest_asyncio

@@ -1,6 +1,6 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
-from dataclasses import dataclass
 from enum import Enum
 from typing import Any
 
@@ -12,7 +12,7 @@ class RpcTaskKind(Enum):
     NOTIFICATION = "notification"
 
 
-@dataclass(slots=True)
+@dataclass_with_slots(slots=True)
 class RpcTask:
     kind: RpcTaskKind
     message: dict[str, Any]

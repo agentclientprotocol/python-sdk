@@ -5,7 +5,7 @@ from collections.abc import Callable
 from pathlib import Path
 
 import pytest
-from pydantic import BaseModel
+from acp.pydantic_shim import BaseModel
 
 from acp import (
     audio_block,

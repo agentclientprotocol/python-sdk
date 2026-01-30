@@ -1,8 +1,9 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast, final
+from typing import Any, cast, final, Union, Optional
 
 from ..connection import Connection
 from ..interfaces import Agent, Client
@@ -56,7 +57,7 @@ class ClientSideConnection:
 
     def __init__(
         self,
-        to_client: Callable[[Agent], Client] | Client,
+        to_client: Union[Callable[[Agent], Client], Client],
         input_stream: Any,
         output_stream: Any,
         *,
@@ -75,8 +76,8 @@ class ClientSideConnection:
     async def initialize(
         self,
         protocol_version: int,
-        client_capabilities: ClientCapabilities | None = None,
-        client_info: Implementation | None = None,
+        client_capabilities: Optional[ClientCapabilities] = None,
+        client_info: Optional[Implementation] = None,
         **kwargs: Any,
     ) -> InitializeResponse:
         return await request_model(
@@ -93,7 +94,7 @@ class ClientSideConnection:
 
     @param_model(NewSessionRequest)
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], **kwargs: Any
     ) -> NewSessionResponse:
         return await request_model(
             self._conn,
@@ -104,7 +105,7 @@ class ClientSideConnection:
 
     @param_model(LoadSessionRequest)
     async def load_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
+        self, cwd: str, mcp_servers: list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]], session_id: str, **kwargs: Any
     ) -> LoadSessionResponse:
         return await request_model_from_dict(
             self._conn,
@@ -115,7 +116,7 @@ class ClientSideConnection:
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
+        self, cursor: Optional[str] = None, cwd: Optional[str] = None, **kwargs: Any
     ) -> ListSessionsResponse:
         return await request_model_from_dict(
             self._conn,
@@ -155,11 +156,7 @@ class ClientSideConnection:
     async def prompt(
         self,
         prompt: list[
-            TextContentBlock
-            | ImageContentBlock
-            | AudioContentBlock
-            | ResourceContentBlock
-            | EmbeddedResourceContentBlock
+            Union[TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock]
         ],
         session_id: str,
         **kwargs: Any,
@@ -176,7 +173,7 @@ class ClientSideConnection:
         self,
         cwd: str,
         session_id: str,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: Optional[list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]]] = None,
         **kwargs: Any,
     ) -> ForkSessionResponse:
         return await request_model(
@@ -191,7 +188,7 @@ class ClientSideConnection:
         self,
         cwd: str,
         session_id: str,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: Optional[list[Union[HttpMcpServer, SseMcpServer, McpServerStdio]]] = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse:
         return await request_model(

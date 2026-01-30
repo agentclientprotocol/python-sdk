@@ -1,4 +1,5 @@
 from __future__ import annotations
+from .py38_compatibility import *
 
 import asyncio
 import asyncio.subprocess as aio_subprocess
@@ -10,7 +11,7 @@ from asyncio import transports as aio_transports
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, cast
+from typing import Any, cast, Union, Optional
 
 from .agent.connection import AgentSideConnection
 from .client.connection import ClientSideConnection
@@ -30,7 +31,7 @@ class _WritePipeProtocol(asyncio.BaseProtocol):
     def __init__(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._paused = False
-        self._drain_waiter: asyncio.Future[None] | None = None
+        self._drain_waiter: Optional[asyncio.Future[None]] = None
 
     def pause_writing(self) -> None:  # type: ignore[override]
         self._paused = True
@@ -98,7 +99,7 @@ class _StdoutTransport(asyncio.BaseTransport):
 
 async def _windows_stdio_streams(
     loop: asyncio.AbstractEventLoop,
-    limit: int | None = None,
+    limit: Optional[int] = None,
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
     reader = asyncio.StreamReader(limit=limit) if limit is not None else asyncio.StreamReader()
     _ = asyncio.StreamReaderProtocol(reader)
@@ -113,7 +114,7 @@ async def _windows_stdio_streams(
 
 async def _posix_stdio_streams(
     loop: asyncio.AbstractEventLoop,
-    limit: int | None = None,
+    limit: Optional[int] = None,
 ) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
     # Reader from stdin
     reader = asyncio.StreamReader(limit=limit) if limit is not None else asyncio.StreamReader()
@@ -127,7 +128,7 @@ async def _posix_stdio_streams(
     return reader, writer
 
 
-async def stdio_streams(limit: int | None = None) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+async def stdio_streams(limit: Optional[int] = None) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
     """Create stdio asyncio streams; on Windows use a thread feeder + custom stdout transport.
 
     Args:
@@ -144,9 +145,9 @@ async def spawn_stdio_connection(
     handler: MethodHandler,
     command: str,
     *args: str,
-    env: Mapping[str, str] | None = None,
-    cwd: str | Path | None = None,
-    observers: list[StreamObserver] | None = None,
+    env: Optional[Mapping[str, str]] = None,
+    cwd: Optional[Union[str, Path]] = None,
+    observers: Optional[list[StreamObserver]] = None,
     **transport_kwargs: Any,
 ) -> AsyncIterator[tuple[Connection, aio_subprocess.Process]]:
     """Spawn a subprocess and bind its stdio to a low-level Connection."""
@@ -160,12 +161,12 @@ async def spawn_stdio_connection(
 
 @asynccontextmanager
 async def spawn_agent_process(
-    to_client: Callable[[Agent], Client] | Client,
+    to_client: Union[Callable[[Agent], Client], Client],
     command: str,
     *args: str,
-    env: Mapping[str, str] | None = None,
-    cwd: str | Path | None = None,
-    transport_kwargs: Mapping[str, Any] | None = None,
+    env: Optional[Mapping[str, str]] = None,
+    cwd: Optional[Union[str, Path]] = None,
+    transport_kwargs: Optional[Mapping[str, Any]] = None,
     **connection_kwargs: Any,
 ) -> AsyncIterator[tuple[ClientSideConnection, aio_subprocess.Process]]:
     """Spawn an ACP agent subprocess and return a ClientSideConnection to it."""
@@ -185,12 +186,12 @@ async def spawn_agent_process(
 
 @asynccontextmanager
 async def spawn_client_process(
-    to_agent: Callable[[Client], Agent] | Agent,
+    to_agent: Union[Callable[[Client], Agent], Agent],
     command: str,
     *args: str,
-    env: Mapping[str, str] | None = None,
-    cwd: str | Path | None = None,
-    transport_kwargs: Mapping[str, Any] | None = None,
+    env: Optional[Mapping[str, str]] = None,
+    cwd: Optional[Union[str, Path]] = None,
+    transport_kwargs: Optional[Mapping[str, Any]] = None,
     **connection_kwargs: Any,
 ) -> AsyncIterator[tuple[AgentSideConnection, aio_subprocess.Process]]:
     """Spawn an ACP client subprocess and return an AgentSideConnection to it."""

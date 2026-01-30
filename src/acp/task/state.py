@@ -1,7 +1,7 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
-from dataclasses import dataclass
 from typing import Any, Protocol
 
 __all__ = [
@@ -12,14 +12,14 @@ __all__ = [
 ]
 
 
-@dataclass(slots=True)
+@dataclass_with_slots(slots=True)
 class OutgoingMessage:
     request_id: int
     method: str
     future: asyncio.Future[Any]
 
 
-@dataclass(slots=True)
+@dataclass_with_slots(slots=True)
 class IncomingMessage:
     method: str
     params: Any

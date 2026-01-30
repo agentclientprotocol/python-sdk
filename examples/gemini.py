@@ -10,7 +10,7 @@ import shutil
 import sys
 from collections.abc import Iterable
 from pathlib import Path
-from typing import Any
+from typing import Any, Union, Optional
 
 from acp import (
     PROTOCOL_VERSION,
@@ -91,7 +91,7 @@ class GeminiClient(Client):
 
     async def write_text_file(
         self, content: str, path: str, session_id: str, **kwargs: Any
-    ) -> WriteTextFileResponse | None:
+    ) -> Optional[WriteTextFileResponse]:
         pathlib_path = Path(path)
         if not pathlib_path.is_absolute():
             raise RequestError.invalid_params({"path": pathlib_path, "reason": "path must be absolute"})
@@ -101,7 +101,7 @@ class GeminiClient(Client):
         return WriteTextFileResponse()
 
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, path: str, session_id: str, limit: Optional[int] = None, line: Optional[int] = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         pathlib_path = Path(path)
         if not pathlib_path.is_absolute():
@@ -115,14 +115,7 @@ class GeminiClient(Client):
     async def session_update(  # noqa: C901
         self,
         session_id: str,
-        update: UserMessageChunk
-        | AgentMessageChunk
-        | AgentThoughtChunk
-        | ToolCallStart
-        | ToolCallProgress
-        | AgentPlanUpdate
-        | AvailableCommandsUpdate
-        | CurrentModeUpdate,
+        update: Union[UserMessageChunk, Union[AgentMessageChunk], Union[AgentThoughtChunk], Union[ToolCallStart], Union[ToolCallProgress], Union[AgentPlanUpdate], Union[AvailableCommandsUpdate], CurrentModeUpdate],
         **kwargs: Any,
     ) -> None:
         if isinstance(update, AgentMessageChunk):
@@ -158,10 +151,10 @@ class GeminiClient(Client):
         self,
         command: str,
         session_id: str,
-        args: list[str] | None = None,
-        cwd: str | None = None,
-        env: list[EnvVariable] | None = None,
-        output_byte_limit: int | None = None,
+        args: Optional[list[str]] = None,
+        cwd: Optional[str] = None,
+        env: Optional[list[EnvVariable]] = None,
+        output_byte_limit: Optional[int] = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:
         print(f"[Client] createTerminal: {command} {args or []} (cwd={cwd})")
@@ -173,7 +166,7 @@ class GeminiClient(Client):
 
     async def release_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> ReleaseTerminalResponse | None:
+    ) -> Optional[ReleaseTerminalResponse]:
         print(f"[Client] releaseTerminal: {session_id} {terminal_id}")
         return ReleaseTerminalResponse()
 
@@ -185,13 +178,13 @@ class GeminiClient(Client):
 
     async def kill_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> KillTerminalCommandResponse | None:
+    ) -> Optional[KillTerminalCommandResponse]:
         print(f"[Client] killTerminal: {session_id} {terminal_id}")
         return KillTerminalCommandResponse()
 
 
-def _pick_preferred_option(options: Iterable[PermissionOption]) -> PermissionOption | None:
-    best: PermissionOption | None = None
+def _pick_preferred_option(options: Iterable[PermissionOption]) -> Optional[PermissionOption]:
+    best: Optional[PermissionOption] = None
     for option in options:
         if option.kind in {"allow_once", "allow_always"}:
             return option
@@ -199,7 +192,7 @@ def _pick_preferred_option(options: Iterable[PermissionOption]) -> PermissionOpt
     return best
 
 
-def _slice_text(content: str, line: int | None, limit: int | None) -> str:
+def _slice_text(content: str, line: Optional[int], limit: Optional[int]) -> str:
     lines = content.splitlines()
     start = 0
     if line:
@@ -260,7 +253,7 @@ async def interactive_loop(conn: ClientSideConnection, session_id: str) -> None:
             print(f"Prompt failed: {exc}", file=sys.stderr)
 
 
-def _resolve_gemini_cli(binary: str | None) -> str:
+def _resolve_gemini_cli(binary: Optional[str]) -> str:
     if binary:
         return binary
     env_value = os.environ.get("ACP_GEMINI_BIN")
@@ -385,7 +378,7 @@ async def _shutdown(proc: asyncio.subprocess.Process, conn: ClientSideConnection
             await proc.wait()
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: Optional[list[str]] = None) -> int:
     args = sys.argv if argv is None else argv
     return asyncio.run(run(list(args)))
 

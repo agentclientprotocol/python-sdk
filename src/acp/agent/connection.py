@@ -1,8 +1,9 @@
 from __future__ import annotations
+from ..py38_compatibility import *
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast, final
+from typing import Any, cast, final, Union, Optional
 
 from ..connection import Connection
 from ..interfaces import Agent, Client
@@ -55,7 +56,7 @@ class AgentSideConnection:
 
     def __init__(
         self,
-        to_agent: Callable[[Client], Agent] | Agent,
+        to_agent: Union[Callable[[Client], Agent], Agent],
         input_stream: Any,
         output_stream: Any,
         listening: bool = True,
@@ -79,16 +80,7 @@ class AgentSideConnection:
     async def session_update(
         self,
         session_id: str,
-        update: UserMessageChunk
-        | AgentMessageChunk
-        | AgentThoughtChunk
-        | ToolCallStart
-        | ToolCallProgress
-        | AgentPlanUpdate
-        | AvailableCommandsUpdate
-        | CurrentModeUpdate
-        | ConfigOptionUpdate
-        | SessionInfoUpdate,
+        update: Union[UserMessageChunk, AgentMessageChunk, AgentThoughtChunk, ToolCallStart, ToolCallProgress, AgentPlanUpdate, AvailableCommandsUpdate, CurrentModeUpdate, ConfigOptionUpdate, SessionInfoUpdate],
         **kwargs: Any,
     ) -> None:
         await notify_model(
@@ -112,7 +104,7 @@ class AgentSideConnection:
 
     @param_model(ReadTextFileRequest)
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, path: str, session_id: str, limit: Optional[int] = None, line: Optional[int] = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         return await request_model(
             self._conn,
@@ -124,7 +116,7 @@ class AgentSideConnection:
     @param_model(WriteTextFileRequest)
     async def write_text_file(
         self, content: str, path: str, session_id: str, **kwargs: Any
-    ) -> WriteTextFileResponse | None:
+    ) -> Optional[WriteTextFileResponse]:
         return await request_optional_model(
             self._conn,
             CLIENT_METHODS["fs_write_text_file"],
@@ -137,10 +129,10 @@ class AgentSideConnection:
         self,
         command: str,
         session_id: str,
-        args: list[str] | None = None,
-        cwd: str | None = None,
-        env: list[EnvVariable] | None = None,
-        output_byte_limit: int | None = None,
+        args: Optional[list[str]] = None,
+        cwd: Optional[str] = None,
+        env: Optional[list[EnvVariable]] = None,
+        output_byte_limit: Optional[int] = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:
         return await request_model(
@@ -170,7 +162,7 @@ class AgentSideConnection:
     @param_model(ReleaseTerminalRequest)
     async def release_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> ReleaseTerminalResponse | None:
+    ) -> Optional[ReleaseTerminalResponse]:
         return await request_optional_model(
             self._conn,
             CLIENT_METHODS["terminal_release"],
@@ -192,7 +184,7 @@ class AgentSideConnection:
     @param_model(KillTerminalCommandRequest)
     async def kill_terminal(
         self, session_id: str, terminal_id: str, **kwargs: Any
-    ) -> KillTerminalCommandResponse | None:
+    ) -> Optional[KillTerminalCommandResponse]:
         return await request_optional_model(
             self._conn,
             CLIENT_METHODS["terminal_kill"],
