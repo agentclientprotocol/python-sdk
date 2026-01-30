@@ -55,7 +55,7 @@ async def spawn_stdio_transport(
     stderr: Optional[int] = aio_subprocess.PIPE,
     limit: Optional[int] = None,
     shutdown_timeout: float = 2.0,
-) -> AsyncIterator[tuple[asyncio.StreamReader, asyncio.StreamWriter, aio_subprocess.Process]]:
+) -> AsyncIterator[tuple[StreamReader, StreamWriter, aio_subprocess.Process]]:
     """Launch a subprocess and expose its stdio streams as asyncio transports.
 
     This mirrors the defensive shutdown behaviour used by the MCP Python SDK:

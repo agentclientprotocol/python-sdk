@@ -58,13 +58,13 @@ from acp.schema import (
 class _Server:
     def __init__(self) -> None:
         self._server: asyncio.AbstractServer | None = None
-        self._server_reader: asyncio.StreamReader | None = None
-        self._server_writer: asyncio.StreamWriter | None = None
-        self._client_reader: asyncio.StreamReader | None = None
-        self._client_writer: asyncio.StreamWriter | None = None
+        self._server_reader: StreamReader | None = None
+        self._server_writer: StreamWriter | None = None
+        self._client_reader: StreamReader | None = None
+        self._client_writer: StreamWriter | None = None
 
     async def __aenter__(self):
-        async def handle(reader: asyncio.StreamReader, writer: asyncio.StreamWriter):
+        async def handle(reader: StreamReader, writer: StreamWriter):
             self._server_reader = reader
             self._server_writer = writer
 
@@ -95,22 +95,22 @@ class _Server:
             await self._server.wait_closed()
 
     @property
-    def server_writer(self) -> asyncio.StreamWriter:
+    def server_writer(self) -> StreamWriter:
         assert self._server_writer is not None
         return self._server_writer
 
     @property
-    def server_reader(self) -> asyncio.StreamReader:
+    def server_reader(self) -> StreamReader:
         assert self._server_reader is not None
         return self._server_reader
 
     @property
-    def client_writer(self) -> asyncio.StreamWriter:
+    def client_writer(self) -> StreamWriter:
         assert self._client_writer is not None
         return self._client_writer
 
     @property
-    def client_reader(self) -> asyncio.StreamReader:
+    def client_reader(self) -> StreamReader:
         assert self._client_reader is not None
         return self._client_reader
 

@@ -25,7 +25,7 @@ class InMemoryMessageQueue:
     """Simple in-memory broker for RPC task dispatch."""
 
     def __init__(self, *, maxsize: int = 0) -> None:
-        self._queue: asyncio.Queue = asyncio.Queue(maxsize=maxsize)
+        self._queue: Queue = Queue(maxsize=maxsize)
         self._closed = False
 
     async def publish(self, task: RpcTask) -> None:

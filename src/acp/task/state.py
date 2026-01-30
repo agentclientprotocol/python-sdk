@@ -16,7 +16,7 @@ __all__ = [
 class OutgoingMessage:
     request_id: int
     method: str
-    future: asyncio.Future[Any]
+    future: Future[Any]
 
 
 @dataclass_with_slots(slots=True)
@@ -29,7 +29,7 @@ class IncomingMessage:
 
 
 class MessageStateStore(Protocol):
-    def register_outgoing(self, request_id: int, method: str) -> asyncio.Future[Any]: ...
+    def register_outgoing(self, request_id: int, method: str) -> Future[Any]: ...
 
     def resolve_outgoing(self, request_id: int, result: Any) -> None: ...
 
@@ -49,8 +49,8 @@ class InMemoryMessageStateStore(MessageStateStore):
         self._outgoing: dict[int, OutgoingMessage] = {}
         self._incoming: list[IncomingMessage] = []
 
-    def register_outgoing(self, request_id: int, method: str) -> asyncio.Future[Any]:
-        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+    def register_outgoing(self, request_id: int, method: str) -> Future[Any]:
+        future: Future[Any] = asyncio.get_running_loop().create_future()
         self._outgoing[request_id] = OutgoingMessage(request_id, method, future)
         return future
 

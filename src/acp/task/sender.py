@@ -13,25 +13,25 @@ from .supervisor import TaskSupervisor
 __all__ = ["MessageSender", "SenderFactory"]
 
 
-SenderFactory = Callable[[asyncio.StreamWriter, TaskSupervisor], "MessageSender"]
+SenderFactory = "Callable[[StreamWriter, TaskSupervisor], 'MessageSender']"
 
 
 @dataclass_with_slots(slots=True)
 class _PendingSend:
     payload: bytes
-    future: asyncio.Future[None]
+    future: Future[None]
 
 
 class MessageSender:
-    def __init__(self, writer: asyncio.StreamWriter, supervisor: TaskSupervisor) -> None:
+    def __init__(self, writer: StreamWriter, supervisor: TaskSupervisor) -> None:
         self._writer = writer
-        self._queue: asyncio.Queue = asyncio.Queue()
+        self._queue: Queue = Queue()
         self._closed = False
         self._task = supervisor.create(self._loop(), name="acp.Sender.loop", on_error=self._on_error)
 
     async def send(self, payload: dict[str, Any]) -> None:
         data = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
-        future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        future: Future[None] = asyncio.get_running_loop().create_future()
         await self._queue.put(_PendingSend(data, future))
         await future
 
@@ -63,5 +63,5 @@ class MessageSender:
         except asyncio.CancelledError:
             return
 
-    def _on_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
+    def _on_error(self, task: Task[Any], exc: BaseException) -> None:
         logging.exception("Send loop failed", exc_info=exc)

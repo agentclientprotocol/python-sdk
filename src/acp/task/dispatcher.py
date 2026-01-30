@@ -46,7 +46,7 @@ class DefaultMessageDispatcher(MessageDispatcher):
         self._store = store
         self._request_runner = request_runner
         self._notification_runner = notification_runner
-        self._task: Optional[asyncio.Task[None]] = None
+        self._task: Optional[Task[None]] = None
 
     def start(self) -> None:
         if self._task is not None:

@@ -9,7 +9,7 @@ from typing import Any
 
 __all__ = ["TaskSupervisor"]
 
-ErrorHandler = Callable[[asyncio.Task[Any], BaseException], None]
+ErrorHandler = "Callable[[Task[Any], BaseException], None]"
 
 
 class TaskSupervisor:
@@ -22,7 +22,7 @@ class TaskSupervisor:
 
     def __init__(self, *, source: str) -> None:
         self._source = source
-        self._tasks: set[asyncio.Task[Any]] = set()
+        self._tasks: set[Task[Any]] = set()
         self._closed = False
         self._error_handlers: list[ErrorHandler] = []
 
@@ -35,7 +35,7 @@ class TaskSupervisor:
         *,
         name: Optional[str] = None,
         on_error: Optional[ErrorHandler] = None,
-    ) -> asyncio.Task[Any]:
+    ) -> Task[Any]:
         if self._closed:
             msg = f"TaskSupervisor for {self._source} already closed"
             raise RuntimeError(msg)
@@ -44,7 +44,7 @@ class TaskSupervisor:
         task.add_done_callback(lambda t: self._on_done(t, on_error))
         return task
 
-    def _on_done(self, task: asyncio.Task[Any], on_error: Optional[ErrorHandler]) -> None:
+    def _on_done(self, task: Task[Any], on_error: Optional[ErrorHandler]) -> None:
         self._tasks.discard(task)
         if task.cancelled():
             return

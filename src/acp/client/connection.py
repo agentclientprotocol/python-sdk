@@ -64,7 +64,7 @@ class ClientSideConnection:
         use_unstable_protocol: bool = False,
         **connection_kwargs: Any,
     ) -> None:
-        if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(output_stream, asyncio.StreamReader):
+        if not isinstance(input_stream, StreamWriter) or not isinstance(output_stream, StreamReader):
             raise TypeError(_CLIENT_CONNECTION_ERROR)
         client = to_client(self) if callable(to_client) else to_client
         handler = build_client_router(cast(Client, client), use_unstable_protocol=use_unstable_protocol)

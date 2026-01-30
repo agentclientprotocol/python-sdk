@@ -7,15 +7,52 @@ import builtins
 from typing import *
 
 if sys.version_info < (3, 9):
-    from typing import (
-        Dict as dict,
-        List as list,
-        Tuple as tuple,
-        Set as set,
-        Type as type,
-    )
+    import builtins
+    import typing
     import typing_extensions
     from typing_extensions import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final
+
+    def _make_generic_constructor(origin, typing_type):
+        class Meta(type):
+            def __getitem__(cls, item):
+                return typing_type[item]
+            def __instancecheck__(cls, instance):
+                return isinstance(instance, origin)
+            def __subclasscheck__(cls, subclass):
+                return issubclass(subclass, origin)
+
+        class Constructor(metaclass=Meta):
+            def __new__(cls, *args, **kwargs):
+                return origin(*args, **kwargs)
+
+        Constructor.__name__ = origin.__name__
+        Constructor.__module__ = origin.__module__
+        return Constructor
+
+    list = _make_generic_constructor(builtins.list, typing.List)
+    dict = _make_generic_constructor(builtins.dict, typing.Dict)
+    tuple = _make_generic_constructor(builtins.tuple, typing.Tuple)
+    set = _make_generic_constructor(builtins.set, typing.Set)
+    type = _make_generic_constructor(builtins.type, typing.Type)
+
+    # asyncio generics compatibility
+    import asyncio
+    class _AsyncioGenericAlias:
+        def __init__(self, origin):
+            self._origin = origin
+        def __getitem__(self, _):
+            return self._origin
+        def __instancecheck__(self, instance):
+            return isinstance(instance, self._origin)
+        def __subclasscheck__(self, subclass):
+            return issubclass(subclass, self._origin)
+
+    Task = _AsyncioGenericAlias(Task)
+    Future = _AsyncioGenericAlias(Future)
+    Queue = _AsyncioGenericAlias(Queue)
+    StreamReader = _AsyncioGenericAlias(StreamReader)
+    StreamWriter = _AsyncioGenericAlias(StreamWriter)
+
 else:
     # Ensure they are available for import
     list = builtins.list
@@ -24,6 +61,12 @@ else:
     set = builtins.set
     type = builtins.type
     from typing import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final
+    import asyncio
+    Task = Task
+    Future = Future
+    Queue = Queue
+    StreamReader = StreamReader
+    StreamWriter = StreamWriter
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self

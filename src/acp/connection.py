@@ -38,10 +38,7 @@ MethodHandler = Callable[[str, Optional[JsonValue], bool], Awaitable[Optional[Js
 __all__ = ["Connection", "JsonValue", "MethodHandler", "StreamDirection", "StreamEvent"]
 
 
-DispatcherFactory = Callable[
-    [MessageQueue, TaskSupervisor, MessageStateStore, RequestRunner, NotificationRunner],
-    MessageDispatcher,
-]
+DispatcherFactory = "Callable[[MessageQueue, TaskSupervisor, MessageStateStore, RequestRunner, NotificationRunner], MessageDispatcher]"
 
 
 class StreamDirection(str, Enum):
@@ -64,8 +61,8 @@ class Connection:
     def __init__(
         self,
         handler: MethodHandler,
-        writer: asyncio.StreamWriter,
-        reader: asyncio.StreamReader,
+        writer: StreamWriter,
+        reader: StreamReader,
         *,
         queue: Optional[MessageQueue] = None,
         state_store: Optional[MessageStateStore] = None,
@@ -191,7 +188,7 @@ class Connection:
                     on_error=self._on_observer_error,
                 )
 
-    def _on_observer_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
+    def _on_observer_error(self, task: Task[Any], exc: BaseException) -> None:
         logging.exception("Stream observer coroutine failed", exc_info=exc)
 
     async def _run_request(self, message: dict[str, Any]) -> Any:
@@ -261,11 +258,11 @@ class Connection:
             return
         self._state.resolve_outgoing(request_id, None)
 
-    def _on_receive_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
+    def _on_receive_error(self, task: Task[Any], exc: BaseException) -> None:
         logging.exception("Receive loop failed", exc_info=exc)
         self._state.reject_all_outgoing(exc)
 
-    def _on_task_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
+    def _on_task_error(self, task: Task[Any], exc: BaseException) -> None:
         logging.exception("Background task failed", exc_info=exc)
 
     def _default_dispatcher_factory(
@@ -284,5 +281,5 @@ class Connection:
             notification_runner=notification_runner,
         )
 
-    def _default_sender_factory(self, writer: asyncio.StreamWriter, supervisor: TaskSupervisor) -> MessageSender:
+    def _default_sender_factory(self, writer: StreamWriter, supervisor: TaskSupervisor) -> MessageSender:
         return MessageSender(writer, supervisor)

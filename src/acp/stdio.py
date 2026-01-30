@@ -31,7 +31,7 @@ class _WritePipeProtocol(asyncio.BaseProtocol):
     def __init__(self) -> None:
         self._loop = asyncio.get_running_loop()
         self._paused = False
-        self._drain_waiter: Optional[asyncio.Future[None]] = None
+        self._drain_waiter: Optional[Future[None]] = None
 
     def pause_writing(self) -> None:  # type: ignore[override]
         self._paused = True
@@ -49,7 +49,7 @@ class _WritePipeProtocol(asyncio.BaseProtocol):
             await self._drain_waiter
 
 
-def _start_stdin_feeder(loop: asyncio.AbstractEventLoop, reader: asyncio.StreamReader) -> None:
+def _start_stdin_feeder(loop: asyncio.AbstractEventLoop, reader: StreamReader) -> None:
     # Feed stdin from a background thread line-by-line
     def blocking_read() -> None:
         try:
@@ -100,35 +100,35 @@ class _StdoutTransport(asyncio.BaseTransport):
 async def _windows_stdio_streams(
     loop: asyncio.AbstractEventLoop,
     limit: Optional[int] = None,
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
-    reader = asyncio.StreamReader(limit=limit) if limit is not None else asyncio.StreamReader()
-    _ = asyncio.StreamReaderProtocol(reader)
+) -> tuple[StreamReader, StreamWriter]:
+    reader = StreamReader(limit=limit) if limit is not None else StreamReader()
+    _ = StreamReaderProtocol(reader)
 
     _start_stdin_feeder(loop, reader)
 
     write_protocol = _WritePipeProtocol()
     transport = _StdoutTransport()
-    writer = asyncio.StreamWriter(cast(aio_transports.WriteTransport, transport), write_protocol, None, loop)
+    writer = StreamWriter(cast(aio_transports.WriteTransport, transport), write_protocol, None, loop)
     return reader, writer
 
 
 async def _posix_stdio_streams(
     loop: asyncio.AbstractEventLoop,
     limit: Optional[int] = None,
-) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+) -> tuple[StreamReader, StreamWriter]:
     # Reader from stdin
-    reader = asyncio.StreamReader(limit=limit) if limit is not None else asyncio.StreamReader()
-    reader_protocol = asyncio.StreamReaderProtocol(reader)
+    reader = StreamReader(limit=limit) if limit is not None else StreamReader()
+    reader_protocol = StreamReaderProtocol(reader)
     await loop.connect_read_pipe(lambda: reader_protocol, sys.stdin)
 
     # Writer to stdout with protocol providing _drain_helper
     write_protocol = _WritePipeProtocol()
     transport, _ = await loop.connect_write_pipe(lambda: write_protocol, sys.stdout)
-    writer = asyncio.StreamWriter(transport, write_protocol, None, loop)
+    writer = StreamWriter(transport, write_protocol, None, loop)
     return reader, writer
 
 
-async def stdio_streams(limit: Optional[int] = None) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
+async def stdio_streams(limit: Optional[int] = None) -> tuple[StreamReader, StreamWriter]:
     """Create stdio asyncio streams; on Windows use a thread feeder + custom stdout transport.
 
     Args:
