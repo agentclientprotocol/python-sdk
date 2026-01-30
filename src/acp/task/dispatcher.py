@@ -2,7 +2,7 @@ from __future__ import annotations
 from ..py38_compatibility import *
 
 import asyncio
-from collections.abc import Awaitable, Callable
+from typing import Awaitable, Callable
 from contextlib import suppress
 from typing import Any
 

@@ -1,6 +1,9 @@
+from __future__ import annotations
+from acp.py38_compatibility import *
+
 import asyncio
 import contextlib
-from collections.abc import AsyncGenerator, Callable
+from typing import AsyncGenerator, Callable
 from typing import Any, Optional
 
 import pytest

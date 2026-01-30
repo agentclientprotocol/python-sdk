@@ -2,7 +2,7 @@ from __future__ import annotations
 from ..py38_compatibility import *
 
 import asyncio
-from collections.abc import Callable
+from typing import Callable
 from typing import Any, cast, final
 
 from ..connection import Connection

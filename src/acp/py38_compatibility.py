@@ -47,11 +47,11 @@ if sys.version_info < (3, 9):
         def __subclasscheck__(self, subclass):
             return issubclass(subclass, self._origin)
 
-    Task = _AsyncioGenericAlias(Task)
-    Future = _AsyncioGenericAlias(Future)
-    Queue = _AsyncioGenericAlias(Queue)
-    StreamReader = _AsyncioGenericAlias(StreamReader)
-    StreamWriter = _AsyncioGenericAlias(StreamWriter)
+    Task = _AsyncioGenericAlias(asyncio.Task)
+    Future = _AsyncioGenericAlias(asyncio.Future)
+    Queue = _AsyncioGenericAlias(asyncio.Queue)
+    StreamReader = _AsyncioGenericAlias(asyncio.StreamReader)
+    StreamWriter = _AsyncioGenericAlias(asyncio.StreamWriter)
 
 else:
     # Ensure they are available for import
@@ -62,11 +62,11 @@ else:
     type = builtins.type
     from typing import Annotated, Literal, Protocol, runtime_checkable, TypedDict, TypeAlias, Final
     import asyncio
-    Task = Task
-    Future = Future
-    Queue = Queue
-    StreamReader = StreamReader
-    StreamWriter = StreamWriter
+    Task = asyncio.Task
+    Future = asyncio.Future
+    Queue = asyncio.Queue
+    StreamReader = asyncio.StreamReader
+    StreamWriter = asyncio.StreamWriter
 
 if sys.version_info < (3, 11):
     from typing_extensions import Self

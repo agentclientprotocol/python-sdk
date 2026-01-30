@@ -2,7 +2,7 @@ from __future__ import annotations
 from ..py38_compatibility import *
 
 import uuid
-from collections.abc import Callable, Sequence
+from typing import Callable, Sequence
 from typing import Any, cast
 
 from ..pydantic_shim import BaseModel, ConfigDict

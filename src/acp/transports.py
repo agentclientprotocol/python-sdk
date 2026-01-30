@@ -6,7 +6,7 @@ import asyncio
 import asyncio.subprocess as aio_subprocess
 import contextlib
 import os
-from collections.abc import AsyncIterator, Mapping
+from typing import AsyncIterator, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 

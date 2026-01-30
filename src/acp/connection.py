@@ -7,7 +7,7 @@ import copy
 import inspect
 import json
 import logging
-from collections.abc import Awaitable, Callable
+from typing import Awaitable, Callable
 from enum import Enum
 from typing import Any
 

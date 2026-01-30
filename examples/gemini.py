@@ -8,7 +8,7 @@ import json
 import os
 import shutil
 import sys
-from collections.abc import Iterable
+from typing import Iterable
 from pathlib import Path
 from typing import Any, Union, Optional
 

@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .py38_compatibility import *
 
-from collections.abc import Iterable, Sequence
+from typing import Iterable, Sequence
 from typing import Any
 
 from .schema import (

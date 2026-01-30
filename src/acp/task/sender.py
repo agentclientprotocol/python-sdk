@@ -5,7 +5,7 @@ import asyncio
 import contextlib
 import json
 import logging
-from collections.abc import Callable
+from typing import Callable
 from typing import Any
 
 from .supervisor import TaskSupervisor

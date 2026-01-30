@@ -2,7 +2,7 @@ from __future__ import annotations
 from .py38_compatibility import *
 
 import os
-from collections.abc import Mapping
+from typing import Mapping
 from contextlib import AbstractContextManager, ExitStack, nullcontext
 from typing import Any, cast
 

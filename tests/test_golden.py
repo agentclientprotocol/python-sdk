@@ -1,7 +1,8 @@
 from __future__ import annotations
+from acp.py38_compatibility import *
 
 import json
-from collections.abc import Callable
+from typing import Callable
 from pathlib import Path
 
 import pytest

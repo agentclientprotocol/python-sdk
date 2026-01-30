@@ -2,7 +2,7 @@ from __future__ import annotations
 from ..py38_compatibility import *
 
 import asyncio
-from collections.abc import AsyncIterator
+from typing import AsyncIterator
 from contextlib import suppress
 from . import RpcTask
 

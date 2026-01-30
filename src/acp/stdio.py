@@ -8,7 +8,7 @@ import logging
 import platform
 import sys
 from asyncio import transports as aio_transports
-from collections.abc import AsyncIterator, Callable, Mapping
+from typing import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import Any, cast
@@ -102,7 +102,7 @@ async def _windows_stdio_streams(
     limit: Optional[int] = None,
 ) -> tuple[StreamReader, StreamWriter]:
     reader = StreamReader(limit=limit) if limit is not None else StreamReader()
-    _ = StreamReaderProtocol(reader)
+    _ = asyncio.StreamReaderProtocol(reader)
 
     _start_stdin_feeder(loop, reader)
 
@@ -118,7 +118,7 @@ async def _posix_stdio_streams(
 ) -> tuple[StreamReader, StreamWriter]:
     # Reader from stdin
     reader = StreamReader(limit=limit) if limit is not None else StreamReader()
-    reader_protocol = StreamReaderProtocol(reader)
+    reader_protocol = asyncio.StreamReaderProtocol(reader)
     await loop.connect_read_pipe(lambda: reader_protocol, sys.stdin)
 
     # Writer to stdout with protocol providing _drain_helper

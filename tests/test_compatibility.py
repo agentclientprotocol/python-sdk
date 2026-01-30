@@ -1,3 +1,5 @@
+from __future__ import annotations
+from acp.py38_compatibility import *
 from typing import Optional
 import pytest
 

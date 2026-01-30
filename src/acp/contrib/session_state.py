@@ -1,7 +1,7 @@
 from __future__ import annotations
 from ..py38_compatibility import *
 
-from collections.abc import Callable, Sequence
+from typing import Callable, Sequence
 from contextlib import suppress
 from typing import Any
 

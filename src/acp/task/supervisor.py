@@ -3,12 +3,12 @@ from ..py38_compatibility import *
 
 import asyncio
 import logging
-from collections.abc import Awaitable, Callable
+from typing import Awaitable, Callable, Any
 from contextlib import suppress
-from typing import Any
 
 __all__ = ["TaskSupervisor"]
 
+# Use string forward reference to avoid evaluation issues on Python 3.8
 ErrorHandler = "Callable[[Task[Any], BaseException], None]"
 
 
@@ -24,9 +24,9 @@ class TaskSupervisor:
         self._source = source
         self._tasks: set[Task[Any]] = set()
         self._closed = False
-        self._error_handlers: list[ErrorHandler] = []
+        self._error_handlers: list[Any] = []
 
-    def add_error_handler(self, handler: ErrorHandler) -> None:
+    def add_error_handler(self, handler: Any) -> None:
         self._error_handlers.append(handler)
 
     def create(
@@ -34,7 +34,7 @@ class TaskSupervisor:
         coroutine: Awaitable[Any],
         *,
         name: Optional[str] = None,
-        on_error: Optional[ErrorHandler] = None,
+        on_error: Optional[Any] = None,
     ) -> Task[Any]:
         if self._closed:
             msg = f"TaskSupervisor for {self._source} already closed"
@@ -44,7 +44,7 @@ class TaskSupervisor:
         task.add_done_callback(lambda t: self._on_done(t, on_error))
         return task
 
-    def _on_done(self, task: Task[Any], on_error: Optional[ErrorHandler]) -> None:
+    def _on_done(self, task: Task[Any], on_error: Optional[Any]) -> None:
         self._tasks.discard(task)
         if task.cancelled():
             return

@@ -1,3 +1,5 @@
+from __future__ import annotations
+from acp.py38_compatibility import *
 import asyncio
 import json
 import sys

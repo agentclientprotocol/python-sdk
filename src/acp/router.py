@@ -3,7 +3,7 @@ from .py38_compatibility import *
 
 import inspect
 import warnings
-from collections.abc import Awaitable, Callable
+from typing import Awaitable, Callable
 from typing import Any, TypeVar
 
 from .pydantic_shim import BaseModel
