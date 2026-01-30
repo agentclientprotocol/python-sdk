@@ -2,7 +2,7 @@ from __future__ import annotations
 from .py38_compatibility import *
 
 from collections.abc import Iterable, Sequence
-from typing import Any, Union, Optional
+from typing import Any
 
 from .schema import (
     AgentMessageChunk,

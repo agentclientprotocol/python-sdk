@@ -3,7 +3,7 @@ from ..py38_compatibility import *
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast, final, Union, Optional
+from typing import Any, cast, final
 
 from ..connection import Connection
 from ..interfaces import Agent, Client

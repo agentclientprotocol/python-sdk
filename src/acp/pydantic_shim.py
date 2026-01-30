@@ -3,14 +3,14 @@ from __future__ import annotations
 import attrs
 import cattrs
 import builtins
-from typing import Any, Type, TypeVar, Dict, Optional, List, Union, Generic, Annotated, get_type_hints
+from typing import Any, Type, TypeVar, Dict, Optional, List, Union, Generic, get_type_hints
 from inspect import isclass
 import sys
 import re
 from enum import Enum
 import functools
 
-from .py38_compatibility import list, dict
+from .py38_compatibility import list, dict, Annotated
 
 T = TypeVar("T", bound="BaseModel")
 RT = TypeVar("RT")

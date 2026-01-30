@@ -3,7 +3,7 @@ from ..py38_compatibility import *
 
 from collections.abc import Callable, Sequence
 from contextlib import suppress
-from typing import Any, Optional
+from typing import Any
 
 from ..pydantic_shim import BaseModel, ConfigDict
 

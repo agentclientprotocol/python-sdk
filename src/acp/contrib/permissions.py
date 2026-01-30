@@ -2,7 +2,7 @@ from __future__ import annotations
 from ..py38_compatibility import *
 
 from collections.abc import Awaitable, Callable, Sequence
-from typing import Any, Optional
+from typing import Any
 
 from ..helpers import text_block, tool_content
 from ..schema import PermissionOption, RequestPermissionRequest, RequestPermissionResponse, ToolCallUpdate

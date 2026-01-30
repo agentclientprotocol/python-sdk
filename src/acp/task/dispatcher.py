@@ -4,7 +4,7 @@ from ..py38_compatibility import *
 import asyncio
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import Any, Optional, Protocol
+from typing import Any
 
 from . import RpcTaskKind
 from .queue import MessageQueue

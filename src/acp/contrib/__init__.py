@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Protocol
+
 """
 Experimental helpers for Agent Client Protocol integrations.
 

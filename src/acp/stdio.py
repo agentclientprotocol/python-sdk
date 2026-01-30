@@ -11,7 +11,7 @@ from asyncio import transports as aio_transports
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
-from typing import Any, cast, Union, Optional
+from typing import Any, cast
 
 from .agent.connection import AgentSideConnection
 from .client.connection import ClientSideConnection

@@ -3,7 +3,7 @@ from ..py38_compatibility import *
 
 import uuid
 from collections.abc import Callable, Sequence
-from typing import Any, cast, Optional
+from typing import Any, cast
 
 from ..pydantic_shim import BaseModel, ConfigDict
 

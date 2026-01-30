@@ -1,7 +1,7 @@
 from __future__ import annotations
 from .py38_compatibility import *
 
-from typing import Any, Union, Optional, Protocol
+from typing import Any
 
 from .schema import (
     AgentMessageChunk,

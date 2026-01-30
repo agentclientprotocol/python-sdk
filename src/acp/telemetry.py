@@ -4,7 +4,7 @@ from .py38_compatibility import *
 import os
 from collections.abc import Mapping
 from contextlib import AbstractContextManager, ExitStack, nullcontext
-from typing import Any, cast, Optional
+from typing import Any, cast
 
 try:
     from logfire import span as logfire_span  # type: ignore[unresolved-import]

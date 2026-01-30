@@ -5,7 +5,7 @@ import asyncio
 import logging
 from collections.abc import Awaitable, Callable
 from contextlib import suppress
-from typing import Any, Optional
+from typing import Any
 
 __all__ = ["TaskSupervisor"]
 

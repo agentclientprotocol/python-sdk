@@ -2,7 +2,7 @@ from __future__ import annotations
 from ..py38_compatibility import *
 
 import asyncio
-from typing import Any, Protocol
+from typing import Any
 
 __all__ = [
     "InMemoryMessageStateStore",

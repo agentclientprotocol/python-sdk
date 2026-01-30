@@ -9,7 +9,7 @@ import json
 import logging
 from collections.abc import Awaitable, Callable
 from enum import Enum
-from typing import Any, Optional
+from typing import Any
 
 from .pydantic_shim import BaseModel, ValidationError
 
