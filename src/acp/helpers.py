@@ -45,6 +45,7 @@ SessionUpdate = (
     | UserMessageChunk
     | ToolCallStart
     | ToolCallProgress
+    | SessionInfoUpdate
 )
 
 ToolCallContentVariant = ContentToolCallContent | FileEditToolCallContent | TerminalToolCallContent
