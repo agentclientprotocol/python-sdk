@@ -33,7 +33,7 @@ from ..schema import (
     ToolCallProgress,
     ToolCallStart,
     ToolCallUpdate,
-    usage_update
+    UsageUpdate,
     UserMessageChunk,
     WaitForTerminalExitRequest,
     WaitForTerminalExitResponse,
