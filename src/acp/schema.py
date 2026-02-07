@@ -1,5 +1,5 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/v0.10.5
+# Schema ref: refs/tags/v0.10.8
 
 from __future__ import annotations
 
@@ -109,6 +109,13 @@ class BlobResourceContents(BaseModel):
     blob: str
     mime_type: Annotated[Optional[str], Field(alias="mimeType")] = None
     uri: str
+
+
+class Cost(BaseModel):
+    # Total cumulative cost for session.
+    amount: Annotated[float, Field(description="Total cumulative cost for session.")]
+    # ISO 4217 currency code (e.g., "USD", "EUR").
+    currency: Annotated[str, Field(description='ISO 4217 currency code (e.g., "USD", "EUR").')]
 
 
 class CreateTerminalResponse(BaseModel):
@@ -900,6 +907,72 @@ class UnstructuredCommandInput(BaseModel):
     ]
 
 
+class Usage(BaseModel):
+    # Total cache read tokens.
+    cached_read_tokens: Annotated[
+        Optional[int],
+        Field(alias="cachedReadTokens", description="Total cache read tokens.", ge=0),
+    ] = None
+    # Total cache write tokens.
+    cached_write_tokens: Annotated[
+        Optional[int],
+        Field(alias="cachedWriteTokens", description="Total cache write tokens.", ge=0),
+    ] = None
+    # Total input tokens across all turns.
+    input_tokens: Annotated[
+        int,
+        Field(
+            alias="inputTokens",
+            description="Total input tokens across all turns.",
+            ge=0,
+        ),
+    ]
+    # Total output tokens across all turns.
+    output_tokens: Annotated[
+        int,
+        Field(
+            alias="outputTokens",
+            description="Total output tokens across all turns.",
+            ge=0,
+        ),
+    ]
+    # Total thought/reasoning tokens
+    thought_tokens: Annotated[
+        Optional[int],
+        Field(alias="thoughtTokens", description="Total thought/reasoning tokens", ge=0),
+    ] = None
+    # Sum of all token types across session.
+    total_tokens: Annotated[
+        int,
+        Field(
+            alias="totalTokens",
+            description="Sum of all token types across session.",
+            ge=0,
+        ),
+    ]
+
+
+class _UsageUpdate(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # Cumulative session cost (optional).
+    cost: Annotated[Optional[Cost], Field(description="Cumulative session cost (optional).")] = None
+    # Total context window size in tokens.
+    size: Annotated[int, Field(description="Total context window size in tokens.", ge=0)]
+    # Tokens currently in context.
+    used: Annotated[int, Field(description="Tokens currently in context.", ge=0)]
+
+
 class WaitForTerminalExitRequest(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -1423,6 +1496,17 @@ class PromptResponse(BaseModel):
             description="Indicates why the agent stopped processing the turn.",
         ),
     ]
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Token usage for this turn (optional).
+    usage: Annotated[
+        Optional[Usage],
+        Field(
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nToken usage for this turn (optional)."
+        ),
+    ] = None
 
 
 class ReadTextFileRequest(BaseModel):
@@ -1664,6 +1748,10 @@ class SessionModeState(BaseModel):
 
 class CurrentModeUpdate(_CurrentModeUpdate):
     session_update: Annotated[Literal["current_mode_update"], Field(alias="sessionUpdate")]
+
+
+class UsageUpdate(_UsageUpdate):
+    session_update: Annotated[Literal["usage_update"], Field(alias="sessionUpdate")]
 
 
 class TextContent(BaseModel):
@@ -2220,6 +2308,11 @@ class SessionConfigOptionSelect(SessionConfigSelect):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+    # Optional semantic category for this option (UX only).
+    category: Annotated[
+        Optional[str],
+        Field(description="Optional semantic category for this option (UX only)."),
+    ] = None
     # Optional description for the Client to display to the user.
     description: Annotated[
         Optional[str],
@@ -2233,15 +2326,11 @@ class SessionConfigOptionSelect(SessionConfigSelect):
 
 
 class SessionConfigOption(RootModel[SessionConfigOptionSelect]):
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # A session configuration option selector and its current state.
     root: Annotated[
         SessionConfigOptionSelect,
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA session configuration option selector and its current state.",
+            description="A session configuration option selector and its current state.",
             discriminator="type",
         ),
     ]
@@ -2350,16 +2439,12 @@ class ForkSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
         Optional[List[SessionConfigOption]],
         Field(
             alias="configOptions",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial session configuration options if supported by the Agent.",
+            description="Initial session configuration options if supported by the Agent.",
         ),
     ] = None
     # **UNSTABLE**
@@ -2405,16 +2490,12 @@ class LoadSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
         Optional[List[SessionConfigOption]],
         Field(
             alias="configOptions",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial session configuration options if supported by the Agent.",
+            description="Initial session configuration options if supported by the Agent.",
         ),
     ] = None
     # **UNSTABLE**
@@ -2452,16 +2533,12 @@ class NewSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
         Optional[List[SessionConfigOption]],
         Field(
             alias="configOptions",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial session configuration options if supported by the Agent.",
+            description="Initial session configuration options if supported by the Agent.",
         ),
     ] = None
     # **UNSTABLE**
@@ -2539,16 +2616,12 @@ class ResumeSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
         Optional[List[SessionConfigOption]],
         Field(
             alias="configOptions",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial session configuration options if supported by the Agent.",
+            description="Initial session configuration options if supported by the Agent.",
         ),
     ] = None
     # **UNSTABLE**
@@ -2757,6 +2830,7 @@ class SessionNotification(BaseModel):
             CurrentModeUpdate,
             ConfigOptionUpdate,
             SessionInfoUpdate,
+            UsageUpdate,
         ],
         Field(description="The actual update content.", discriminator="session_update"),
     ]

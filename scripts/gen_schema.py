@@ -62,6 +62,7 @@ RENAME_MAP: dict[str, str] = {
     "SessionUpdate8": "CurrentModeUpdate",
     "SessionUpdate9": "ConfigOptionUpdate",
     "SessionUpdate10": "SessionInfoUpdate",
+    "SessionUpdate11": "UsageUpdate",
     "ToolCallContent1": "ContentToolCallContent",
     "ToolCallContent2": "FileEditToolCallContent",
     "ToolCallContent3": "TerminalToolCallContent",

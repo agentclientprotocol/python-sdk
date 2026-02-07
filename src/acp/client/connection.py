@@ -225,5 +225,4 @@ class ClientSideConnection:
         await self.close()
 
     def on_connect(self, conn: Client) -> None:
-        # A dummy method to match the Agent protocol
         pass

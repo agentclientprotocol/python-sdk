@@ -33,6 +33,7 @@ from ..schema import (
     ToolCallProgress,
     ToolCallStart,
     ToolCallUpdate,
+    usage_update
     UserMessageChunk,
     WaitForTerminalExitRequest,
     WaitForTerminalExitResponse,
@@ -88,7 +89,8 @@ class AgentSideConnection:
         | AvailableCommandsUpdate
         | CurrentModeUpdate
         | ConfigOptionUpdate
-        | SessionInfoUpdate,
+        | SessionInfoUpdate
+        | UsageUpdate,
         **kwargs: Any,
     ) -> None:
         await notify_model(
@@ -216,5 +218,4 @@ class AgentSideConnection:
         await self.close()
 
     def on_connect(self, conn: Agent) -> None:
-        # A dummy method to match the Client protocol
         pass

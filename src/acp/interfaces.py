@@ -59,6 +59,7 @@ from .schema import (
     ToolCallProgress,
     ToolCallStart,
     ToolCallUpdate,
+    UsageUpdate,
     UserMessageChunk,
     WaitForTerminalExitRequest,
     WaitForTerminalExitResponse,
@@ -89,7 +90,8 @@ class Client(Protocol):
         | AvailableCommandsUpdate
         | CurrentModeUpdate
         | ConfigOptionUpdate
-        | SessionInfoUpdate,
+        | SessionInfoUpdate
+        | UsageUpdate,
         **kwargs: Any,
     ) -> None: ...
 
