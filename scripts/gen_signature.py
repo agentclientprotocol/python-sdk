@@ -9,6 +9,11 @@ from pydantic_core import PydanticUndefined
 
 from acp import schema
 
+SIGNATURE_OPTIONAL_FIELDS: set[tuple[str, str]] = {
+    ("LoadSessionRequest", "mcp_servers"),
+    ("NewSessionRequest", "mcp_servers"),
+}
+
 
 class NodeTransformer(ast.NodeTransformer):
     def __init__(self) -> None:
@@ -16,6 +21,7 @@ class NodeTransformer(ast.NodeTransformer):
         self._schema_import_node: ast.ImportFrom | None = None
         self._should_rewrite = False
         self._literals = {name: value for name, value in schema.__dict__.items() if t.get_origin(value) is t.Literal}
+        self._current_model_name: str | None = None
 
     def _add_typing_import(self, name: str) -> None:
         if not self._type_import_node:
@@ -71,9 +77,13 @@ class NodeTransformer(ast.NodeTransformer):
         self._should_rewrite = True
         model_name = t.cast(ast.Name, decorator.args[0]).id
         model = t.cast(type[schema.BaseModel], getattr(schema, model_name))
-        param_defaults = [
-            self._to_param_def(name, field) for name, field in model.model_fields.items() if name != "field_meta"
-        ]
+        self._current_model_name = model_name
+        try:
+            param_defaults = [
+                self._to_param_def(name, field) for name, field in model.model_fields.items() if name != "field_meta"
+            ]
+        finally:
+            self._current_model_name = None
         param_defaults.sort(key=lambda x: x[1] is not None)
         node.args.args[1:] = [param for param, _ in param_defaults]
         node.args.defaults = [default for _, default in param_defaults if default is not None]
@@ -84,12 +94,18 @@ class NodeTransformer(ast.NodeTransformer):
     def _to_param_def(self, name: str, field: FieldInfo) -> tuple[ast.arg, ast.expr | None]:
         arg = ast.arg(arg=name)
         ann = field.annotation
-        if field.default is PydanticUndefined:
-            default = None
-        elif isinstance(field.default, dict | BaseModel):
+        override_optional = (self._current_model_name, name) in SIGNATURE_OPTIONAL_FIELDS
+        if override_optional:
+            if ann is not None:
+                ann = ann | None
             default = ast.Constant(None)
         else:
-            default = ast.Constant(value=field.default)
+            if field.default is PydanticUndefined:
+                default = None
+            elif isinstance(field.default, dict | BaseModel):
+                default = ast.Constant(None)
+            else:
+                default = ast.Constant(value=field.default)
         if ann is not None:
             arg.annotation = self._format_annotation(ann)
         return arg, default

@@ -93,23 +93,31 @@ class ClientSideConnection:
 
     @param_model(NewSessionRequest)
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None, **kwargs: Any
     ) -> NewSessionResponse:
+        resolved_mcp_servers = mcp_servers or []
         return await request_model(
             self._conn,
             AGENT_METHODS["session_new"],
-            NewSessionRequest(cwd=cwd, mcp_servers=mcp_servers, field_meta=kwargs or None),
+            NewSessionRequest(cwd=cwd, mcp_servers=resolved_mcp_servers, field_meta=kwargs or None),
             NewSessionResponse,
         )
 
     @param_model(LoadSessionRequest)
     async def load_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
+        self,
+        cwd: str,
+        session_id: str,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> LoadSessionResponse:
+        resolved_mcp_servers = mcp_servers or []
         return await request_model_from_dict(
             self._conn,
             AGENT_METHODS["session_load"],
-            LoadSessionRequest(cwd=cwd, mcp_servers=mcp_servers, session_id=session_id, field_meta=kwargs or None),
+            LoadSessionRequest(
+                cwd=cwd, mcp_servers=resolved_mcp_servers, session_id=session_id, field_meta=kwargs or None
+            ),
             LoadSessionResponse,
         )
 
