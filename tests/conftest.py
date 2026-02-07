@@ -243,19 +243,12 @@ class TestAgent:
         return InitializeResponse(protocol_version=protocol_version, agent_capabilities=None, auth_methods=[])
 
     async def new_session(
-        self,
-        cwd: str,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
-        **kwargs: Any,
+        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
     ) -> NewSessionResponse:
         return NewSessionResponse(session_id="test-session-123")
 
     async def load_session(
-        self,
-        cwd: str,
-        session_id: str,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
-        **kwargs: Any,
+        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
     ) -> LoadSessionResponse | None:
         return LoadSessionResponse()
 
