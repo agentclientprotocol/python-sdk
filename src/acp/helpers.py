@@ -20,6 +20,7 @@ from .schema import (
     PlanEntryPriority,
     PlanEntryStatus,
     ResourceContentBlock,
+    SessionInfoUpdate,
     SessionNotification,
     TerminalToolCallContent,
     TextContentBlock,
