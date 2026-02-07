@@ -14,6 +14,7 @@ nav:
   - Experimental Contrib: contrib.md
   - Releasing: releasing.md
   - 0.7 Migration Guide: migration-guide-0.7.md
+  - 0.8 Migration Guide: migration-guide-0.8.md
 plugins:
   - search
   - mkdocstrings:
