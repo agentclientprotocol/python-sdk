@@ -16,6 +16,7 @@ from ..schema import (
     NewSessionRequest,
     PromptRequest,
     ResumeSessionRequest,
+    SetSessionConfigOptionRequest,
     SetSessionModelRequest,
     SetSessionModeRequest,
 )
@@ -52,6 +53,13 @@ def build_agent_router(agent: Agent, use_unstable_protocol: bool = False) -> Mes
         "set_session_model",
         adapt_result=normalize_result,
         unstable=True,
+    )
+    router.route_request(
+        AGENT_METHODS["session_set_config_option"],
+        SetSessionConfigOptionRequest,
+        agent,
+        "set_config_option",
+        adapt_result=normalize_result,
     )
     router.route_request(
         AGENT_METHODS["authenticate"],

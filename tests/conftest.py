@@ -20,6 +20,7 @@ from acp import (
     RequestError,
     RequestPermissionResponse,
     SessionNotification,
+    SetSessionConfigOptionResponse,
     SetSessionModeResponse,
     TerminalOutputResponse,
     WaitForTerminalExitResponse,
@@ -275,6 +276,11 @@ class TestAgent:
 
     async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None:
         return SetSessionModeResponse()
+
+    async def set_config_option(
+        self, config_id: str, session_id: str, value: str, **kwargs: Any
+    ) -> SetSessionConfigOptionResponse | None:
+        return SetSessionConfigOptionResponse(config_options=[])
 
     async def ext_method(self, method: str, params: dict) -> dict:
         self.ext_calls.append((method, params))

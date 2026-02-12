@@ -33,6 +33,8 @@ from ..schema import (
     ResourceContentBlock,
     ResumeSessionRequest,
     ResumeSessionResponse,
+    SetSessionConfigOptionRequest,
+    SetSessionConfigOptionResponse,
     SetSessionModelRequest,
     SetSessionModelResponse,
     SetSessionModeRequest,
@@ -148,6 +150,19 @@ class ClientSideConnection:
             AGENT_METHODS["session_set_model"],
             SetSessionModelRequest(model_id=model_id, session_id=session_id, field_meta=kwargs or None),
             SetSessionModelResponse,
+        )
+
+    @param_model(SetSessionConfigOptionRequest)
+    async def set_config_option(
+        self, config_id: str, session_id: str, value: str, **kwargs: Any
+    ) -> SetSessionConfigOptionResponse:
+        return await request_model_from_dict(
+            self._conn,
+            AGENT_METHODS["session_set_config_option"],
+            SetSessionConfigOptionRequest(
+                config_id=config_id, session_id=session_id, value=value, field_meta=kwargs or None
+            ),
+            SetSessionConfigOptionResponse,
         )
 
     @param_model(AuthenticateRequest)

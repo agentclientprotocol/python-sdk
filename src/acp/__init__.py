@@ -60,6 +60,8 @@ from .schema import (
     RequestPermissionRequest,
     RequestPermissionResponse,
     SessionNotification,
+    SetSessionConfigOptionRequest,
+    SetSessionConfigOptionResponse,
     SetSessionModelRequest,
     SetSessionModelResponse,
     SetSessionModeRequest,
@@ -115,6 +117,8 @@ __all__ = [  # noqa: RUF022
     "SetSessionModeResponse",
     "SetSessionModelRequest",
     "SetSessionModelResponse",
+    "SetSessionConfigOptionRequest",
+    "SetSessionConfigOptionResponse",
     # terminal types
     "CreateTerminalRequest",
     "CreateTerminalResponse",

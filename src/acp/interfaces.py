@@ -48,6 +48,8 @@ from .schema import (
     ResumeSessionResponse,
     SessionInfoUpdate,
     SessionNotification,
+    SetSessionConfigOptionRequest,
+    SetSessionConfigOptionResponse,
     SetSessionModelRequest,
     SetSessionModelResponse,
     SetSessionModeRequest,
@@ -178,6 +180,11 @@ class Agent(Protocol):
     async def set_session_model(
         self, model_id: str, session_id: str, **kwargs: Any
     ) -> SetSessionModelResponse | None: ...
+
+    @param_model(SetSessionConfigOptionRequest)
+    async def set_config_option(
+        self, config_id: str, session_id: str, value: str, **kwargs: Any
+    ) -> SetSessionConfigOptionResponse | None: ...
 
     @param_model(AuthenticateRequest)
     async def authenticate(self, method_id: str, **kwargs: Any) -> AuthenticateResponse | None: ...

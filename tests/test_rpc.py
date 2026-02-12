@@ -18,6 +18,7 @@ from acp import (
     PromptResponse,
     RequestPermissionRequest,
     RequestPermissionResponse,
+    SetSessionConfigOptionResponse,
     SetSessionModeResponse,
     WriteTextFileResponse,
     spawn_agent_process,
@@ -251,6 +252,15 @@ async def test_set_session_mode_and_extensions(connect, agent, client):
     ping = await client_conn.ext_method("example.com/ping", {"k": 3})
     assert ping == {"response": "pong", "params": {"k": 3}}
     assert client.ext_calls and client.ext_calls[-1] == ("example.com/ping", {"k": 3})
+
+
+@pytest.mark.asyncio
+async def test_set_config_option(connect, agent, client):
+    _, agent_conn = connect()
+
+    resp = await agent_conn.set_config_option(session_id="sess", config_id="theme", value="dark")
+    assert isinstance(resp, SetSessionConfigOptionResponse)
+    assert resp.config_options == []
 
 
 @pytest.mark.asyncio
