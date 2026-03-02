@@ -148,7 +148,26 @@ class Connection:
     async def _receive_loop(self) -> None:
         try:
             while True:
-                line = await self._reader.readline()
+                try:
+                    line = await self._reader.readline()
+                except (asyncio.LimitOverrunError, ValueError) as exc:
+                    # The message exceeded the StreamReader's buffer limit.
+                    # Python 3.12+ wraps LimitOverrunError as ValueError inside
+                    # readline(), and cleans up the internal buffer. On older
+                    # versions the raw LimitOverrunError is raised.
+                    # In both cases, log a warning and continue — subsequent
+                    # readline() calls will re-synchronize at the next newline
+                    # boundary, and any partial fragments will be caught by the
+                    # JSON parser below.
+                    logging.warning(
+                        "Skipped oversized JSON-RPC message that exceeded the "
+                        "StreamReader buffer limit: %s. The connection will "
+                        "continue processing subsequent messages. Consider "
+                        "increasing the buffer limit via stdio_buffer_limit_bytes "
+                        "if large messages are expected.",
+                        exc,
+                    )
+                    continue
                 if not line:
                     break
                 try:
