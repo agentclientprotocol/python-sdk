@@ -150,15 +150,26 @@ class Connection:
             while True:
                 try:
                     line = await self._reader.readline()
-                except (asyncio.LimitOverrunError, ValueError) as exc:
+                except asyncio.LimitOverrunError as exc:
                     # The message exceeded the StreamReader's buffer limit.
+                    # On Python < 3.12 the raw LimitOverrunError propagates.
+                    logging.warning(
+                        "Skipped oversized JSON-RPC message that exceeded the "
+                        "StreamReader buffer limit: %s. The connection will "
+                        "continue processing subsequent messages. Consider "
+                        "increasing the buffer limit via stdio_buffer_limit_bytes "
+                        "if large messages are expected.",
+                        exc,
+                    )
+                    continue
+                except ValueError as exc:
                     # Python 3.12+ wraps LimitOverrunError as ValueError inside
-                    # readline(), and cleans up the internal buffer. On older
-                    # versions the raw LimitOverrunError is raised.
-                    # In both cases, log a warning and continue — subsequent
-                    # readline() calls will re-synchronize at the next newline
-                    # boundary, and any partial fragments will be caught by the
-                    # JSON parser below.
+                    # readline(), and cleans up the internal buffer.  Re-raise
+                    # if this ValueError is NOT the limit-overrun wrapper so we
+                    # don't accidentally mask unrelated errors.
+                    exc_msg = str(exc).lower()
+                    if "limit" not in exc_msg and "chunk" not in exc_msg:
+                        raise
                     logging.warning(
                         "Skipped oversized JSON-RPC message that exceeded the "
                         "StreamReader buffer limit: %s. The connection will "
