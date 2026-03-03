@@ -12,7 +12,7 @@ from typing import Any
 from .agent.connection import AgentSideConnection
 from .client.connection import ClientSideConnection
 from .connection import Connection, JsonValue, MethodHandler
-from .exceptions import RequestError
+from .exceptions import ErrorCode, RequestError
 from .interfaces import Agent, Client
 
 __all__ = [
@@ -22,6 +22,7 @@ __all__ = [
     "Client",
     "ClientSideConnection",
     "Connection",
+    "ErrorCode",
     "JsonValue",
     "MethodHandler",
     "RequestError",

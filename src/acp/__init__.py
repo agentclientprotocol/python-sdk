@@ -3,6 +3,7 @@ from typing import Any
 from .core import (
     Agent,
     Client,
+    ErrorCode,
     RequestError,
     connect_to_agent,
     run_agent,
@@ -133,6 +134,7 @@ __all__ = [  # noqa: RUF022
     # core
     "run_agent",
     "connect_to_agent",
+    "ErrorCode",
     "RequestError",
     "Agent",
     "Client",
