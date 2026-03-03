@@ -156,7 +156,9 @@ async def test_receive_loop_logs_warning_on_oversized_message(caplog: pytest.Log
     with caplog.at_level("WARNING"):
         await conn._receive_loop()
 
-    assert any("oversized" in record.message.lower() or "buffer limit" in record.message.lower() for record in caplog.records)
+    assert any(
+        "oversized" in record.message.lower() or "buffer limit" in record.message.lower() for record in caplog.records
+    )
     await conn.close()
 
 

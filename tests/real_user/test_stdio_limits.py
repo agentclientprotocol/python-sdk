@@ -69,10 +69,11 @@ asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes=1024))
             [sys.executable, small_agent], input=large_msg, capture_output=True, text=True, timeout=2
         )
 
-        # Should have errors in stderr about the buffer limit
-        assert "Error" in result.stderr or result.returncode != 0, (
-            f"Expected error with small buffer, got: {result.stderr}"
-        )
+        # The oversized message should be skipped with a warning (graceful recovery).
+        # Prior to the LimitOverrunError fix, this would crash; now it logs and continues.
+        assert (
+            "oversized" in result.stderr.lower() or "buffer limit" in result.stderr.lower() or result.returncode != 0
+        ), f"Expected warning about oversized message or error, got: {result.stderr}"
 
         # Test 2: Large buffer (200KB) succeeds with large message (70KB)
         large_agent = os.path.join(tmpdir, "large_agent.py")
