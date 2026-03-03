@@ -67,6 +67,7 @@ class MessageSender:
 
     def _drain_pending(self, exc: BaseException) -> None:
         """Reject all remaining queued futures so callers are never left waiting."""
+        self._closed = True
         while not self._queue.empty():
             item = self._queue.get_nowait()
             if item is not None and not item.future.done():

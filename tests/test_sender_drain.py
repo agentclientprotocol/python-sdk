@@ -60,6 +60,8 @@ async def test_pending_futures_rejected_on_write_error(supervisor: TaskSuperviso
     # All futures should be done (either with exception or result), not stuck.
     for future in futures:
         assert future.done(), "Future was left pending after send loop terminated"
+        exc = future.exception()
+        assert isinstance(exc, (ConnectionResetError, ConnectionError))
 
     # close() may re-raise the loop's error; suppress it for test cleanup.
     with contextlib.suppress(ConnectionResetError, ConnectionError):
