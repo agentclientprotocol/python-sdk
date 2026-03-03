@@ -13,7 +13,7 @@ from typing import Any
 
 from pydantic import BaseModel, ValidationError
 
-from .exceptions import RequestError
+from .exceptions import ErrorCode, RequestError
 from .task import (
     DefaultMessageDispatcher,
     InMemoryMessageQueue,
@@ -252,7 +252,7 @@ class Connection:
             self._state.reject_outgoing(
                 request_id,
                 RequestError(
-                    error_obj.get("code", -32603),
+                    error_obj.get("code", ErrorCode.INTERNAL_ERROR),
                     error_obj.get("message", "Error"),
                     error_obj.get("data"),
                 ),
