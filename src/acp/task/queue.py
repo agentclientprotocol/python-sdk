@@ -31,7 +31,7 @@ class InMemoryMessageQueue:
 
     async def publish(self, task: RpcTask) -> None:
         if self._closed:
-            msg = "mssage queue already closed"
+            msg = "message queue already closed"
             raise RuntimeError(msg)
         await self._queue.put(task)
 

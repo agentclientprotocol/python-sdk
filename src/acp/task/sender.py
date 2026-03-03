@@ -56,12 +56,21 @@ class MessageSender:
                 except Exception as exc:
                     if not item.future.done():
                         item.future.set_exception(exc)
+                    self._drain_pending(exc)
                     raise
                 else:
                     if not item.future.done():
                         item.future.set_result(None)
         except asyncio.CancelledError:
+            self._drain_pending(asyncio.CancelledError("send loop cancelled"))
             return
+
+    def _drain_pending(self, exc: BaseException) -> None:
+        """Reject all remaining queued futures so callers are never left waiting."""
+        while not self._queue.empty():
+            item = self._queue.get_nowait()
+            if item is not None and not item.future.done():
+                item.future.set_exception(ConnectionError(f"send loop terminated: {exc}"))
 
     def _on_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.exception("Send loop failed", exc_info=exc)
