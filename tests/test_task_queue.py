@@ -51,7 +51,7 @@ async def test_publish_after_close_raises() -> None:
     queue = InMemoryMessageQueue()
     await queue.close()
 
-    with pytest.raises(RuntimeError, match="m[es]*sage queue already closed"):
+    with pytest.raises(RuntimeError, match=r"m[es]*sage queue already closed"):
         await queue.publish(_make_task())
 
 
