@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncGenerator
 
 import pytest
+import pytest_asyncio
 
 from acp.task import RpcTask, RpcTaskKind
 from acp.task.dispatcher import DefaultMessageDispatcher
@@ -13,11 +15,12 @@ from acp.task.state import InMemoryMessageStateStore
 from acp.task.supervisor import TaskSupervisor
 
 
-@pytest.fixture
-def supervisor() -> TaskSupervisor:
+@pytest_asyncio.fixture
+async def supervisor() -> AsyncGenerator[TaskSupervisor, None]:
     sup = TaskSupervisor(source="test")
     sup.add_error_handler(lambda _t, _e: None)
-    return sup
+    yield sup
+    await sup.shutdown()
 
 
 @pytest.fixture
@@ -25,9 +28,11 @@ def store() -> InMemoryMessageStateStore:
     return InMemoryMessageStateStore()
 
 
-@pytest.fixture
-def queue() -> InMemoryMessageQueue:
-    return InMemoryMessageQueue()
+@pytest_asyncio.fixture
+async def queue() -> AsyncGenerator[InMemoryMessageQueue, None]:
+    q = InMemoryMessageQueue()
+    yield q
+    await q.close()
 
 
 @pytest.mark.asyncio
@@ -156,7 +161,8 @@ async def test_failed_request_updates_store(
     await dispatcher.stop()
     await supervisor.shutdown()
 
-    # The store should have one incoming record with failed status
+    # NOTE: Accessing private state because InMemoryMessageStateStore has no
+    # public API to query incoming records.
     assert len(store._incoming) == 1
     assert store._incoming[0].status == "failed"
     assert isinstance(store._incoming[0].error, ValueError)

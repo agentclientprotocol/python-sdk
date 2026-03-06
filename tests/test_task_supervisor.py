@@ -3,15 +3,19 @@
 from __future__ import annotations
 
 import asyncio
+from collections.abc import AsyncGenerator
 
 import pytest
+import pytest_asyncio
 
 from acp.task.supervisor import TaskSupervisor
 
 
-@pytest.fixture
-def supervisor() -> TaskSupervisor:
-    return TaskSupervisor(source="test")
+@pytest_asyncio.fixture
+async def supervisor() -> AsyncGenerator[TaskSupervisor, None]:
+    sup = TaskSupervisor(source="test")
+    yield sup
+    await sup.shutdown()
 
 
 @pytest.mark.asyncio
