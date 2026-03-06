@@ -32,8 +32,10 @@ async def test_create_raises_after_shutdown(supervisor: TaskSupervisor) -> None:
     """Cannot create tasks after supervisor is shut down."""
     await supervisor.shutdown()
 
+    coro = asyncio.sleep(0)
     with pytest.raises(RuntimeError, match="already closed"):
-        supervisor.create(asyncio.sleep(0), name="late")
+        supervisor.create(coro, name="late")
+    coro.close()
 
 
 @pytest.mark.asyncio
