@@ -199,7 +199,7 @@ class FileSystemCapability(BaseModel):
     ] = None
     # Whether the Client supports `fs/read_text_file` requests.
     read_text_file: Annotated[
-        Optional[bool],
+        bool,
         Field(
             alias="readTextFile",
             description="Whether the Client supports `fs/read_text_file` requests.",
@@ -207,7 +207,7 @@ class FileSystemCapability(BaseModel):
     ] = False
     # Whether the Client supports `fs/write_text_file` requests.
     write_text_file: Annotated[
-        Optional[bool],
+        bool,
         Field(
             alias="writeTextFile",
             description="Whether the Client supports `fs/write_text_file` requests.",
@@ -454,7 +454,7 @@ class PromptCapabilities(BaseModel):
     # When enabled, the Client is allowed to include [`ContentBlock::Resource`]
     # in prompt requests for pieces of context that are referenced in the message.
     embedded_context: Annotated[
-        Optional[bool],
+        bool,
         Field(
             alias="embeddedContext",
             description="Agent supports embedded context in `session/prompt` requests.\n\nWhen enabled, the Client is allowed to include [`ContentBlock::Resource`]\nin prompt requests for pieces of context that are referenced in the message.",
@@ -1163,14 +1163,14 @@ class ClientCapabilities(BaseModel):
     # File system capabilities supported by the client.
     # Determines which file operations the agent can request.
     fs: Annotated[
-        Optional[FileSystemCapability],
+        FileSystemCapability,
         Field(
             description="File system capabilities supported by the client.\nDetermines which file operations the agent can request."
         ),
     ] = FileSystemCapability()
     # Whether the Client support all `terminal/*` methods.
     terminal: Annotated[
-        Optional[bool],
+        bool,
         Field(description="Whether the Client support all `terminal/*` methods."),
     ] = False
 
@@ -1309,7 +1309,7 @@ class InitializeRequest(BaseModel):
     ] = None
     # Capabilities supported by the client.
     client_capabilities: Annotated[
-        Optional[ClientCapabilities],
+        ClientCapabilities,
         Field(
             alias="clientCapabilities",
             description="Capabilities supported by the client.",
@@ -1786,7 +1786,7 @@ class AgentCapabilities(BaseModel):
     ] = None
     # Whether the agent supports `session/load`.
     load_session: Annotated[
-        Optional[bool],
+        bool,
         Field(
             alias="loadSession",
             description="Whether the agent supports `session/load`.",
@@ -1794,7 +1794,7 @@ class AgentCapabilities(BaseModel):
     ] = False
     # MCP capabilities supported by the agent.
     mcp_capabilities: Annotated[
-        Optional[McpCapabilities],
+        McpCapabilities,
         Field(
             alias="mcpCapabilities",
             description="MCP capabilities supported by the agent.",
@@ -1802,7 +1802,7 @@ class AgentCapabilities(BaseModel):
     ] = McpCapabilities()
     # Prompt capabilities supported by the agent.
     prompt_capabilities: Annotated[
-        Optional[PromptCapabilities],
+        PromptCapabilities,
         Field(
             alias="promptCapabilities",
             description="Prompt capabilities supported by the agent.",
@@ -2017,7 +2017,7 @@ class InitializeResponse(BaseModel):
     ] = None
     # Capabilities supported by the agent.
     agent_capabilities: Annotated[
-        Optional[AgentCapabilities],
+        AgentCapabilities,
         Field(
             alias="agentCapabilities",
             description="Capabilities supported by the agent.",
@@ -2035,7 +2035,7 @@ class InitializeResponse(BaseModel):
     ] = None
     # Authentication methods supported by the agent.
     auth_methods: Annotated[
-        Optional[List[AuthMethod]],
+        List[AuthMethod],
         Field(
             alias="authMethods",
             description="Authentication methods supported by the agent.",
