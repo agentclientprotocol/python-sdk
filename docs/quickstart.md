@@ -65,6 +65,7 @@ Or, if using `uv`:
 ```json
 {
   "agent_servers": {
+    "Echo Agent (Python)": {
       "type": "custom",
       "command": "uv",
       "args": [
@@ -72,6 +73,7 @@ Or, if using `uv`:
         "/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py"
       ],
     }
+  }
 }
 ```
 
