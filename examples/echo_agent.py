@@ -1,3 +1,9 @@
+# /// script
+# requires-python = ">=3.10,<3.15"
+# dependencies = [
+#     "agent-client-protocol",
+# ]
+# ///
 import asyncio
 from typing import Any
 from uuid import uuid4
