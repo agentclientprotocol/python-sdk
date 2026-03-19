@@ -576,7 +576,7 @@
    <code>bash
    ACP_SCHEMA_VERSION=v0.4.5 make gen-all</code>
    This refreshes <code>schema/</code> and the generated <code>src/acp/schema.py</code>.</li>
-<li><strong>Bump the SDK version</strong> in <code>pyproject.toml</code> (and regenerate <code>uv.lock</code> if deps moved).</li>
+<li><strong>Bump the SDK version</strong> in <code>pyproject.toml</code> using a PEP 440 version string (for example <code>0.9.0a1</code> for an alpha release), and sync <code>uv.lock</code> if the lockfile is tracked.</li>
 <li><strong>Run the standard gates:</strong>
    <code>bash
    make check   # Ruff format/lint, type analysis, dep hygiene
@@ -586,7 +586,7 @@
 <h2 id="commit-review">Commit &amp; review<a class="headerlink" href="#commit-review" title="Permanent link">&para;</a></h2>
 <ul>
 <li>Keep the diff tight: regenerated schema files, version bumps, doc updates, and any required fixture refresh (goldens, RPC tests, etc.).</li>
-<li>Use a Conventional Commit such as <code>release: v0.4.5</code>.</li>
+<li>Use a Conventional Commit such as <code>release: 0.9.0a1</code>.</li>
 <li>In the PR description, capture:</li>
 <li>The ACP schema tag you targeted.</li>
 <li>Output from <code>make check</code> / <code>make test</code> (and optional Gemini tests if you ran them).</li>
@@ -595,7 +595,8 @@
 <h2 id="publish-via-github-release">Publish via GitHub Release<a class="headerlink" href="#publish-via-github-release" title="Permanent link">&para;</a></h2>
 <p>Releases are automated by <code>on-release-main.yml</code> once the PR lands on <code>main</code>.</p>
 <ol>
-<li>Draft a GitHub Release for the new tag (the UI creates the tag if missing).</li>
+<li>Draft a GitHub Release for the new tag (the UI creates the tag if missing).
+   Use the exact package version as the tag, for example <code>0.9.0a1</code> or <code>0.9.0</code>.</li>
 <li>Publishing the release triggers the workflow, which:</li>
 <li>Syncs the tag back into <code>pyproject.toml</code>.</li>
 <li>Builds and uploads to PyPI via <code>uv publish</code> using <code>PYPI_TOKEN</code>.</li>

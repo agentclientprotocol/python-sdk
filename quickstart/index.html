@@ -775,6 +775,7 @@ uv add agent-client-protocol
 <p>Or, if using <code>uv</code>:</p>
 <pre><code class="language-json">{
   &quot;agent_servers&quot;: {
+    &quot;Echo Agent (Python)&quot;: {
       &quot;type&quot;: &quot;custom&quot;,
       &quot;command&quot;: &quot;uv&quot;,
       &quot;args&quot;: [
@@ -782,6 +783,7 @@ uv add agent-client-protocol
         &quot;/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py&quot;
       ],
     }
+  }
 }
 </code></pre>
 <p>Open the Agents panel and start the session. Each message you send should be echoed back via streamed <code>session/update</code> notifications.</p>
