@@ -1,6 +1,11 @@
 import pytest
 
-from acp.schema import AgentMessageChunk, TextContentBlock
+from acp.schema import (
+    AgentMessageChunk,
+    SetSessionConfigOptionBooleanRequest,
+    SetSessionConfigOptionSelectRequest,
+    TextContentBlock,
+)
 from acp.utils import serialize_params
 
 
@@ -38,6 +43,40 @@ def test_field_meta_can_be_set_by_name_on_models() -> None:
 
     assert chunk.field_meta == {"outer": "value"}
     assert chunk.content.field_meta == {"inner": "value"}
+
+
+def test_serialize_params_uses_boolean_config_variant() -> None:
+    request = SetSessionConfigOptionBooleanRequest(
+        config_id="brave_mode",
+        session_id="sess",
+        type="boolean",
+        value=True,
+    )
+
+    payload = serialize_params(request)
+
+    assert payload == {
+        "configId": "brave_mode",
+        "sessionId": "sess",
+        "type": "boolean",
+        "value": True,
+    }
+
+
+def test_serialize_params_uses_select_config_variant() -> None:
+    request = SetSessionConfigOptionSelectRequest(
+        config_id="theme",
+        session_id="sess",
+        value="dark",
+    )
+
+    payload = serialize_params(request)
+
+    assert payload == {
+        "configId": "theme",
+        "sessionId": "sess",
+        "value": "dark",
+    }
 
 
 @pytest.mark.parametrize(

@@ -50,6 +50,7 @@ from .schema import (
     ResumeSessionResponse,
     SessionInfoUpdate,
     SessionNotification,
+    SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
     SetSessionModelRequest,
@@ -70,7 +71,7 @@ from .schema import (
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
-from .utils import param_model
+from .utils import param_model, param_models
 
 __all__ = ["Agent", "Client"]
 
@@ -181,9 +182,9 @@ class Agent(Protocol):
         self, model_id: str, session_id: str, **kwargs: Any
     ) -> SetSessionModelResponse | None: ...
 
-    @param_model(SetSessionConfigOptionSelectRequest)
+    @param_models(SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
     async def set_config_option(
-        self, config_id: str, session_id: str, value: str, **kwargs: Any
+        self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
     ) -> SetSessionConfigOptionResponse | None: ...
 
     @param_model(AuthenticateRequest)

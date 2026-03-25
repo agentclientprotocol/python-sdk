@@ -26,6 +26,29 @@ ModelT = TypeVar("ModelT", bound=BaseModel)
 MethodT = TypeVar("MethodT", bound=Callable)
 ClassT = TypeVar("ClassT", bound=type)
 T = TypeVar("T")
+MultiParamModelSpec = tuple[type[BaseModel], ...]
+
+
+def _param_models_name(models: MultiParamModelSpec) -> str:
+    return " | ".join(model_type.__name__ for model_type in models)
+
+
+def _param_models_field_names(models: MultiParamModelSpec) -> tuple[str, ...]:
+    shared_fields = set(models[0].model_fields)
+    for model_type in models[1:]:
+        shared_fields &= set(model_type.model_fields)
+    return tuple(field_name for field_name in models[0].model_fields if field_name in shared_fields)
+
+
+def model_to_kwargs(model_obj: BaseModel, models: MultiParamModelSpec) -> dict[str, Any]:
+    kwargs = {
+        field_name: getattr(model_obj, field_name)
+        for field_name in _param_models_field_names(models)
+        if field_name != "field_meta"
+    }
+    if meta := getattr(model_obj, "field_meta", None):
+        kwargs.update(meta)
+    return kwargs
 
 
 def serialize_params(params: BaseModel) -> dict[str, Any]:
@@ -114,6 +137,18 @@ def param_model(param_cls: type[BaseModel]) -> Callable[[MethodT], MethodT]:
     return decorator
 
 
+def param_models(*param_cls: type[BaseModel]) -> Callable[[MethodT], MethodT]:
+    """Decorator to mark a method as accepting multiple legacy parameter models."""
+    if not param_cls:
+        raise ValueError("param_models() requires at least one model class")
+
+    def decorator(func: MethodT) -> MethodT:
+        func.__param_models__ = param_cls  # type: ignore[attr-defined]
+        return func
+
+    return decorator
+
+
 def to_camel_case(snake_str: str) -> str:
     """Convert snake_case strings to camelCase."""
     components = snake_str.split("_")
@@ -129,7 +164,9 @@ def _make_legacy_func(func: Callable[..., T], model: type[BaseModel]) -> Callabl
             DeprecationWarning,
             stacklevel=3,
         )
-        kwargs = {k: getattr(params, k) for k in model.model_fields if k != "field_meta"}
+        kwargs = {
+            field_name: getattr(params, field_name) for field_name in model.model_fields if field_name != "field_meta"
+        }
         if meta := getattr(params, "field_meta", None):
             kwargs.update(meta)
         return func(self, **kwargs)  # type: ignore[arg-type]
@@ -152,10 +189,53 @@ def _make_compatible_func(func: Callable[..., T], model: type[BaseModel]) -> Cal
                 DeprecationWarning,
                 stacklevel=3,
             )
-            kwargs = {k: getattr(param, k) for k in model.model_fields if k != "field_meta"}
+            kwargs = {
+                field_name: getattr(param, field_name)
+                for field_name in model.model_fields
+                if field_name != "field_meta"
+            }
             if meta := getattr(param, "field_meta", None):
                 kwargs.update(meta)
             return func(self, **kwargs)  # type: ignore[arg-type]
+        return func(self, *args, **kwargs)
+
+    return wrapped
+
+
+def _make_multi_legacy_func(func: Callable[..., T], models: MultiParamModelSpec) -> Callable[[Any, BaseModel], T]:
+    model_name = _param_models_name(models)
+
+    @functools.wraps(func)
+    def wrapped(self, params: BaseModel) -> T:
+        warnings.warn(
+            f"Calling {func.__name__} with {model_name} parameter is "  # type: ignore[attr-defined]
+            "deprecated, please update to the new API style.",
+            DeprecationWarning,
+            stacklevel=3,
+        )
+        return func(self, **model_to_kwargs(params, models))  # type: ignore[arg-type]
+
+    return wrapped
+
+
+def _make_multi_compatible_func(func: Callable[..., T], models: MultiParamModelSpec) -> Callable[..., T]:
+    model_name = _param_models_name(models)
+
+    @functools.wraps(func)
+    def wrapped(self, *args: Any, **kwargs: Any) -> T:
+        param = None
+        if not kwargs and len(args) == 1:
+            param = args[0]
+        elif not args and len(kwargs) == 1:
+            param = kwargs.get("params")
+        if isinstance(param, models):
+            warnings.warn(
+                f"Calling {func.__name__} with {model_name} parameter "  # type: ignore[attr-defined]
+                "is deprecated, please update to the new API style.",
+                DeprecationWarning,
+                stacklevel=3,
+            )
+            return func(self, **model_to_kwargs(param, models))  # type: ignore[arg-type]
         return func(self, *args, **kwargs)
 
     return wrapped
@@ -165,10 +245,24 @@ def compatible_class(cls: ClassT) -> ClassT:
     """Mark a class as backward compatible with old API style."""
     for attr in dir(cls):
         func = getattr(cls, attr)
-        if not callable(func) or (model := getattr(func, "__param_model__", None)) is None:
+        if not callable(func):
+            continue
+        model = getattr(func, "__param_model__", None)
+        models = getattr(func, "__param_models__", None)
+        if model is None and models is None:
             continue
         if "_" in attr:
-            setattr(cls, to_camel_case(attr), _make_legacy_func(func, model))
+            if models is not None:
+                setattr(cls, to_camel_case(attr), _make_multi_legacy_func(func, models))
+            else:
+                if model is None:
+                    continue
+                setattr(cls, to_camel_case(attr), _make_legacy_func(func, model))
         else:
-            setattr(cls, attr, _make_compatible_func(func, model))
+            if models is not None:
+                setattr(cls, attr, _make_multi_compatible_func(func, models))
+            else:
+                if model is None:
+                    continue
+                setattr(cls, attr, _make_compatible_func(func, model))
     return cls

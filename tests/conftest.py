@@ -231,6 +231,7 @@ class TestAgent:
     def __init__(self) -> None:
         self.prompts: list[PromptRequest] = []
         self.cancellations: list[str] = []
+        self.config_option_calls: list[tuple[str, str, str | bool]] = []
         self.ext_calls: list[tuple[str, dict]] = []
         self.ext_notes: list[tuple[str, dict]] = []
 
@@ -267,9 +268,17 @@ class TestAgent:
             | EmbeddedResourceContentBlock
         ],
         session_id: str,
+        message_id: str | None = None,
         **kwargs: Any,
     ) -> PromptResponse:
-        self.prompts.append(PromptRequest(prompt=prompt, session_id=session_id, field_meta=kwargs or None))
+        self.prompts.append(
+            PromptRequest(
+                prompt=prompt,
+                session_id=session_id,
+                message_id=message_id,
+                field_meta=kwargs or None,
+            )
+        )
         return PromptResponse(stop_reason="end_turn")
 
     async def cancel(self, session_id: str, **kwargs: Any) -> None:
@@ -284,8 +293,9 @@ class TestAgent:
         return SetSessionModeResponse()
 
     async def set_config_option(
-        self, config_id: str, session_id: str, value: str, **kwargs: Any
+        self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
     ) -> SetSessionConfigOptionResponse | None:
+        self.config_option_calls.append((config_id, session_id, value))
         return SetSessionConfigOptionResponse(config_options=[])
 
     async def ext_method(self, method: str, params: dict) -> dict:

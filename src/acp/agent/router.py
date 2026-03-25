@@ -2,10 +2,12 @@ from __future__ import annotations
 
 from typing import Any
 
+from pydantic import BaseModel
+
 from ..exceptions import RequestError
 from ..interfaces import Agent
 from ..meta import AGENT_METHODS
-from ..router import MessageRouter
+from ..router import MessageRouter, Route, _resolve_handler, _warn_legacy_handler
 from ..schema import (
     AuthenticateRequest,
     CancelNotification,
@@ -17,13 +19,39 @@ from ..schema import (
     NewSessionRequest,
     PromptRequest,
     ResumeSessionRequest,
+    SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionSelectRequest,
     SetSessionModelRequest,
     SetSessionModeRequest,
 )
-from ..utils import normalize_result
+from ..utils import model_to_kwargs, normalize_result
 
 __all__ = ["build_agent_router"]
+
+
+_SET_CONFIG_OPTION_MODELS = (SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
+
+
+def _validate_set_config_option_request(params: Any) -> BaseModel:
+    if isinstance(params, dict) and params.get("type") == "boolean":
+        return SetSessionConfigOptionBooleanRequest.model_validate(params)
+    return SetSessionConfigOptionSelectRequest.model_validate(params)
+
+
+def _make_set_config_option_handler(agent: Agent) -> Any:
+    func, attr, legacy_api = _resolve_handler(agent, "set_config_option")
+    if func is None:
+        return None
+
+    async def wrapper(params: Any) -> Any:
+        if legacy_api:
+            _warn_legacy_handler(agent, attr)
+        request = _validate_set_config_option_request(params)
+        if legacy_api:
+            return await func(request)
+        return await func(**model_to_kwargs(request, _SET_CONFIG_OPTION_MODELS))
+
+    return wrapper
 
 
 def build_agent_router(agent: Agent, use_unstable_protocol: bool = False) -> MessageRouter:
@@ -63,12 +91,13 @@ def build_agent_router(agent: Agent, use_unstable_protocol: bool = False) -> Mes
         adapt_result=normalize_result,
         unstable=True,
     )
-    router.route_request(
-        AGENT_METHODS["session_set_config_option"],
-        SetSessionConfigOptionSelectRequest,
-        agent,
-        "set_config_option",
-        adapt_result=normalize_result,
+    router.add_route(
+        Route(
+            method=AGENT_METHODS["session_set_config_option"],
+            func=_make_set_config_option_handler(agent),
+            kind="request",
+            adapt_result=normalize_result,
+        )
     )
     router.route_request(
         AGENT_METHODS["authenticate"],

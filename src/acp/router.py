@@ -20,6 +20,34 @@ RequestHandler = Callable[[str, dict[str, Any]], Awaitable[Any]]
 HandlerT = TypeVar("HandlerT", bound=RequestHandler)
 
 
+def _warn_legacy_handler(obj: Any, attr: str) -> None:
+    warnings.warn(
+        f"The old style method {type(obj).__name__}.{attr} is deprecated, please update to the snake-cased form.",
+        DeprecationWarning,
+        stacklevel=3,
+    )
+
+
+def _resolve_handler(obj: Any, attr: str) -> tuple[AsyncHandler | None, str, bool]:
+    legacy_api = False
+    func = getattr(obj, attr, None)
+    if func is None and "_" in attr:
+        attr = to_camel_case(attr)
+        func = getattr(obj, attr, None)
+        legacy_api = True
+    elif callable(func) and "_" not in attr:
+        original_func = func
+        if hasattr(func, "__func__"):
+            original_func = func.__func__
+        parameters = inspect.signature(original_func).parameters
+        if len(parameters) == 2 and "params" in parameters:
+            legacy_api = True
+
+    if func is None or not callable(func):
+        return None, attr, legacy_api
+    return func, attr, legacy_api
+
+
 @dataclass(slots=True)
 class Route:
     method: str
@@ -63,31 +91,13 @@ class MessageRouter:
             self._notifications[route.method] = route
 
     def _make_func(self, model: type[BaseModel], obj: Any, attr: str) -> AsyncHandler | None:
-        legacy_api = False
-        func = getattr(obj, attr, None)
-        if func is None and "_" in attr:
-            attr = to_camel_case(attr)
-            func = getattr(obj, attr, None)
-            legacy_api = True
-        elif callable(func) and "_" not in attr:
-            original_func = func
-            if hasattr(func, "__func__"):
-                original_func = func.__func__
-            parameters = inspect.signature(original_func).parameters
-            if len(parameters) == 2 and "params" in parameters:
-                legacy_api = True
-
-        if func is None or not callable(func):
+        func, attr, legacy_api = _resolve_handler(obj, attr)
+        if func is None:
             return None
 
         async def wrapper(params: Any) -> Any:
             if legacy_api:
-                warnings.warn(
-                    f"The old style method {type(obj).__name__}.{attr} is deprecated, "
-                    "please update to the snake-cased form.",
-                    DeprecationWarning,
-                    stacklevel=3,
-                )
+                _warn_legacy_handler(obj, attr)
             model_obj = model.model_validate(params)
             if legacy_api:
                 return await func(model_obj)  # type: ignore[arg-type]

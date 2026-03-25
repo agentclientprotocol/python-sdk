@@ -11,6 +11,7 @@ from acp import (
     RequestError,
     RequestPermissionResponse,
     SessionNotification,
+    SetSessionConfigOptionResponse,
     SetSessionModelResponse,
     SetSessionModeResponse,
     WriteTextFileResponse,
@@ -25,6 +26,8 @@ from acp.schema import (
     NewSessionRequest,
     ReadTextFileRequest,
     RequestPermissionRequest,
+    SetSessionConfigOptionBooleanRequest,
+    SetSessionConfigOptionSelectRequest,
     SetSessionModelRequest,
     SetSessionModeRequest,
     WriteTextFileRequest,
@@ -34,6 +37,9 @@ from acp.schema import (
 class LegacyAgent:
     def __init__(self) -> None:
         self.prompts: list[PromptRequest] = []
+        self.config_option_requests: list[
+            SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest
+        ] = []
         self.cancellations: list[str] = []
         self.ext_calls: list[tuple[str, dict]] = []
         self.ext_notes: list[tuple[str, dict]] = []
@@ -63,6 +69,12 @@ class LegacyAgent:
 
     async def setSessionModel(self, params: SetSessionModelRequest) -> SetSessionModelResponse | None:
         return SetSessionModelResponse()
+
+    async def setConfigOption(
+        self, params: SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest
+    ) -> SetSessionConfigOptionResponse | None:
+        self.config_option_requests.append(params)
+        return SetSessionConfigOptionResponse(config_options=[])
 
     async def extMethod(self, method: str, params: dict) -> dict:
         self.ext_calls.append((method, params))
@@ -167,3 +179,34 @@ async def test_initialize_and_new_session_compat(connect, client):
 
     assert len(record) == 1
     assert resp.content == "Hello, World!"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("agent,client", [(LegacyAgent(), LegacyClient())])
+async def test_set_config_option_boolean_compat(connect, agent):
+    _, agent_conn = connect()
+
+    with pytest.warns(DeprecationWarning) as record:
+        resp = await agent_conn.setConfigOption(
+            SetSessionConfigOptionBooleanRequest(
+                config_id="brave_mode",
+                session_id="test-session-123",
+                type="boolean",
+                value=True,
+            )
+        )
+
+    assert len(record) == 2
+    assert "SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest parameter is deprecated" in str(
+        record[0].message
+    )
+    assert "The old style method LegacyAgent.setConfigOption is deprecated" in str(record[1].message)
+    assert isinstance(resp, SetSessionConfigOptionResponse)
+    assert agent.config_option_requests == [
+        SetSessionConfigOptionBooleanRequest(
+            config_id="brave_mode",
+            session_id="test-session-123",
+            type="boolean",
+            value=True,
+        )
+    ]

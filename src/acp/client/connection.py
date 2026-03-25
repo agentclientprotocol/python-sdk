@@ -35,6 +35,7 @@ from ..schema import (
     ResourceContentBlock,
     ResumeSessionRequest,
     ResumeSessionResponse,
+    SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
     SetSessionModelRequest,
@@ -44,7 +45,7 @@ from ..schema import (
     SseMcpServer,
     TextContentBlock,
 )
-from ..utils import compatible_class, notify_model, param_model, request_model, request_model_from_dict
+from ..utils import compatible_class, notify_model, param_model, param_models, request_model, request_model_from_dict
 from .router import build_client_router
 
 __all__ = ["ClientSideConnection"]
@@ -154,16 +155,30 @@ class ClientSideConnection:
             SetSessionModelResponse,
         )
 
-    @param_model(SetSessionConfigOptionSelectRequest)
+    @param_models(SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
     async def set_config_option(
-        self, config_id: str, session_id: str, value: str, **kwargs: Any
+        self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
     ) -> SetSessionConfigOptionResponse:
+        request = (
+            SetSessionConfigOptionBooleanRequest(
+                config_id=config_id,
+                session_id=session_id,
+                type="boolean",
+                value=value,
+                field_meta=kwargs or None,
+            )
+            if isinstance(value, bool)
+            else SetSessionConfigOptionSelectRequest(
+                config_id=config_id,
+                session_id=session_id,
+                value=value,
+                field_meta=kwargs or None,
+            )
+        )
         return await request_model_from_dict(
             self._conn,
             AGENT_METHODS["session_set_config_option"],
-            SetSessionConfigOptionSelectRequest(
-                config_id=config_id, session_id=session_id, value=value, field_meta=kwargs or None
-            ),
+            request,
             SetSessionConfigOptionResponse,
         )
 
@@ -193,7 +208,12 @@ class ClientSideConnection:
         return await request_model(
             self._conn,
             AGENT_METHODS["session_prompt"],
-            PromptRequest(prompt=prompt, session_id=session_id, field_meta=kwargs or None),
+            PromptRequest(
+                prompt=prompt,
+                session_id=session_id,
+                message_id=message_id,
+                field_meta=kwargs or None,
+            ),
             PromptResponse,
         )
 
