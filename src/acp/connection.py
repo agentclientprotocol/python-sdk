@@ -73,6 +73,7 @@ class Connection:
         sender_factory: SenderFactory | None = None,
         observers: list[StreamObserver] | None = None,
         listening: bool = True,
+        receive_timeout: float | None = None,
     ) -> None:
         self._handler = handler
         self._writer = writer
@@ -103,6 +104,7 @@ class Connection:
         )
         self._dispatcher.start()
         self._observers: list[StreamObserver] = list(observers or [])
+        self._receive_timeout = receive_timeout
 
     async def close(self) -> None:
         """Stop the receive loop and cancel any in-flight handler tasks."""
@@ -151,7 +153,7 @@ class Connection:
     async def _receive_loop(self) -> None:
         try:
             while True:
-                line = await self._reader.readline()
+                line = await asyncio.wait_for(self._reader.readline(), timeout=self._receive_timeout)
                 if not line:
                     break
                 line = line.strip()
@@ -166,6 +168,8 @@ class Connection:
                 await self._process_message(message)
         except asyncio.CancelledError:
             return
+        except asyncio.TimeoutError:
+            raise RequestError.internal_error({"details": "Agent timeout"}) from None
         self._disconnect()
 
     async def _process_message(self, message: dict[str, Any]) -> None:
