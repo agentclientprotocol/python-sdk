@@ -160,6 +160,14 @@ class Connection:
                 await self._process_message(message)
         except asyncio.CancelledError:
             return
+        # EOF: the remote end closed the connection.  Reject any in-flight
+        # outgoing requests so their callers receive an error instead of
+        # hanging forever.  Without this, a subprocess crash during
+        # initialize() or new_session() silently converts into an infinite
+        # hang because _on_receive_error is only invoked on exceptions.
+        self._state.reject_all_outgoing(
+            ConnectionError("Connection closed: remote end sent EOF")
+        )
 
     async def _process_message(self, message: dict[str, Any]) -> None:
         method = message.get("method")
