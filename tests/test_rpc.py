@@ -316,6 +316,20 @@ async def test_ignore_invalid_messages(connect, server):
         await asyncio.wait_for(server.client_reader.readline(), timeout=0.1)
 
 
+@pytest.mark.asyncio
+async def test_blank_lines_skipped(connect, server):
+    connect(connect_agent=True, connect_client=False)
+
+    for noise in [b"\n", b"  \n", b"\r\n"]:
+        server.client_writer.write(noise)
+    req = {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": 1}}
+    server.client_writer.write((json.dumps(req) + "\n").encode())
+    await server.client_writer.drain()
+
+    resp = json.loads(await asyncio.wait_for(server.client_reader.readline(), timeout=1))
+    assert resp["id"] == 1 and "result" in resp
+
+
 class _ExampleAgent(Agent):
     __test__ = False
 

@@ -151,6 +151,9 @@ class Connection:
                 line = await self._reader.readline()
                 if not line:
                     break
+                line = line.strip()
+                if not line:
+                    continue
                 try:
                     message: dict[str, Any] = json.loads(line)
                 except Exception:
