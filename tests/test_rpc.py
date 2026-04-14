@@ -26,6 +26,7 @@ from acp import (
     update_agent_message_text,
     update_tool_call,
 )
+from acp.connection import Connection
 from acp.core import AgentSideConnection, ClientSideConnection
 from acp.schema import (
     AgentMessageChunk,
@@ -197,6 +198,35 @@ async def test_concurrent_reads(connect, client):
     results = await asyncio.gather(*(read_one(i) for i in range(5)))
     for i, res in enumerate(results):
         assert res.content == f"Content {i}"
+
+
+@pytest.mark.asyncio
+async def test_pending_request_fails_when_remote_sends_eof(server):
+    conn = Connection(lambda method, params, is_notification: None, server.client_writer, server.client_reader)
+    request = asyncio.create_task(conn.send_request("ping", {"value": 1}))
+
+    await asyncio.sleep(0.05)
+    server.server_writer.close()
+    await server.server_writer.wait_closed()
+
+    with pytest.raises(ConnectionError, match="Connection closed"):
+        await asyncio.wait_for(request, timeout=1.0)
+
+    await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_new_requests_fail_fast_after_remote_eof(server):
+    conn = Connection(lambda method, params, is_notification: None, server.client_writer, server.client_reader)
+
+    server.server_writer.close()
+    await server.server_writer.wait_closed()
+    await asyncio.sleep(0.05)
+
+    with pytest.raises(ConnectionError, match="Connection closed"):
+        await asyncio.wait_for(conn.send_request("ping", {"value": 1}), timeout=1.0)
+
+    await conn.close()
 
 
 @pytest.mark.asyncio
