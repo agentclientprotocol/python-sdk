@@ -157,7 +157,11 @@ class Agent(Protocol):
 
     @param_model(NewSessionRequest)
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None, **kwargs: Any
+        self,
+        cwd: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> NewSessionResponse: ...
 
     @param_model(LoadSessionRequest)
@@ -165,13 +169,18 @@ class Agent(Protocol):
         self,
         cwd: str,
         session_id: str,
+        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse | None: ...
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
+        self,
+        additional_directories: list[str] | None = None,
+        cursor: str | None = None,
+        cwd: str | None = None,
+        **kwargs: Any,
     ) -> ListSessionsResponse: ...
 
     @param_model(SetSessionModeRequest)
@@ -210,6 +219,7 @@ class Agent(Protocol):
         self,
         cwd: str,
         session_id: str,
+        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse: ...
@@ -219,6 +229,7 @@ class Agent(Protocol):
         self,
         cwd: str,
         session_id: str,
+        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse: ...

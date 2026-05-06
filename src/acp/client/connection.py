@@ -98,13 +98,22 @@ class ClientSideConnection:
 
     @param_model(NewSessionRequest)
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None, **kwargs: Any
+        self,
+        cwd: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> NewSessionResponse:
         resolved_mcp_servers = mcp_servers or []
         return await request_model(
             self._conn,
             AGENT_METHODS["session_new"],
-            NewSessionRequest(cwd=cwd, mcp_servers=resolved_mcp_servers, field_meta=kwargs or None),
+            NewSessionRequest(
+                cwd=cwd,
+                additional_directories=additional_directories,
+                mcp_servers=resolved_mcp_servers,
+                field_meta=kwargs or None,
+            ),
             NewSessionResponse,
         )
 
@@ -113,6 +122,7 @@ class ClientSideConnection:
         self,
         cwd: str,
         session_id: str,
+        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse:
@@ -121,19 +131,29 @@ class ClientSideConnection:
             self._conn,
             AGENT_METHODS["session_load"],
             LoadSessionRequest(
-                cwd=cwd, mcp_servers=resolved_mcp_servers, session_id=session_id, field_meta=kwargs or None
+                cwd=cwd,
+                additional_directories=additional_directories,
+                mcp_servers=resolved_mcp_servers,
+                session_id=session_id,
+                field_meta=kwargs or None,
             ),
             LoadSessionResponse,
         )
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
+        self,
+        additional_directories: list[str] | None = None,
+        cursor: str | None = None,
+        cwd: str | None = None,
+        **kwargs: Any,
     ) -> ListSessionsResponse:
         return await request_model_from_dict(
             self._conn,
             AGENT_METHODS["session_list"],
-            ListSessionsRequest(cursor=cursor, cwd=cwd, field_meta=kwargs or None),
+            ListSessionsRequest(
+                additional_directories=additional_directories, cursor=cursor, cwd=cwd, field_meta=kwargs or None
+            ),
             ListSessionsResponse,
         )
 
@@ -161,25 +181,15 @@ class ClientSideConnection:
     ) -> SetSessionConfigOptionResponse:
         request = (
             SetSessionConfigOptionBooleanRequest(
-                config_id=config_id,
-                session_id=session_id,
-                type="boolean",
-                value=value,
-                field_meta=kwargs or None,
+                config_id=config_id, session_id=session_id, type="boolean", value=value, field_meta=kwargs or None
             )
             if isinstance(value, bool)
             else SetSessionConfigOptionSelectRequest(
-                config_id=config_id,
-                session_id=session_id,
-                value=value,
-                field_meta=kwargs or None,
+                config_id=config_id, session_id=session_id, value=value, field_meta=kwargs or None
             )
         )
         return await request_model_from_dict(
-            self._conn,
-            AGENT_METHODS["session_set_config_option"],
-            request,
-            SetSessionConfigOptionResponse,
+            self._conn, AGENT_METHODS["session_set_config_option"], request, SetSessionConfigOptionResponse
         )
 
     @param_model(AuthenticateRequest)
@@ -208,12 +218,7 @@ class ClientSideConnection:
         return await request_model(
             self._conn,
             AGENT_METHODS["session_prompt"],
-            PromptRequest(
-                prompt=prompt,
-                session_id=session_id,
-                message_id=message_id,
-                field_meta=kwargs or None,
-            ),
+            PromptRequest(prompt=prompt, session_id=session_id, message_id=message_id, field_meta=kwargs or None),
             PromptResponse,
         )
 
@@ -222,13 +227,20 @@ class ClientSideConnection:
         self,
         cwd: str,
         session_id: str,
+        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse:
         return await request_model(
             self._conn,
             AGENT_METHODS["session_fork"],
-            ForkSessionRequest(session_id=session_id, cwd=cwd, mcp_servers=mcp_servers, field_meta=kwargs or None),
+            ForkSessionRequest(
+                session_id=session_id,
+                cwd=cwd,
+                additional_directories=additional_directories,
+                mcp_servers=mcp_servers,
+                field_meta=kwargs or None,
+            ),
             ForkSessionResponse,
         )
 
@@ -237,13 +249,20 @@ class ClientSideConnection:
         self,
         cwd: str,
         session_id: str,
+        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse:
         return await request_model(
             self._conn,
             AGENT_METHODS["session_resume"],
-            ResumeSessionRequest(session_id=session_id, cwd=cwd, mcp_servers=mcp_servers, field_meta=kwargs or None),
+            ResumeSessionRequest(
+                session_id=session_id,
+                cwd=cwd,
+                additional_directories=additional_directories,
+                mcp_servers=mcp_servers,
+                field_meta=kwargs or None,
+            ),
             ResumeSessionResponse,
         )
 
