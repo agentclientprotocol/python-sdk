@@ -27,6 +27,7 @@ from acp.schema import (
     AllowedOutcome,
     AvailableCommandsUpdate,
     ClientCapabilities,
+    ConfigOptionUpdate,
     CreateTerminalResponse,
     CurrentModeUpdate,
     DeniedOutcome,
@@ -40,12 +41,14 @@ from acp.schema import (
     ReleaseTerminalResponse,
     RequestPermissionResponse,
     ResourceContentBlock,
+    SessionInfoUpdate,
     TerminalOutputResponse,
     TerminalToolCallContent,
     TextContentBlock,
-    ToolCall,
     ToolCallProgress,
     ToolCallStart,
+    ToolCallUpdate,
+    UsageUpdate,
     UserMessageChunk,
     WaitForTerminalExitResponse,
     WriteTextFileResponse,
@@ -59,7 +62,7 @@ class GeminiClient(Client):
         self._auto_approve = auto_approve
 
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCall, **kwargs: Any
+        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
     ) -> RequestPermissionResponse:
         if self._auto_approve:
             option = _pick_preferred_option(options)
@@ -122,7 +125,10 @@ class GeminiClient(Client):
         | ToolCallProgress
         | AgentPlanUpdate
         | AvailableCommandsUpdate
-        | CurrentModeUpdate,
+        | CurrentModeUpdate
+        | ConfigOptionUpdate
+        | SessionInfoUpdate
+        | UsageUpdate,
         **kwargs: Any,
     ) -> None:
         if isinstance(update, AgentMessageChunk):
@@ -227,7 +233,18 @@ def _print_text_content(content: object) -> None:
             print(text)
 
 
-async def interactive_loop(conn: ClientSideConnection, session_id: str) -> None:
+async def _send_prompt(conn: ClientSideConnection, session_id: str, prompt: str, timeout: float | None) -> None:
+    request = conn.prompt(
+        session_id=session_id,
+        prompt=[text_block(prompt)],
+    )
+    if timeout is None:
+        await request
+        return
+    await asyncio.wait_for(request, timeout=timeout)
+
+
+async def interactive_loop(conn: ClientSideConnection, session_id: str, prompt_timeout: float | None) -> None:
     print("Type a message and press Enter to send.")
     print("Commands: :cancel, :exit")
 
@@ -248,10 +265,11 @@ async def interactive_loop(conn: ClientSideConnection, session_id: str) -> None:
             continue
 
         try:
-            await conn.prompt(
-                session_id=session_id,
-                prompt=[text_block(line)],
-            )
+            await _send_prompt(conn, session_id, line, prompt_timeout)
+        except asyncio.TimeoutError:
+            print("prompt timed out waiting for final ACP response", file=sys.stderr)
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(conn.cancel(session_id=session_id), timeout=2)
         except RequestError as err:
             _print_request_error("prompt", err)
         except Exception as exc:
@@ -274,10 +292,20 @@ async def run(argv: list[str]) -> int:  # noqa: C901
     parser = argparse.ArgumentParser(description="Interact with the Gemini CLI over ACP.")
     parser.add_argument("--gemini", help="Path to the Gemini CLI binary")
     parser.add_argument("--model", help="Model identifier to pass to Gemini")
+    parser.add_argument("--prompt", help="Send one prompt and exit")
+    parser.add_argument(
+        "--prompt-timeout",
+        type=float,
+        default=120.0,
+        help="Seconds to wait for session/prompt to finish; use 0 to disable",
+    )
     parser.add_argument("--sandbox", action="store_true", help="Enable Gemini sandbox mode")
     parser.add_argument("--debug", action="store_true", help="Pass --debug to Gemini")
+    parser.add_argument("--experimental-acp", action="store_true", help="Use Gemini's deprecated ACP flag")
+    parser.add_argument("--skip-trust", action="store_true", help="Trust the current workspace for this session")
     parser.add_argument("--yolo", action="store_true", help="Auto-approve permission prompts")
     args = parser.parse_args(argv[1:])
+    prompt_timeout = None if args.prompt_timeout == 0 else args.prompt_timeout
 
     try:
         gemini_path = _resolve_gemini_cli(args.gemini)
@@ -285,13 +313,15 @@ async def run(argv: list[str]) -> int:  # noqa: C901
         print(exc, file=sys.stderr)
         return 1
 
-    cmd = [gemini_path, "--experimental-acp"]
+    cmd = [gemini_path, "--experimental-acp" if args.experimental_acp else "--acp"]
     if args.model:
         cmd += ["--model", args.model]
     if args.sandbox:
         cmd.append("--sandbox")
     if args.debug:
         cmd.append("--debug")
+    if args.skip_trust:
+        cmd.append("--skip-trust")
 
     try:
         proc = await asyncio.create_subprocess_exec(
@@ -350,7 +380,15 @@ async def run(argv: list[str]) -> int:  # noqa: C901
     print(f"📝 Created session: {session.session_id}")
 
     try:
-        await interactive_loop(conn, session.session_id)
+        if args.prompt is None:
+            await interactive_loop(conn, session.session_id, prompt_timeout)
+        else:
+            await _send_prompt(conn, session.session_id, args.prompt, prompt_timeout)
+    except asyncio.TimeoutError:
+        print("prompt timed out waiting for final ACP response", file=sys.stderr)
+        with contextlib.suppress(Exception):
+            await asyncio.wait_for(conn.cancel(session_id=session.session_id), timeout=2)
+        return 1
     finally:
         await _shutdown(proc, conn)
 
@@ -373,14 +411,15 @@ def _print_request_error(stage: str, err: RequestError) -> None:
 
 async def _shutdown(proc: asyncio.subprocess.Process, conn: ClientSideConnection) -> None:
     with contextlib.suppress(Exception):
-        await conn.close()
+        await asyncio.wait_for(conn.close(), timeout=2)
     if proc.returncode is None:
         proc.terminate()
         try:
             await asyncio.wait_for(proc.wait(), timeout=5)
         except asyncio.TimeoutError:
             proc.kill()
-            await proc.wait()
+            with contextlib.suppress(Exception):
+                await asyncio.wait_for(proc.wait(), timeout=5)
 
 
 def main(argv: list[str] | None = None) -> int:
