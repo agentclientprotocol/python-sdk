@@ -65,7 +65,11 @@ class ExampleAgent(Agent):
         return AuthenticateResponse()
 
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self,
+        cwd: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> NewSessionResponse:
         logging.info("Received new session request")
         session_id = str(self._next_session_id)
@@ -74,7 +78,12 @@ class ExampleAgent(Agent):
         return NewSessionResponse(session_id=session_id, modes=None)
 
     async def load_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
+        self,
+        cwd: str,
+        session_id: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> LoadSessionResponse | None:
         logging.info("Received load session request %s", session_id)
         self._sessions.add(session_id)
@@ -94,6 +103,7 @@ class ExampleAgent(Agent):
             | EmbeddedResourceContentBlock
         ],
         session_id: str,
+        message_id: str | None = None,
         **kwargs: Any,
     ) -> PromptResponse:
         logging.info("Received prompt request for session %s", session_id)
@@ -103,7 +113,7 @@ class ExampleAgent(Agent):
         await self._send_agent_message(session_id, text_block("Client sent:"))
         for block in prompt:
             await self._send_agent_message(session_id, block)
-        return PromptResponse(stop_reason="end_turn")
+        return PromptResponse(stop_reason="end_turn", user_message_id=message_id)
 
     async def cancel(self, session_id: str, **kwargs: Any) -> None:
         logging.info("Received cancel notification for session %s", session_id)

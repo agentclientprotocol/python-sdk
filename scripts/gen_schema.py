@@ -71,6 +71,24 @@ RENAME_MAP: dict[str, str] = {
     "ToolCallContent1": "ContentToolCallContent",
     "ToolCallContent2": "FileEditToolCallContent",
     "ToolCallContent3": "TerminalToolCallContent",
+    "CreateElicitationRequest1": "CreateFormElicitationRequest",
+    "CreateElicitationRequest2": "CreateUrlElicitationRequest",
+    "CreateElicitationResponse1": "AcceptElicitationResponse",
+    "CreateElicitationResponse2": "DeclineElicitationResponse",
+    "CreateElicitationResponse3": "CancelElicitationResponse",
+    "ElicitationFormMode1": "ElicitationFormSessionMode",
+    "ElicitationFormMode2": "ElicitationFormRequestMode",
+    "ElicitationPropertySchema1": "ElicitationStringPropertySchema",
+    "ElicitationPropertySchema2": "ElicitationNumberPropertySchema",
+    "ElicitationPropertySchema3": "ElicitationIntegerPropertySchema",
+    "ElicitationPropertySchema4": "ElicitationBooleanPropertySchema",
+    "ElicitationPropertySchema5": "ElicitationMultiSelectPropertySchema",
+    "ElicitationUrlMode1": "ElicitationUrlSessionMode",
+    "ElicitationUrlMode2": "ElicitationUrlRequestMode",
+    "NesSuggestion1": "NesEditSuggestionVariant",
+    "NesSuggestion2": "NesJumpSuggestionVariant",
+    "NesSuggestion3": "NesRenameSuggestionVariant",
+    "NesSuggestion4": "NesSearchAndReplaceSuggestionVariant",
 }
 
 ENUM_LITERAL_MAP: dict[str, tuple[str, ...]] = {
@@ -98,6 +116,30 @@ FIELD_TYPE_OVERRIDES: tuple[tuple[str, str, str, bool], ...] = (
     ("ToolCallUpdate", "status", "ToolCallStatus", True),
 )
 
+
+@dataclass(frozen=True)
+class FieldValidatorInjection:
+    """A generated field validator that should be appended to one schema class."""
+
+    class_name: str
+    field_name: str
+    method_name: str
+    argument_name: str
+    return_type: str
+    comment_lines: tuple[str, ...]
+    body_lines: tuple[str, ...]
+
+    def render(self) -> str:
+        lines = [
+            f'@field_validator("{self.field_name}", mode="before")',
+            "@classmethod",
+            f"def {self.method_name}(cls, {self.argument_name}: Any) -> {self.return_type}:",
+        ]
+        lines.extend(f"    # {line}" for line in self.comment_lines)
+        lines.extend(f"    {line}" for line in self.body_lines)
+        return "\n".join(lines)
+
+
 DEFAULT_VALUE_OVERRIDES: tuple[tuple[str, str, str], ...] = (
     ("AgentCapabilities", "mcp_capabilities", "McpCapabilities()"),
     ("AgentCapabilities", "session_capabilities", "SessionCapabilities()"),
@@ -121,27 +163,27 @@ DEFAULT_VALUE_OVERRIDES: tuple[tuple[str, str, str], ...] = (
 )
 
 # Classes that need a field_validator injected after generation.
-# Each entry: (class_name, field_name, validator_body)
-# The validator_body is the full method source (indented 4 spaces inside the class).
-CLASS_VALIDATOR_INJECTIONS: tuple[tuple[str, str, str], ...] = (
-    (
-        "InitializeRequest",
-        "protocol_version",
-        textwrap.dedent("""\
-            @field_validator("protocol_version", mode="before")
-            @classmethod
-            def _coerce_protocol_version(cls, v: Any) -> int:
-                # Some clients (e.g. Zed) send a date string like "2024-11-05" instead
-                # of an integer.  The Rust SDK treats any string as version 0; we map it
-                # to 1 (the current stable version) so the connection is not rejected.
-                # See: https://github.com/agentclientprotocol/rust-sdk/blob/main/crates/agent-client-protocol-schema/src/version.rs
-                if isinstance(v, int):
-                    return v
-                try:
-                    return int(v)
-                except (TypeError, ValueError):
-                    return 1
-        """),
+CLASS_VALIDATOR_INJECTIONS: tuple[FieldValidatorInjection, ...] = (
+    FieldValidatorInjection(
+        class_name="InitializeRequest",
+        field_name="protocol_version",
+        method_name="_coerce_protocol_version",
+        argument_name="value",
+        return_type="int",
+        comment_lines=(
+            'Some clients (e.g. Zed) send a date string like "2024-11-05" instead',
+            "of an integer. The Rust SDK treats legacy strings as version 0; this",
+            "SDK maps unparsable values to 1 so the connection is not rejected.",
+            "See: https://github.com/agentclientprotocol/rust-sdk/blob/main/crates/agent-client-protocol-schema/src/version.rs",
+        ),
+        body_lines=(
+            "if isinstance(value, int):",
+            "    return value",
+            "try:",
+            "    return int(value)",
+            "except (TypeError, ValueError):",
+            "    return 1",
+        ),
     ),
 )
 
@@ -370,7 +412,7 @@ def _ensure_pydantic_import(content: str, name: str) -> str:
     for idx, line in enumerate(lines):
         if not line.startswith("from pydantic import "):
             continue
-        imports = [part.strip() for part in line[len("from pydantic import "):].split(",")]
+        imports = [part.strip() for part in line[len("from pydantic import ") :].split(",")]
         if name not in imports:
             imports.append(name)
             lines[idx] = "from pydantic import " + ", ".join(imports)
@@ -380,30 +422,26 @@ def _ensure_pydantic_import(content: str, name: str) -> str:
 
 def _inject_field_validators(content: str) -> str:
     """Inject field_validator methods into classes listed in CLASS_VALIDATOR_INJECTIONS."""
-    for class_name, _field_name, validator_body in CLASS_VALIDATOR_INJECTIONS:
-        # Ensure field_validator is imported from pydantic.
+    for injection in CLASS_VALIDATOR_INJECTIONS:
         content = _ensure_pydantic_import(content, "field_validator")
 
-        # Find the end of the class body and append the validator before the next class.
         class_pattern = re.compile(
-            rf"(class {class_name}\(BaseModel\):)(.*?)(?=\nclass |\Z)",
+            rf"(class {injection.class_name}\(BaseModel\):)(.*?)(?=\nclass |\Z)",
             re.DOTALL,
         )
 
         def _append_validator(
             match: re.Match[str],
-            _body: str = validator_body,
-            _class: str = class_name,
+            _injection: FieldValidatorInjection = injection,
         ) -> str:
             header, block = match.group(1), match.group(2)
-            # Indent the validator body by 4 spaces to sit inside the class.
-            indented = "\n" + textwrap.indent(_body.rstrip(), "    ")
+            indented = "\n" + textwrap.indent(_injection.render(), "    ")
             return header + block + indented + "\n"
 
         content, count = class_pattern.subn(_append_validator, content, count=1)
         if count == 0:
             print(
-                f"Warning: class {class_name} not found for validator injection",
+                f"Warning: class {injection.class_name} not found for validator injection",
                 file=sys.stderr,
             )
     return content

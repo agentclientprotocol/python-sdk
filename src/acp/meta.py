@@ -1,8 +1,22 @@
 # Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/v0.11.2
+# Schema ref: refs/tags/v0.12.2
 AGENT_METHODS = {
     "authenticate": "authenticate",
+    "document_did_change": "document/didChange",
+    "document_did_close": "document/didClose",
+    "document_did_focus": "document/didFocus",
+    "document_did_open": "document/didOpen",
+    "document_did_save": "document/didSave",
     "initialize": "initialize",
+    "logout": "logout",
+    "nes_accept": "nes/accept",
+    "nes_close": "nes/close",
+    "nes_reject": "nes/reject",
+    "nes_start": "nes/start",
+    "nes_suggest": "nes/suggest",
+    "providers_disable": "providers/disable",
+    "providers_list": "providers/list",
+    "providers_set": "providers/set",
     "session_cancel": "session/cancel",
     "session_close": "session/close",
     "session_fork": "session/fork",
@@ -16,6 +30,8 @@ AGENT_METHODS = {
     "session_set_model": "session/set_model",
 }
 CLIENT_METHODS = {
+    "elicitation_complete": "elicitation/complete",
+    "elicitation_create": "elicitation/create",
     "fs_read_text_file": "fs/read_text_file",
     "fs_write_text_file": "fs/write_text_file",
     "session_request_permission": "session/request_permission",

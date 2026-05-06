@@ -92,8 +92,9 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
-from acp import spawn_agent_process, text_block
+from acp import PROTOCOL_VERSION, spawn_agent_process, text_block
 from acp.interfaces import Client
 
 
@@ -110,11 +111,12 @@ class SimpleClient(Client):
 async def main() -> None:
     script = Path("examples/echo_agent.py")
     async with spawn_agent_process(SimpleClient(), sys.executable, str(script)) as (conn, _proc):
-        await conn.initialize(protocol_version=1)
+        await conn.initialize(protocol_version=PROTOCOL_VERSION)
         session = await conn.new_session(cwd=str(script.parent), mcp_servers=[])
         await conn.prompt(
             session_id=session.session_id,
             prompt=[text_block("Hello from spawn!")],
+            message_id=str(uuid4()),
         )
 
 asyncio.run(main())
@@ -133,9 +135,9 @@ from acp import Agent, PromptResponse
 
 
 class MyAgent(Agent):
-    async def prompt(self, prompt, session_id, **kwargs) -> PromptResponse:
+    async def prompt(self, prompt, session_id, message_id=None, **kwargs) -> PromptResponse:
         # inspect prompt, stream updates, then finish the turn
-        return PromptResponse(stop_reason="end_turn")
+        return PromptResponse(stop_reason="end_turn", user_message_id=message_id)
 ```
 
 Run it with `run_agent()` inside an async entrypoint and wire it to your client. Refer to:
@@ -143,7 +145,7 @@ Run it with `run_agent()` inside an async entrypoint and wire it to your client.
 - [`examples/echo_agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/echo_agent.py) for the smallest streaming agent
 - [`examples/agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/agent.py) for an implementation that negotiates capabilities and streams richer updates
 - [`examples/duet.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py) to see `spawn_agent_process` in action alongside the interactive client
-- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) to drive the Gemini CLI (`--experimental-acp`) directly from Python
+- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) to drive the Gemini CLI (`--acp`) directly from Python
 
 Need builders for common payloads? `acp.helpers` mirrors the Go/TS helper APIs:
 
@@ -167,8 +169,8 @@ _Have the Gemini CLI installed? Run the bridge to exercise permission flows._
 If you have the Gemini CLI installed and authenticated:
 
 ```bash
-python examples/gemini.py --yolo                # auto-approve permission prompts
-python examples/gemini.py --sandbox --model gemini-1.5-pro
+python examples/gemini.py --skip-trust --yolo   # auto-approve permission prompts
+python examples/gemini.py --skip-trust --sandbox --model gemini-1.5-pro
 ```
 
 Environment helpers:

@@ -6,6 +6,7 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
+from uuid import uuid4
 
 from acp import (
     PROTOCOL_VERSION,
@@ -22,6 +23,7 @@ from acp.schema import (
     AudioContentBlock,
     AvailableCommandsUpdate,
     ClientCapabilities,
+    ConfigOptionUpdate,
     CreateTerminalResponse,
     CurrentModeUpdate,
     EmbeddedResourceContentBlock,
@@ -34,11 +36,13 @@ from acp.schema import (
     ReleaseTerminalResponse,
     RequestPermissionResponse,
     ResourceContentBlock,
+    SessionInfoUpdate,
     TerminalOutputResponse,
     TextContentBlock,
-    ToolCall,
     ToolCallProgress,
     ToolCallStart,
+    ToolCallUpdate,
+    UsageUpdate,
     UserMessageChunk,
     WaitForTerminalExitResponse,
     WriteTextFileResponse,
@@ -47,7 +51,7 @@ from acp.schema import (
 
 class ExampleClient(Client):
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCall, **kwargs: Any
+        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
     ) -> RequestPermissionResponse:
         raise RequestError.method_not_found("session/request_permission")
 
@@ -99,7 +103,10 @@ class ExampleClient(Client):
         | ToolCallProgress
         | AgentPlanUpdate
         | AvailableCommandsUpdate
-        | CurrentModeUpdate,
+        | CurrentModeUpdate
+        | ConfigOptionUpdate
+        | SessionInfoUpdate
+        | UsageUpdate,
         **kwargs: Any,
     ) -> None:
         if not isinstance(update, AgentMessageChunk):
@@ -151,6 +158,7 @@ async def interactive_loop(conn: ClientSideConnection, session_id: str) -> None:
             await conn.prompt(
                 session_id=session_id,
                 prompt=[text_block(line)],
+                message_id=str(uuid4()),
             )
         except Exception as exc:
             logging.error("Prompt failed: %s", exc)  # noqa: TRY400
