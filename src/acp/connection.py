@@ -86,6 +86,8 @@ class Connection:
         self._closed = False
         self._disconnected = False
         self._sender = (sender_factory or self._default_sender_factory)(self._writer, self._tasks)
+        self._observers: list[StreamObserver] = list(observers or [])
+        self._receive_timeout = receive_timeout
         if listening:
             self._recv_task = self._tasks.create(
                 self._receive_loop(),
@@ -103,8 +105,6 @@ class Connection:
             self._run_notification,
         )
         self._dispatcher.start()
-        self._observers: list[StreamObserver] = list(observers or [])
-        self._receive_timeout = receive_timeout
 
     async def close(self) -> None:
         """Stop the receive loop and cancel any in-flight handler tasks."""
