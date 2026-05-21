@@ -328,7 +328,8 @@ async def run(argv: list[str]) -> int:  # noqa: C901
             *cmd,
             stdin=asyncio.subprocess.PIPE,
             stdout=asyncio.subprocess.PIPE,
-            stderr=None,
+            # Suppress Gemini CLI diagnostic noise unless debugging
+            stderr=None if args.debug else asyncio.subprocess.DEVNULL,
         )
     except FileNotFoundError as exc:
         print(f"Failed to start Gemini CLI: {exc}", file=sys.stderr)
@@ -412,6 +413,10 @@ def _print_request_error(stage: str, err: RequestError) -> None:
 async def _shutdown(proc: asyncio.subprocess.Process, conn: ClientSideConnection) -> None:
     with contextlib.suppress(Exception):
         await asyncio.wait_for(conn.close(), timeout=2)
+    if proc.stdin is not None:
+        with contextlib.suppress(Exception):
+            proc.stdin.close()
+            await asyncio.wait_for(proc.stdin.wait_closed(), timeout=2)
     if proc.returncode is None:
         proc.terminate()
         try:
@@ -424,7 +429,10 @@ async def _shutdown(proc: asyncio.subprocess.Process, conn: ClientSideConnection
 
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv if argv is None else argv
-    return asyncio.run(run(list(args)))
+    try:
+        return asyncio.run(run(list(args)))
+    except KeyboardInterrupt:
+        return 1
 
 
 if __name__ == "__main__":

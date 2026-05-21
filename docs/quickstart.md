@@ -16,7 +16,7 @@ Spin up a working ACP agent/client loop in minutes. Keep this page beside the te
 
 - Python 3.10–3.14 with `pip` or `uv`
 - An ACP-capable client such as Zed (recommended for validation)
-- Optional: the Gemini CLI (`gemini --experimental-acp`) for the bridge example
+- Optional: the Gemini CLI (`gemini --acp`; use `--experimental-acp` for older versions) for the bridge example
 
 ## Step 1 — Install the SDK
 
@@ -145,7 +145,7 @@ Run it with `run_agent()` inside an async entrypoint and wire it to your client.
 - [`examples/echo_agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/echo_agent.py) for the smallest streaming agent
 - [`examples/agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/agent.py) for an implementation that negotiates capabilities and streams richer updates
 - [`examples/duet.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py) to see `spawn_agent_process` in action alongside the interactive client
-- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) to drive the Gemini CLI (`--acp`) directly from Python
+- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) to drive the Gemini CLI (`--acp`; use `--experimental-acp` for older versions) directly from Python
 
 Need builders for common payloads? `acp.helpers` mirrors the Go/TS helper APIs:
 
