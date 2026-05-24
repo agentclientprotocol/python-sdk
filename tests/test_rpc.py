@@ -680,12 +680,16 @@ async def test_spawn_agent_process_roundtrip(tmp_path):
 
 @pytest.mark.asyncio
 async def test_connection_init_under_eager_task_factory(server):
+    eager_task_factory = getattr(asyncio, "eager_task_factory", None)
+    if eager_task_factory is None:
+        pytest.skip("asyncio.eager_task_factory requires Python 3.12+")
+
     # Regression: under asyncio.eager_task_factory the receive loop runs synchronously
     # up to its first await inside Connection.__init__, so every attribute it reads
     # (e.g. _receive_timeout) must be assigned before _tasks.create(_receive_loop()).
     loop = asyncio.get_running_loop()
     previous_factory = loop.get_task_factory()
-    loop.set_task_factory(asyncio.eager_task_factory)
+    loop.set_task_factory(eager_task_factory)
     try:
         conn = Connection(
             lambda method, params, is_notification: None,
