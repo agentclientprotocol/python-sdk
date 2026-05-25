@@ -377,12 +377,11 @@ async def test_session_additional_directories_roundtrip(server):
 
         async def list_sessions(
             self,
-            additional_directories: list[str] | None = None,
             cursor: str | None = None,
             cwd: str | None = None,
             **kwargs: Any,
         ) -> ListSessionsResponse:
-            self.calls["list"] = additional_directories
+            self.calls["list"] = None
             return ListSessionsResponse(sessions=[])
 
         async def fork_session(
@@ -425,14 +424,14 @@ async def test_session_additional_directories_roundtrip(server):
 
     await client_side.new_session(cwd="/workspace", additional_directories=directories)
     await client_side.load_session(cwd="/workspace", session_id="sess", additional_directories=directories)
-    await client_side.list_sessions(cwd="/workspace", additional_directories=directories)
+    await client_side.list_sessions(cwd="/workspace")
     await client_side.fork_session(cwd="/workspace", session_id="sess", additional_directories=directories)
     await client_side.resume_session(cwd="/workspace", session_id="sess", additional_directories=directories)
 
     assert agent.calls == {
         "new": directories,
         "load": directories,
-        "list": directories,
+        "list": None,
         "fork": directories,
         "resume": directories,
     }

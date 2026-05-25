@@ -8,6 +8,7 @@ from ..connection import Connection
 from ..interfaces import Agent, Client
 from ..meta import AGENT_METHODS
 from ..schema import (
+    AcpMcpServer,
     AudioContentBlock,
     AuthenticateRequest,
     AuthenticateResponse,
@@ -101,7 +102,7 @@ class ClientSideConnection:
         self,
         cwd: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> NewSessionResponse:
         resolved_mcp_servers = mcp_servers or []
@@ -123,7 +124,7 @@ class ClientSideConnection:
         cwd: str,
         session_id: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse:
         resolved_mcp_servers = mcp_servers or []
@@ -142,18 +143,12 @@ class ClientSideConnection:
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self,
-        additional_directories: list[str] | None = None,
-        cursor: str | None = None,
-        cwd: str | None = None,
-        **kwargs: Any,
+        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
     ) -> ListSessionsResponse:
         return await request_model_from_dict(
             self._conn,
             AGENT_METHODS["session_list"],
-            ListSessionsRequest(
-                additional_directories=additional_directories, cursor=cursor, cwd=cwd, field_meta=kwargs or None
-            ),
+            ListSessionsRequest(cursor=cursor, cwd=cwd, field_meta=kwargs or None),
             ListSessionsResponse,
         )
 
@@ -228,7 +223,7 @@ class ClientSideConnection:
         cwd: str,
         session_id: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse:
         return await request_model(
@@ -250,7 +245,7 @@ class ClientSideConnection:
         cwd: str,
         session_id: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse:
         return await request_model(

@@ -1,5 +1,5 @@
 # Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/v0.12.2
+# Schema ref: refs/tags/v0.13.3
 AGENT_METHODS = {
     "authenticate": "authenticate",
     "document_did_change": "document/didChange",
@@ -9,6 +9,7 @@ AGENT_METHODS = {
     "document_did_save": "document/didSave",
     "initialize": "initialize",
     "logout": "logout",
+    "mcp_message": "mcp/message",
     "nes_accept": "nes/accept",
     "nes_close": "nes/close",
     "nes_reject": "nes/reject",
@@ -19,6 +20,7 @@ AGENT_METHODS = {
     "providers_set": "providers/set",
     "session_cancel": "session/cancel",
     "session_close": "session/close",
+    "session_delete": "session/delete",
     "session_fork": "session/fork",
     "session_list": "session/list",
     "session_load": "session/load",
@@ -34,6 +36,9 @@ CLIENT_METHODS = {
     "elicitation_create": "elicitation/create",
     "fs_read_text_file": "fs/read_text_file",
     "fs_write_text_file": "fs/write_text_file",
+    "mcp_connect": "mcp/connect",
+    "mcp_disconnect": "mcp/disconnect",
+    "mcp_message": "mcp/message",
     "session_request_permission": "session/request_permission",
     "session_update": "session/update",
     "terminal_create": "terminal/create",

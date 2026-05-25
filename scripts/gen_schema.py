@@ -49,6 +49,7 @@ RENAME_MAP: dict[str, str] = {
     "ContentBlock5": "EmbeddedResourceContentBlock",
     "McpServer1": "HttpMcpServer",
     "McpServer2": "SseMcpServer",
+    "McpServer3": "AcpMcpServer",
     "RequestPermissionOutcome1": "DeniedOutcome",
     "RequestPermissionOutcome2": "AllowedOutcome",
     "AuthMethod1": "EnvVarAuthMethod",

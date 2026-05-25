@@ -3,6 +3,7 @@ from __future__ import annotations
 from typing import Any, Protocol
 
 from .schema import (
+    AcpMcpServer,
     AgentMessageChunk,
     AgentPlanUpdate,
     AgentThoughtChunk,
@@ -160,7 +161,7 @@ class Agent(Protocol):
         self,
         cwd: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> NewSessionResponse: ...
 
@@ -170,17 +171,13 @@ class Agent(Protocol):
         cwd: str,
         session_id: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse | None: ...
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self,
-        additional_directories: list[str] | None = None,
-        cursor: str | None = None,
-        cwd: str | None = None,
-        **kwargs: Any,
+        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
     ) -> ListSessionsResponse: ...
 
     @param_model(SetSessionModeRequest)
@@ -220,7 +217,7 @@ class Agent(Protocol):
         cwd: str,
         session_id: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse: ...
 
@@ -230,7 +227,7 @@ class Agent(Protocol):
         cwd: str,
         session_id: str,
         additional_directories: list[str] | None = None,
-        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse: ...
 

@@ -33,7 +33,7 @@
       "x-side": "agent"
     },
     "AgentAuthCapabilities": {
-      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthentication-related capabilities supported by the agent.",
+      "description": "Authentication-related capabilities supported by the agent.",
       "properties": {
         "_meta": {
           "additionalProperties": true,
@@ -75,7 +75,7 @@
             }
           ],
           "default": {},
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthentication-related capabilities supported by the agent."
+          "description": "Authentication-related capabilities supported by the agent."
         },
         "loadSession": {
           "default": false,
@@ -89,6 +89,7 @@
             }
           ],
           "default": {
+            "acp": false,
             "http": false,
             "sse": false
           },
@@ -181,6 +182,15 @@
                 {
                   "allOf": [
                     {
+                      "$ref": "#/$defs/MessageMcpNotification"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nReceives an MCP-over-ACP notification.",
+                  "title": "MessageMcpNotification"
+                },
+                {
+                  "allOf": [
+                    {
                       "$ref": "#/$defs/ExtNotification"
                     }
                   ],
@@ -188,7 +198,7 @@
                   "title": "ExtNotification"
                 }
               ],
-              "description": "All possible notifications that an agent can send to a client.\n\nThis enum is used internally for routing RPC notifications. You typically won't need\nto use this directly - use the notification methods on the [`Client`] trait instead.\n\nNotifications do not expect a response."
+              "description": "All possible notifications that an agent can send to a client.\n\nThis enum is used internally for routing RPC notifications. You typically won't need\nto use this directly.\n\nNotifications do not expect a response."
             },
             {
               "type": "null"
@@ -298,6 +308,33 @@
                 {
                   "allOf": [
                     {
+                      "$ref": "#/$defs/ConnectMcpRequest"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nOpens an MCP-over-ACP connection.",
+                  "title": "ConnectMcpRequest"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/MessageMcpRequest"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nExchanges an MCP-over-ACP message.",
+                  "title": "MessageMcpRequest"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/DisconnectMcpRequest"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nCloses an MCP-over-ACP connection.",
+                  "title": "DisconnectMcpRequest"
+                },
+                {
+                  "allOf": [
+                    {
                       "$ref": "#/$defs/ExtRequest"
                     }
                   ],
@@ -305,7 +342,7 @@
                   "title": "ExtMethodRequest"
                 }
               ],
-              "description": "All possible requests that an agent can send to a client.\n\nThis enum is used internally for routing RPC requests. You typically won't need\nto use this directly - instead, use the methods on the [`Client`] trait.\n\nThis enum encompasses all method calls from agent to client."
+              "description": "All possible requests that an agent can send to a client.\n\nThis enum is used internally for routing RPC requests. You typically won't need\nto use this directly.\n\nThis enum encompasses all method calls from agent to client."
             },
             {
               "type": "null"
@@ -356,18 +393,18 @@
                 {
                   "allOf": [
                     {
-                      "$ref": "#/$defs/SetProvidersResponse"
+                      "$ref": "#/$defs/SetProviderResponse"
                     }
                   ],
-                  "title": "SetProvidersResponse"
+                  "title": "SetProviderResponse"
                 },
                 {
                   "allOf": [
                     {
-                      "$ref": "#/$defs/DisableProvidersResponse"
+                      "$ref": "#/$defs/DisableProviderResponse"
                     }
                   ],
-                  "title": "DisableProvidersResponse"
+                  "title": "DisableProviderResponse"
                 },
                 {
                   "allOf": [
@@ -400,6 +437,14 @@
                     }
                   ],
                   "title": "ListSessionsResponse"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/DeleteSessionResponse"
+                    }
+                  ],
+                  "title": "DeleteSessionResponse"
                 },
                 {
                   "allOf": [
@@ -488,6 +533,14 @@
                     }
                   ],
                   "title": "ExtMethodResponse"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/MessageMcpResponse"
+                    }
+                  ],
+                  "title": "MessageMcpResponse"
                 }
               ],
               "description": "All possible responses that an agent can send to a client.\n\nThis enum is used internally for routing RPC responses. You typically won't need\nto use this directly - the responses are handled automatically by the connection.\n\nThese are responses to the corresponding `ClientRequest` variants."
@@ -1251,6 +1304,15 @@
                 {
                   "allOf": [
                     {
+                      "$ref": "#/$defs/MessageMcpNotification"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nSends an MCP-over-ACP notification.",
+                  "title": "MessageMcpNotification"
+                },
+                {
+                  "allOf": [
+                    {
                       "$ref": "#/$defs/ExtNotification"
                     }
                   ],
@@ -1258,7 +1320,7 @@
                   "title": "ExtNotification"
                 }
               ],
-              "description": "All possible notifications that a client can send to an agent.\n\nThis enum is used internally for routing RPC notifications. You typically won't need\nto use this directly - use the notification methods on the [`Agent`] trait instead.\n\nNotifications do not expect a response."
+              "description": "All possible notifications that a client can send to an agent.\n\nThis enum is used internally for routing RPC notifications. You typically won't need\nto use this directly.\n\nNotifications do not expect a response."
             },
             {
               "type": "null"
@@ -1314,20 +1376,20 @@
                 {
                   "allOf": [
                     {
-                      "$ref": "#/$defs/SetProvidersRequest"
+                      "$ref": "#/$defs/SetProviderRequest"
                     }
                   ],
                   "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nReplaces the configuration for a provider.",
-                  "title": "SetProvidersRequest"
+                  "title": "SetProviderRequest"
                 },
                 {
                   "allOf": [
                     {
-                      "$ref": "#/$defs/DisableProvidersRequest"
+                      "$ref": "#/$defs/DisableProviderRequest"
                     }
                   ],
                   "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nDisables a provider.",
-                  "title": "DisableProvidersRequest"
+                  "title": "DisableProviderRequest"
                 },
                 {
                   "allOf": [
@@ -1335,7 +1397,7 @@
                       "$ref": "#/$defs/LogoutRequest"
                     }
                   ],
-                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nLogs out of the current authenticated state.\n\nAfter a successful logout, all new sessions will require authentication.\nThere is no guarantee about the behavior of already running sessions.",
+                  "description": "Logs out of the current authenticated state.\n\nAfter a successful logout, all new sessions will require authentication.\nThere is no guarantee about the behavior of already running sessions.",
                   "title": "LogoutRequest"
                 },
                 {
@@ -1364,6 +1426,15 @@
                   ],
                   "description": "Lists existing sessions known to the agent.\n\nThis method is only available if the agent advertises the `sessionCapabilities.list` capability.\n\nThe agent should return metadata about sessions with optional filtering and pagination support.",
                   "title": "ListSessionsRequest"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/DeleteSessionRequest"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nDeletes an existing session from `session/list`.\n\nThis method is only available if the agent advertises the `sessionCapabilities.delete` capability.",
+                  "title": "DeleteSessionRequest"
                 },
                 {
                   "allOf": [
@@ -1458,6 +1529,15 @@
                 {
                   "allOf": [
                     {
+                      "$ref": "#/$defs/MessageMcpRequest"
+                    }
+                  ],
+                  "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nExchanges an MCP-over-ACP message.",
+                  "title": "MessageMcpRequest"
+                },
+                {
+                  "allOf": [
+                    {
                       "$ref": "#/$defs/ExtRequest"
                     }
                   ],
@@ -1465,7 +1545,7 @@
                   "title": "ExtMethodRequest"
                 }
               ],
-              "description": "All possible requests that a client can send to an agent.\n\nThis enum is used internally for routing RPC requests. You typically won't need\nto use this directly - instead, use the methods on the [`Agent`] trait.\n\nThis enum encompasses all method calls from client to agent."
+              "description": "All possible requests that a client can send to an agent.\n\nThis enum is used internally for routing RPC requests. You typically won't need\nto use this directly.\n\nThis enum encompasses all method calls from client to agent."
             },
             {
               "type": "null"
@@ -1564,10 +1644,34 @@
                 {
                   "allOf": [
                     {
+                      "$ref": "#/$defs/ConnectMcpResponse"
+                    }
+                  ],
+                  "title": "ConnectMcpResponse"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/DisconnectMcpResponse"
+                    }
+                  ],
+                  "title": "DisconnectMcpResponse"
+                },
+                {
+                  "allOf": [
+                    {
                       "$ref": "#/$defs/ExtResponse"
                     }
                   ],
                   "title": "ExtMethodResponse"
+                },
+                {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/MessageMcpResponse"
+                    }
+                  ],
+                  "title": "MessageMcpResponse"
                 }
               ],
               "description": "All possible responses that a client can send to an agent.\n\nThis enum is used internally for routing RPC responses. You typically won't need\nto use this directly - the responses are handled automatically by the connection.\n\nThese are responses to the corresponding `AgentRequest` variants."
@@ -1735,6 +1839,60 @@
         "configOptions"
       ],
       "type": "object"
+    },
+    "ConnectMcpRequest": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for `mcp/connect`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "acpId": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/McpServerAcpId"
+            }
+          ],
+          "description": "The ACP MCP server ID that was provided by the component declaring the MCP server."
+        }
+      },
+      "required": [
+        "acpId"
+      ],
+      "type": "object",
+      "x-method": "mcp/connect",
+      "x-side": "client"
+    },
+    "ConnectMcpResponse": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse to `mcp/connect`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "connectionId": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/McpConnectionId"
+            }
+          ],
+          "description": "The unique identifier for this MCP-over-ACP connection."
+        }
+      },
+      "required": [
+        "connectionId"
+      ],
+      "type": "object",
+      "x-method": "mcp/connect",
+      "x-side": "client"
     },
     "Content": {
       "description": "Standard content block (text, images, resources).",
@@ -2149,6 +2307,49 @@
       ],
       "type": "object"
     },
+    "DeleteSessionRequest": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for deleting an existing session from `session/list`.\n\nOnly available if the Agent supports the `sessionCapabilities.delete` capability.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "sessionId": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/SessionId"
+            }
+          ],
+          "description": "The ID of the session to delete."
+        }
+      },
+      "required": [
+        "sessionId"
+      ],
+      "type": "object",
+      "x-method": "session/delete",
+      "x-side": "agent"
+    },
+    "DeleteSessionResponse": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse from deleting a session.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "x-method": "session/delete",
+      "x-side": "agent"
+    },
     "DidChangeDocumentNotification": {
       "description": "Notification sent when a file is edited.",
       "properties": {
@@ -2396,7 +2597,7 @@
       ],
       "type": "object"
     },
-    "DisableProvidersRequest": {
+    "DisableProviderRequest": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for `providers/disable`.",
       "properties": {
         "_meta": {
@@ -2419,7 +2620,7 @@
       "x-method": "providers/disable",
       "x-side": "agent"
     },
-    "DisableProvidersResponse": {
+    "DisableProviderResponse": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse to `providers/disable`.",
       "properties": {
         "_meta": {
@@ -2434,6 +2635,49 @@
       "type": "object",
       "x-method": "providers/disable",
       "x-side": "agent"
+    },
+    "DisconnectMcpRequest": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for `mcp/disconnect`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "connectionId": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/McpConnectionId"
+            }
+          ],
+          "description": "The MCP-over-ACP connection to close."
+        }
+      },
+      "required": [
+        "connectionId"
+      ],
+      "type": "object",
+      "x-method": "mcp/disconnect",
+      "x-side": "client"
+    },
+    "DisconnectMcpResponse": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse to `mcp/disconnect`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "type": "object",
+      "x-method": "mcp/disconnect",
+      "x-side": "client"
     },
     "ElicitationAcceptAction": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nThe user accepted the elicitation and provided content.",
@@ -3346,6 +3590,7 @@
             "auth": {},
             "loadSession": false,
             "mcpCapabilities": {
+              "acp": false,
               "http": false,
               "sse": false
             },
@@ -3538,13 +3783,6 @@
             "null"
           ]
         },
-        "additionalDirectories": {
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nFilter sessions by the exact ordered additional workspace roots. Each path must be absolute.\n\nThis filter applies only when the field is present and non-empty. When\nomitted or empty, no additional-root filter is applied.",
-          "items": {
-            "type": "string"
-          },
-          "type": "array"
-        },
         "cursor": {
           "description": "Opaque cursor token from a previous response's nextCursor field for cursor-based pagination",
           "type": [
@@ -3644,7 +3882,7 @@
           ]
         },
         "additionalDirectories": {
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the loaded\nsession.",
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the loaded\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
           "items": {
             "type": "string"
           },
@@ -3728,7 +3966,7 @@
       "x-side": "agent"
     },
     "LogoutCapabilities": {
-      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nLogout capabilities supported by the agent.\n\nBy supplying `{}` it means that the agent supports the logout method.",
+      "description": "Logout capabilities supported by the agent.\n\nBy supplying `{}` it means that the agent supports the logout method.",
       "properties": {
         "_meta": {
           "additionalProperties": true,
@@ -3742,7 +3980,7 @@
       "type": "object"
     },
     "LogoutRequest": {
-      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for the logout method.\n\nTerminates the current authenticated session.",
+      "description": "Request parameters for the logout method.\n\nTerminates the current authenticated session.",
       "properties": {
         "_meta": {
           "additionalProperties": true,
@@ -3758,7 +3996,7 @@
       "x-side": "agent"
     },
     "LogoutResponse": {
-      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse to the `logout` method.",
+      "description": "Response to the `logout` method.",
       "properties": {
         "_meta": {
           "additionalProperties": true,
@@ -3784,6 +4022,11 @@
             "null"
           ]
         },
+        "acp": {
+          "default": false,
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAgent supports [`McpServer::Acp`].",
+          "type": "boolean"
+        },
         "http": {
           "default": false,
           "description": "Agent supports [`McpServer::Http`].",
@@ -3796,6 +4039,10 @@
         }
       },
       "type": "object"
+    },
+    "McpConnectionId": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA unique identifier for an active MCP-over-ACP connection.",
+      "type": "string"
     },
     "McpServer": {
       "anyOf": [
@@ -3838,6 +4085,24 @@
         {
           "allOf": [
             {
+              "$ref": "#/$defs/McpServerAcp"
+            }
+          ],
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nACP transport configuration\n\nOnly available when the Agent capabilities indicate `mcp_capabilities.acp` is `true`.\nThe MCP server is provided by an ACP component and communicates over the ACP channel.",
+          "properties": {
+            "type": {
+              "const": "acp",
+              "type": "string"
+            }
+          },
+          "required": [
+            "type"
+          ],
+          "type": "object"
+        },
+        {
+          "allOf": [
+            {
               "$ref": "#/$defs/McpServerStdio"
             }
           ],
@@ -3846,6 +4111,40 @@
         }
       ],
       "description": "Configuration for connecting to an MCP (Model Context Protocol) server.\n\nMCP servers provide tools and context that the agent can use when\nprocessing prompts.\n\nSee protocol docs: [MCP Servers](https://agentclientprotocol.com/protocol/session-setup#mcp-servers)"
+    },
+    "McpServerAcp": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nACP transport configuration for MCP.\n\nThe MCP server is provided by an ACP component and communicates over the ACP channel\nusing `mcp/connect`, `mcp/message`, and `mcp/disconnect`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "id": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/McpServerAcpId"
+            }
+          ],
+          "description": "Unique identifier for this MCP server, generated by the component providing it.\n\nProviders MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible\non the same ACP connection."
+        },
+        "name": {
+          "description": "Human-readable name identifying this MCP server.",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "id"
+      ],
+      "type": "object"
+    },
+    "McpServerAcpId": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nUnique identifier for an MCP server using the ACP transport.\n\nThe value is opaque and generated by the ACP component providing the MCP server. It is\nused by `mcp/connect` to route connection requests back to the component that declared the\nserver.",
+      "type": "string"
     },
     "McpServerHttp": {
       "description": "HTTP transport configuration for MCP.",
@@ -3956,6 +4255,91 @@
         "env"
       ],
       "type": "object"
+    },
+    "MessageMcpNotification": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNotification parameters for `mcp/message`.\n\nThis is used when the wrapped MCP message is a notification and the outer JSON-RPC\nenvelope has no `id`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "connectionId": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/McpConnectionId"
+            }
+          ],
+          "description": "The MCP-over-ACP connection this message is sent on."
+        },
+        "method": {
+          "description": "The inner MCP method name.",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "description": "Optional inner MCP params.\n\nIf omitted or set to `null`, the inner MCP message has no params.",
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "connectionId",
+        "method"
+      ],
+      "type": "object",
+      "x-method": "mcp/message",
+      "x-side": "both"
+    },
+    "MessageMcpRequest": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for `mcp/message`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        },
+        "connectionId": {
+          "allOf": [
+            {
+              "$ref": "#/$defs/McpConnectionId"
+            }
+          ],
+          "description": "The MCP-over-ACP connection this message is sent on."
+        },
+        "method": {
+          "description": "The inner MCP method name.",
+          "type": "string"
+        },
+        "params": {
+          "additionalProperties": true,
+          "description": "Optional inner MCP params.\n\nIf omitted or set to `null`, the inner MCP message has no params.",
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "required": [
+        "connectionId",
+        "method"
+      ],
+      "type": "object",
+      "x-method": "mcp/message",
+      "x-side": "both"
+    },
+    "MessageMcpResponse": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse to `mcp/message`.\n\nThis is the inner MCP response result payload. Any JSON value is valid.",
+      "x-method": "mcp/message",
+      "x-side": "both"
     },
     "ModelId": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA unique identifier for a model.",
@@ -5884,7 +6268,7 @@
           "type": "string"
         }
       ],
-      "description": "JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+      "description": "JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
     },
     "RequestPermissionOutcome": {
       "description": "The outcome of a permission request.",
@@ -6067,7 +6451,7 @@
           ]
         },
         "additionalDirectories": {
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the resumed\nsession.",
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the resumed\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
           "items": {
             "type": "string"
           },
@@ -6183,7 +6567,7 @@
       "type": "object"
     },
     "SessionAdditionalDirectoriesCapabilities": {
-      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nCapabilities for additional session directories support.\n\nBy supplying `{}` it means that the agent supports the `additionalDirectories` field on\nsupported session lifecycle requests and `session/list`.",
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nCapabilities for additional session directories support.\n\nBy supplying `{}` it means that the agent supports the `additionalDirectories`\nfield on supported session lifecycle requests. Agents that also support\n`session/list` may return `SessionInfo.additionalDirectories` to report the\ncomplete ordered additional-root list associated with a listed session.",
       "properties": {
         "_meta": {
           "additionalProperties": true,
@@ -6216,7 +6600,7 @@
               "type": "null"
             }
           ],
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `additionalDirectories` on supported session lifecycle requests and `session/list`."
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session."
         },
         "close": {
           "anyOf": [
@@ -6228,6 +6612,17 @@
             }
           ],
           "description": "Whether the agent supports `session/close`."
+        },
+        "delete": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SessionDeleteCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/delete`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports deleting sessions from `session/list`."
         },
         "fork": {
           "anyOf": [
@@ -6540,6 +6935,20 @@
       "description": "Unique identifier for a session configuration option value.",
       "type": "string"
     },
+    "SessionDeleteCapabilities": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nCapabilities for the `session/delete` method.\n\nSupplying `{}` means the agent supports deleting sessions from `session/list`.",
+      "properties": {
+        "_meta": {
+          "additionalProperties": true,
+          "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+          "type": [
+            "object",
+            "null"
+          ]
+        }
+      },
+      "type": "object"
+    },
     "SessionForkCapabilities": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nCapabilities for the `session/fork` method.\n\nBy supplying `{}` it means that the agent supports forking of sessions.",
       "properties": {
@@ -6570,7 +6979,7 @@
           ]
         },
         "additionalDirectories": {
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthoritative ordered additional workspace roots for this session. Each path must be absolute.\n\nWhen omitted or empty, there are no additional roots for the session.",
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots reported for this session. Each path must be absolute.\n\nWhen present, this is the complete ordered additional-root list reported\nby the Agent. Omitted and empty values are equivalent: the response\nreports no additional roots.",
           "items": {
             "type": "string"
           },
@@ -7007,7 +7416,7 @@
         }
       ]
     },
-    "SetProvidersRequest": {
+    "SetProviderRequest": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nRequest parameters for `providers/set`.\n\nReplaces the full configuration for one provider id.",
       "properties": {
         "_meta": {
@@ -7051,7 +7460,7 @@
       "x-method": "providers/set",
       "x-side": "agent"
     },
-    "SetProvidersResponse": {
+    "SetProviderResponse": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nResponse to `providers/set`.",
       "properties": {
         "_meta": {

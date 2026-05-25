@@ -1,5 +1,5 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/v0.12.2
+# Schema ref: refs/tags/v0.13.3
 
 from __future__ import annotations
 
@@ -346,6 +346,21 @@ class CreateTerminalResponse(BaseModel):
     ]
 
 
+class DeleteSessionResponse(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+
 class Diff(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -370,7 +385,7 @@ class Diff(BaseModel):
     path: Annotated[str, Field(description="The file path being modified.")]
 
 
-class DisableProvidersRequest(BaseModel):
+class DisableProviderRequest(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -387,7 +402,22 @@ class DisableProvidersRequest(BaseModel):
     id: Annotated[str, Field(description="Provider id to disable.")]
 
 
-class DisableProvidersResponse(BaseModel):
+class DisableProviderResponse(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+
+class DisconnectMcpResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -621,21 +651,6 @@ class ListSessionsRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Filter sessions by the exact ordered additional workspace roots. Each path must be absolute.
-    #
-    # This filter applies only when the field is present and non-empty. When
-    # omitted or empty, no additional-root filter is applied.
-    additional_directories: Annotated[
-        Optional[List[str]],
-        Field(
-            alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nFilter sessions by the exact ordered additional workspace roots. Each path must be absolute.\n\nThis filter applies only when the field is present and non-empty. When\nomitted or empty, no additional-root filter is applied.",
-        ),
-    ] = None
     # Opaque cursor token from a previous response's nextCursor field for cursor-based pagination
     cursor: Annotated[
         Optional[str],
@@ -708,6 +723,17 @@ class McpCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Agent supports [`McpServer::Acp`].
+    acp: Annotated[
+        Optional[bool],
+        Field(
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAgent supports [`McpServer::Acp`]."
+        ),
+    ] = False
     # Agent supports [`McpServer::Http`].
     http: Annotated[Optional[bool], Field(description="Agent supports [`McpServer::Http`].")] = False
     # Agent supports [`McpServer::Sse`].
@@ -789,6 +815,74 @@ class McpServerStdio(BaseModel):
     ]
     # Human-readable name identifying this MCP server.
     name: Annotated[str, Field(description="Human-readable name identifying this MCP server.")]
+
+
+class MessageMcpNotification(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The MCP-over-ACP connection this message is sent on.
+    connection_id: Annotated[
+        str,
+        Field(
+            alias="connectionId",
+            description="The MCP-over-ACP connection this message is sent on.",
+        ),
+    ]
+    # The inner MCP method name.
+    method: Annotated[str, Field(description="The inner MCP method name.")]
+    # Optional inner MCP params.
+    #
+    # If omitted or set to `null`, the inner MCP message has no params.
+    params: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            description="Optional inner MCP params.\n\nIf omitted or set to `null`, the inner MCP message has no params."
+        ),
+    ] = None
+
+
+class MessageMcpRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The MCP-over-ACP connection this message is sent on.
+    connection_id: Annotated[
+        str,
+        Field(
+            alias="connectionId",
+            description="The MCP-over-ACP connection this message is sent on.",
+        ),
+    ]
+    # The inner MCP method name.
+    method: Annotated[str, Field(description="The inner MCP method name.")]
+    # Optional inner MCP params.
+    #
+    # If omitted or set to `null`, the inner MCP message has no params.
+    params: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            description="Optional inner MCP params.\n\nIf omitted or set to `null`, the inner MCP message has no params."
+        ),
+    ] = None
 
 
 class ModelInfo(BaseModel):
@@ -1331,6 +1425,21 @@ class SessionConfigBoolean(BaseModel):
     ]
 
 
+class SessionDeleteCapabilities(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+
 class SessionForkCapabilities(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -1363,14 +1472,16 @@ class SessionInfo(BaseModel):
     #
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
-    # Authoritative ordered additional workspace roots for this session. Each path must be absolute.
+    # Additional workspace roots reported for this session. Each path must be absolute.
     #
-    # When omitted or empty, there are no additional roots for the session.
+    # When present, this is the complete ordered additional-root list reported
+    # by the Agent. Omitted and empty values are equivalent: the response
+    # reports no additional roots.
     additional_directories: Annotated[
         Optional[List[str]],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthoritative ordered additional workspace roots for this session. Each path must be absolute.\n\nWhen omitted or empty, there are no additional roots for the session.",
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots reported for this session. Each path must be absolute.\n\nWhen present, this is the complete ordered additional-root list reported\nby the Agent. Omitted and empty values are equivalent: the response\nreports no additional roots.",
         ),
     ] = None
     # The working directory for this session. Must be an absolute path.
@@ -1479,7 +1590,7 @@ class SessionInfoUpdate(_SessionInfoUpdate):
     session_update: Annotated[Literal["session_info_update"], Field(alias="sessionUpdate")]
 
 
-class SetProvidersRequest(BaseModel):
+class SetProviderRequest(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -1514,7 +1625,7 @@ class SetProvidersRequest(BaseModel):
     id: Annotated[str, Field(description="Provider id to configure.")]
 
 
-class SetProvidersResponse(BaseModel):
+class SetProviderResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -2295,6 +2406,52 @@ class CompleteElicitationNotification(BaseModel):
     ]
 
 
+class ConnectMcpRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The ACP MCP server ID that was provided by the component declaring the MCP server.
+    acp_id: Annotated[
+        str,
+        Field(
+            alias="acpId",
+            description="The ACP MCP server ID that was provided by the component declaring the MCP server.",
+        ),
+    ]
+
+
+class ConnectMcpResponse(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The unique identifier for this MCP-over-ACP connection.
+    connection_id: Annotated[
+        str,
+        Field(
+            alias="connectionId",
+            description="The unique identifier for this MCP-over-ACP connection.",
+        ),
+    ]
+
+
 class AudioContentBlock(AudioContent):
     type: Literal["audio"]
 
@@ -2377,6 +2534,23 @@ class _CurrentModeUpdate(BaseModel):
     ] = None
     # The ID of the current mode
     current_mode_id: Annotated[str, Field(alias="currentModeId", description="The ID of the current mode")]
+
+
+class DeleteSessionRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The ID of the session to delete.
+    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to delete.")]
 
 
 class DidChangeDocumentNotification(BaseModel):
@@ -2518,6 +2692,26 @@ class DidSaveDocumentNotification(BaseModel):
     ]
     # The URI of the saved document.
     uri: Annotated[str, Field(description="The URI of the saved document.")]
+
+
+class DisconnectMcpRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The MCP-over-ACP connection to close.
+    connection_id: Annotated[
+        str,
+        Field(alias="connectionId", description="The MCP-over-ACP connection to close."),
+    ]
 
 
 class ElicitationCapabilities(BaseModel):
@@ -2735,6 +2929,33 @@ class HttpMcpServer(McpServerHttp):
 
 class SseMcpServer(McpServerSse):
     type: Literal["sse"]
+
+
+class McpServerAcp(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # Unique identifier for this MCP server, generated by the component providing it.
+    #
+    # Providers MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible
+    # on the same ACP connection.
+    id: Annotated[
+        str,
+        Field(
+            description="Unique identifier for this MCP server, generated by the component providing it.\n\nProviders MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible\non the same ACP connection."
+        ),
+    ]
+    # Human-readable name identifying this MCP server.
+    name: Annotated[str, Field(description="Human-readable name identifying this MCP server.")]
 
 
 class MultiSelectPropertySchema(BaseModel):
@@ -3004,50 +3225,6 @@ class NesUserAction(BaseModel):
     uri: Annotated[str, Field(description="The URI of the file where the action occurred.")]
 
 
-class NewSessionRequest(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Additional workspace roots for this session. Each path must be absolute.
-    #
-    # These expand the session's filesystem scope without changing `cwd`, which
-    # remains the base for relative paths. When omitted or empty, no
-    # additional roots are activated for the new session.
-    additional_directories: Annotated[
-        Optional[List[str]],
-        Field(
-            alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots for this session. Each path must be absolute.\n\nThese expand the session's filesystem scope without changing `cwd`, which\nremains the base for relative paths. When omitted or empty, no\nadditional roots are activated for the new session.",
-        ),
-    ] = None
-    # The working directory for this session. Must be an absolute path.
-    cwd: Annotated[
-        str,
-        Field(description="The working directory for this session. Must be an absolute path."),
-    ]
-    # List of MCP (Model Context Protocol) servers the agent should connect to.
-    mcp_servers: Annotated[
-        List[Union[HttpMcpServer, SseMcpServer, McpServerStdio]],
-        Field(
-            alias="mcpServers",
-            description="List of MCP (Model Context Protocol) servers the agent should connect to.",
-        ),
-    ]
-
-
 class PermissionOption(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3273,49 +3450,6 @@ class ResourceLink(BaseModel):
     uri: str
 
 
-class ResumeSessionRequest(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Additional workspace roots to activate for this session. Each path must be absolute.
-    #
-    # When omitted or empty, no additional roots are activated. When non-empty,
-    # this is the complete resulting additional-root list for the resumed
-    # session.
-    additional_directories: Annotated[
-        Optional[List[str]],
-        Field(
-            alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the resumed\nsession.",
-        ),
-    ] = None
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
-    # List of MCP servers to connect to for this session.
-    mcp_servers: Annotated[
-        Optional[List[Union[HttpMcpServer, SseMcpServer, McpServerStdio]]],
-        Field(
-            alias="mcpServers",
-            description="List of MCP servers to connect to for this session.",
-        ),
-    ] = None
-    # The ID of the session to resume.
-    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to resume.")]
-
-
 class SessionCapabilities(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3333,18 +3467,36 @@ class SessionCapabilities(BaseModel):
     #
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
-    # Whether the agent supports `additionalDirectories` on supported session lifecycle requests and `session/list`.
+    # Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
+    #
+    # Agents that also support `session/list` may return
+    # `SessionInfo.additionalDirectories` to report the complete ordered
+    # additional-root list associated with a listed session.
     additional_directories: Annotated[
         Optional[SessionAdditionalDirectoriesCapabilities],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `additionalDirectories` on supported session lifecycle requests and `session/list`.",
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
         ),
     ] = None
     # Whether the agent supports `session/close`.
     close: Annotated[
         Optional[SessionCloseCapabilities],
         Field(description="Whether the agent supports `session/close`."),
+    ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Whether the agent supports `session/delete`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports deleting sessions from `session/list`.
+    delete: Annotated[
+        Optional[SessionDeleteCapabilities],
+        Field(
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/delete`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports deleting sessions from `session/list`."
+        ),
     ] = None
     # **UNSTABLE**
     #
@@ -3526,17 +3678,17 @@ class AgentErrorMessage(BaseModel):
     error: Error
     # JSON RPC Request Id
     #
-    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]
+    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \[1\] and Numbers SHOULD NOT contain fractional parts \[2\]
     #
     # The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.
     #
-    # [1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
+    # \[1\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
     #
-    # [2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
+    # \[2\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
     id: Annotated[
         Optional[Union[int, str]],
         Field(
-            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
         ),
     ] = None
 
@@ -3676,6 +3828,7 @@ class ClientNotification(BaseModel):
             DidFocusDocumentNotification,
             AcceptNesNotification,
             RejectNesNotification,
+            MessageMcpNotification,
             Any,
         ]
     ] = None
@@ -3684,17 +3837,17 @@ class ClientNotification(BaseModel):
 class ClientResponseMessage(BaseModel):
     # JSON RPC Request Id
     #
-    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]
+    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \[1\] and Numbers SHOULD NOT contain fractional parts \[2\]
     #
     # The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.
     #
-    # [1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
+    # \[1\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
     #
-    # [2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
+    # \[2\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
     id: Annotated[
         Optional[Union[int, str]],
         Field(
-            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
         ),
     ] = None
     # All possible responses that a client can send to an agent.
@@ -3713,6 +3866,8 @@ class ClientResponseMessage(BaseModel):
             ReleaseTerminalResponse,
             WaitForTerminalExitResponse,
             KillTerminalResponse,
+            ConnectMcpResponse,
+            DisconnectMcpResponse,
             Union[
                 AcceptElicitationResponse,
                 DeclineElicitationResponse,
@@ -3730,17 +3885,17 @@ class ClientErrorMessage(BaseModel):
     error: Error
     # JSON RPC Request Id
     #
-    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]
+    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \[1\] and Numbers SHOULD NOT contain fractional parts \[2\]
     #
     # The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.
     #
-    # [1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
+    # \[1\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
     #
-    # [2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
+    # \[2\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
     id: Annotated[
         Optional[Union[int, str]],
         Field(
-            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
         ),
     ] = None
 
@@ -3837,49 +3992,6 @@ class EmbeddedResource(BaseModel):
     ]
 
 
-class ForkSessionRequest(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Additional workspace roots to activate for this session. Each path must be absolute.
-    #
-    # When omitted or empty, no additional roots are activated. When non-empty,
-    # this is the complete resulting additional-root list for the forked
-    # session.
-    additional_directories: Annotated[
-        Optional[List[str]],
-        Field(
-            alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the forked\nsession.",
-        ),
-    ] = None
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
-    # List of MCP servers to connect to for this session.
-    mcp_servers: Annotated[
-        Optional[List[Union[HttpMcpServer, SseMcpServer, McpServerStdio]]],
-        Field(
-            alias="mcpServers",
-            description="List of MCP servers to connect to for this session.",
-        ),
-    ] = None
-    # The ID of the session to fork.
-    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to fork.")]
-
-
 class InitializeRequest(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3937,47 +4049,8 @@ class InitializeRequest(BaseModel):
             return 1
 
 
-class LoadSessionRequest(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Additional workspace roots to activate for this session. Each path must be absolute.
-    #
-    # When omitted or empty, no additional roots are activated. When non-empty,
-    # this is the complete resulting additional-root list for the loaded
-    # session.
-    additional_directories: Annotated[
-        Optional[List[str]],
-        Field(
-            alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the loaded\nsession.",
-        ),
-    ] = None
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
-    # List of MCP servers to connect to for this session.
-    mcp_servers: Annotated[
-        List[Union[HttpMcpServer, SseMcpServer, McpServerStdio]],
-        Field(
-            alias="mcpServers",
-            description="List of MCP servers to connect to for this session.",
-        ),
-    ]
-    # The ID of the session to load.
-    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to load.")]
+class AcpMcpServer(McpServerAcp):
+    type: Literal["acp"]
 
 
 class NesCapabilities(BaseModel):
@@ -4074,6 +4147,50 @@ class NesEditSuggestionVariant(NesEditSuggestion):
     kind: Literal["edit"]
 
 
+class NewSessionRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Additional workspace roots for this session. Each path must be absolute.
+    #
+    # These expand the session's filesystem scope without changing `cwd`, which
+    # remains the base for relative paths. When omitted or empty, no
+    # additional roots are activated for the new session.
+    additional_directories: Annotated[
+        Optional[List[str]],
+        Field(
+            alias="additionalDirectories",
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots for this session. Each path must be absolute.\n\nThese expand the session's filesystem scope without changing `cwd`, which\nremains the base for relative paths. When omitted or empty, no\nadditional roots are activated for the new session.",
+        ),
+    ] = None
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
+    # List of MCP (Model Context Protocol) servers the agent should connect to.
+    mcp_servers: Annotated[
+        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]],
+        Field(
+            alias="mcpServers",
+            description="List of MCP (Model Context Protocol) servers the agent should connect to.",
+        ),
+    ]
+
+
 class Plan(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -4097,6 +4214,50 @@ class Plan(BaseModel):
             description="The list of tasks to be accomplished.\n\nWhen updating a plan, the agent must send a complete list of all entries\nwith their current status. The client replaces the entire plan with each update."
         ),
     ]
+
+
+class ResumeSessionRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Additional workspace roots to activate for this session. Each path must be absolute.
+    #
+    # When omitted or empty, no additional roots are activated. When non-empty,
+    # this is the complete resulting additional-root list for the resumed
+    # session. It may differ from any previously used or reported list as long as
+    # the request `cwd` matches the session's `cwd`.
+    additional_directories: Annotated[
+        Optional[List[str]],
+        Field(
+            alias="additionalDirectories",
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the resumed\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
+        ),
+    ] = None
+    # The working directory for this session.
+    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # List of MCP servers to connect to for this session.
+    mcp_servers: Annotated[
+        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]],
+        Field(
+            alias="mcpServers",
+            description="List of MCP servers to connect to for this session.",
+        ),
+    ] = None
+    # The ID of the session to resume.
+    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to resume.")]
 
 
 class SessionConfigSelectGroup(BaseModel):
@@ -4206,16 +4367,10 @@ class AgentCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Authentication-related capabilities supported by the agent.
     auth: Annotated[
         Optional[AgentAuthCapabilities],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthentication-related capabilities supported by the agent."
-        ),
+        Field(description="Authentication-related capabilities supported by the agent."),
     ] = {}
     # Whether the agent supports `session/load`.
     load_session: Annotated[
@@ -4360,6 +4515,49 @@ class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, Elicitatio
     ]
 
 
+class ForkSessionRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Additional workspace roots to activate for this session. Each path must be absolute.
+    #
+    # When omitted or empty, no additional roots are activated. When non-empty,
+    # this is the complete resulting additional-root list for the forked
+    # session.
+    additional_directories: Annotated[
+        Optional[List[str]],
+        Field(
+            alias="additionalDirectories",
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the forked\nsession.",
+        ),
+    ] = None
+    # The working directory for this session.
+    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # List of MCP servers to connect to for this session.
+    mcp_servers: Annotated[
+        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]],
+        Field(
+            alias="mcpServers",
+            description="List of MCP servers to connect to for this session.",
+        ),
+    ] = None
+    # The ID of the session to fork.
+    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to fork.")]
+
+
 class InitializeResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -4412,6 +4610,50 @@ class InitializeResponse(BaseModel):
             le=65535,
         ),
     ]
+
+
+class LoadSessionRequest(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Additional workspace roots to activate for this session. Each path must be absolute.
+    #
+    # When omitted or empty, no additional roots are activated. When non-empty,
+    # this is the complete resulting additional-root list for the loaded
+    # session. It may differ from any previously used or reported list as long as
+    # the request `cwd` matches the session's `cwd`.
+    additional_directories: Annotated[
+        Optional[List[str]],
+        Field(
+            alias="additionalDirectories",
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the loaded\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
+        ),
+    ] = None
+    # The working directory for this session.
+    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # List of MCP servers to connect to for this session.
+    mcp_servers: Annotated[
+        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]],
+        Field(
+            alias="mcpServers",
+            description="List of MCP servers to connect to for this session.",
+        ),
+    ]
+    # The ID of the session to load.
+    session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to load.")]
 
 
 class PromptRequest(BaseModel):
@@ -4505,17 +4747,17 @@ class AgentThoughtChunk(ContentChunk):
 class ClientRequest(BaseModel):
     # JSON RPC Request Id
     #
-    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]
+    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \[1\] and Numbers SHOULD NOT contain fractional parts \[2\]
     #
     # The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.
     #
-    # [1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
+    # \[1\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
     #
-    # [2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
+    # \[2\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
     id: Annotated[
         Optional[Union[int, str]],
         Field(
-            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
         ),
     ] = None
     method: str
@@ -4524,12 +4766,13 @@ class ClientRequest(BaseModel):
             InitializeRequest,
             AuthenticateRequest,
             ListProvidersRequest,
-            SetProvidersRequest,
-            DisableProvidersRequest,
+            SetProviderRequest,
+            DisableProviderRequest,
             LogoutRequest,
             NewSessionRequest,
             LoadSessionRequest,
             ListSessionsRequest,
+            DeleteSessionRequest,
             ForkSessionRequest,
             ResumeSessionRequest,
             CloseSessionRequest,
@@ -4539,6 +4782,7 @@ class ClientRequest(BaseModel):
             StartNesRequest,
             SuggestNesRequest,
             CloseNesRequest,
+            MessageMcpRequest,
             Union[SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest],
             Any,
         ]
@@ -4998,17 +5242,17 @@ class ToolCall(BaseModel):
 class AgentRequest(BaseModel):
     # JSON RPC Request Id
     #
-    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]
+    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \[1\] and Numbers SHOULD NOT contain fractional parts \[2\]
     #
     # The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.
     #
-    # [1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
+    # \[1\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
     #
-    # [2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
+    # \[2\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
     id: Annotated[
         Optional[Union[int, str]],
         Field(
-            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
         ),
     ] = None
     method: str
@@ -5022,6 +5266,9 @@ class AgentRequest(BaseModel):
             ReleaseTerminalRequest,
             WaitForTerminalExitRequest,
             KillTerminalRequest,
+            ConnectMcpRequest,
+            MessageMcpRequest,
+            DisconnectMcpRequest,
             Union[CreateFormElicitationRequest, CreateUrlElicitationRequest],
             Any,
         ]
@@ -5031,17 +5278,17 @@ class AgentRequest(BaseModel):
 class AgentResponseMessage(BaseModel):
     # JSON RPC Request Id
     #
-    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]
+    # An identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \[1\] and Numbers SHOULD NOT contain fractional parts \[2\]
     #
     # The Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.
     #
-    # [1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
+    # \[1\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.
     #
-    # [2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
+    # \[2\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions.
     id: Annotated[
         Optional[Union[int, str]],
         Field(
-            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null [1] and Numbers SHOULD NOT contain fractional parts [2]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n[1] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n[2] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
+            description="JSON RPC Request Id\n\nAn identifier established by the Client that MUST contain a String, Number, or NULL value if included. If it is not included it is assumed to be a notification. The value SHOULD normally not be Null \\[1\\] and Numbers SHOULD NOT contain fractional parts \\[2\\]\n\nThe Server MUST reply with the same value in the Response object if included. This member is used to correlate the context between the two objects.\n\n\\[1\\] The use of Null as a value for the id member in a Request object is discouraged, because this specification uses a value of Null for Responses with an unknown id. Also, because JSON-RPC 1.0 uses an id value of Null for Notifications this could cause confusion in handling.\n\n\\[2\\] Fractional parts may be problematic, since many decimal fractions cannot be represented exactly as binary fractions."
         ),
     ] = None
     # All possible responses that an agent can send to a client.
@@ -5055,12 +5302,13 @@ class AgentResponseMessage(BaseModel):
             InitializeResponse,
             AuthenticateResponse,
             ListProvidersResponse,
-            SetProvidersResponse,
-            DisableProvidersResponse,
+            SetProviderResponse,
+            DisableProviderResponse,
             LogoutResponse,
             NewSessionResponse,
             LoadSessionResponse,
             ListSessionsResponse,
+            DeleteSessionResponse,
             ForkSessionResponse,
             ResumeSessionResponse,
             CloseSessionResponse,
@@ -5129,4 +5377,11 @@ class SessionNotification(BaseModel):
 
 class AgentNotification(BaseModel):
     method: str
-    params: Optional[Union[SessionNotification, CompleteElicitationNotification, Any]] = None
+    params: Optional[
+        Union[
+            SessionNotification,
+            CompleteElicitationNotification,
+            MessageMcpNotification,
+            Any,
+        ]
+    ] = None
