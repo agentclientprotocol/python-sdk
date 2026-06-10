@@ -58,6 +58,10 @@ class StreamEvent:
 StreamObserver = Callable[[StreamEvent], Awaitable[None] | None]
 
 
+class _OversizedLineSkipped(Exception):
+    """Raised after an oversized line has been discarded."""
+
+
 class Connection:
     """Minimal JSON-RPC 2.0 connection over newline-delimited JSON frames."""
 
@@ -153,7 +157,15 @@ class Connection:
     async def _receive_loop(self) -> None:
         try:
             while True:
-                line = await asyncio.wait_for(self._reader.readline(), timeout=self._receive_timeout)
+                try:
+                    line = await self._read_line()
+                except _OversizedLineSkipped:
+                    logging.warning(
+                        "Skipped oversized JSON-RPC frame that exceeded the StreamReader line limit. "
+                        "The connection will continue with subsequent frames. If large frames are expected, "
+                        "increase the StreamReader limit, for example via stdio_buffer_limit_bytes when using run_agent."
+                    )
+                    continue
                 if not line:
                     break
                 line = line.strip()
@@ -171,6 +183,36 @@ class Connection:
         except asyncio.TimeoutError:
             raise RequestError.internal_error({"details": "Agent timeout"}) from None
         self._disconnect()
+
+    async def _read_line(self) -> bytes:
+        try:
+            return await self._wait_for_reader(self._reader.readuntil(b"\n"))
+        except asyncio.IncompleteReadError as exc:
+            return exc.partial
+        except asyncio.LimitOverrunError as exc:
+            await self._discard_oversized_line(exc.consumed)
+            raise _OversizedLineSkipped from exc
+
+    async def _discard_oversized_line(self, consumed: int) -> None:
+        while True:
+            if consumed <= 0:
+                consumed = 1
+            if consumed > 0:
+                try:
+                    await self._wait_for_reader(self._reader.readexactly(consumed))
+                except asyncio.IncompleteReadError:
+                    return
+            try:
+                await self._wait_for_reader(self._reader.readuntil(b"\n"))
+            except asyncio.IncompleteReadError:
+                return
+            except asyncio.LimitOverrunError as exc:
+                consumed = exc.consumed
+            else:
+                return
+
+    async def _wait_for_reader(self, awaitable: Awaitable[bytes]) -> bytes:
+        return await asyncio.wait_for(awaitable, timeout=self._receive_timeout)
 
     async def _process_message(self, message: dict[str, Any]) -> None:
         method = message.get("method")

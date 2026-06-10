@@ -69,10 +69,10 @@ asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes=1024))
             [sys.executable, small_agent], input=large_msg, capture_output=True, text=True, timeout=2
         )
 
-        # Should have errors in stderr about the buffer limit
-        assert "Error" in result.stderr or result.returncode != 0, (
-            f"Expected error with small buffer, got: {result.stderr}"
-        )
+        assert result.returncode == 0
+        assert "LimitOverrunError" not in result.stderr
+        assert "Separator is found, but chunk is longer than limit" not in result.stderr
+        assert "oversized JSON-RPC frame" in result.stderr
 
         # Test 2: Large buffer (200KB) succeeds with large message (70KB)
         large_agent = os.path.join(tmpdir, "large_agent.py")
