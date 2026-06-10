@@ -12,7 +12,6 @@ from acp import (
     RequestPermissionResponse,
     SessionNotification,
     SetSessionConfigOptionResponse,
-    SetSessionModelResponse,
     SetSessionModeResponse,
     WriteTextFileResponse,
 )
@@ -28,7 +27,6 @@ from acp.schema import (
     RequestPermissionRequest,
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionSelectRequest,
-    SetSessionModelRequest,
     SetSessionModeRequest,
     WriteTextFileRequest,
 )
@@ -66,9 +64,6 @@ class LegacyAgent:
 
     async def setSessionMode(self, params: SetSessionModeRequest) -> SetSessionModeResponse | None:
         return SetSessionModeResponse()
-
-    async def setSessionModel(self, params: SetSessionModelRequest) -> SetSessionModelResponse | None:
-        return SetSessionModelResponse()
 
     async def setConfigOption(
         self, params: SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest

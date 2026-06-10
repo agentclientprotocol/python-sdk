@@ -1,5 +1,7 @@
 import ast
+import importlib.util
 import inspect
+import sys
 import typing as t
 from pathlib import Path
 
@@ -7,7 +9,21 @@ from pydantic import BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
-from acp import schema
+ROOT = Path(__file__).resolve().parents[1]
+SCHEMA_MODULE_PATH = ROOT / "src" / "acp" / "schema.py"
+
+
+def _load_schema_module() -> t.Any:
+    spec = importlib.util.spec_from_file_location("acp_schema_for_signature", SCHEMA_MODULE_PATH)
+    if spec is None or spec.loader is None:
+        raise RuntimeError(f"Unable to load schema module from {SCHEMA_MODULE_PATH}")
+    module = importlib.util.module_from_spec(spec)
+    sys.modules[spec.name] = module
+    spec.loader.exec_module(module)
+    return module
+
+
+schema = _load_schema_module()
 
 SIGNATURE_OPTIONAL_FIELDS: set[tuple[str, str]] = {
     ("LoadSessionRequest", "mcp_servers"),
@@ -116,7 +132,9 @@ class NodeTransformer(ast.NodeTransformer):
             self._add_schema_import(name)
             return ast.Name(id=name)
         elif (
-            inspect.isclass(annotation) and issubclass(annotation, BaseModel) and annotation.__module__ == "acp.schema"
+            inspect.isclass(annotation)
+            and issubclass(annotation, BaseModel)
+            and annotation.__module__ == schema.__name__
         ):
             self._add_schema_import(annotation.__name__)
             return ast.Name(id=annotation.__name__)
@@ -144,9 +162,8 @@ class NodeTransformer(ast.NodeTransformer):
 
 
 def gen_signature(source_dir: Path) -> None:
-    import importlib
-
-    importlib.reload(schema)  # Ensure schema is up to date
+    global schema
+    schema = _load_schema_module()
     for source_file in source_dir.rglob("*.py"):
         transformer = NodeTransformer()
         transformer.transform(source_file)

@@ -62,8 +62,6 @@ from .schema import (
     SessionNotification,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
-    SetSessionModelRequest,
-    SetSessionModelResponse,
     SetSessionModeRequest,
     SetSessionModeResponse,
     TerminalOutputRequest,
@@ -115,8 +113,6 @@ __all__ = [  # noqa: RUF022
     "SessionNotification",
     "SetSessionModeRequest",
     "SetSessionModeResponse",
-    "SetSessionModelRequest",
-    "SetSessionModelResponse",
     "SetSessionConfigOptionSelectRequest",
     "SetSessionConfigOptionResponse",
     # terminal types

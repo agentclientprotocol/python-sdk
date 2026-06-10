@@ -71,7 +71,7 @@ Or, if using `uv`:
       "args": [
         "run",
         "/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py"
-      ],
+      ]
     }
   }
 }
@@ -92,7 +92,6 @@ import asyncio
 import sys
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from acp import PROTOCOL_VERSION, spawn_agent_process, text_block
 from acp.interfaces import Client
@@ -116,7 +115,6 @@ async def main() -> None:
         await conn.prompt(
             session_id=session.session_id,
             prompt=[text_block("Hello from spawn!")],
-            message_id=str(uuid4()),
         )
 
 asyncio.run(main())
@@ -135,9 +133,9 @@ from acp import Agent, PromptResponse
 
 
 class MyAgent(Agent):
-    async def prompt(self, prompt, session_id, message_id=None, **kwargs) -> PromptResponse:
+    async def prompt(self, prompt, session_id, **kwargs) -> PromptResponse:
         # inspect prompt, stream updates, then finish the turn
-        return PromptResponse(stop_reason="end_turn", user_message_id=message_id)
+        return PromptResponse(stop_reason="end_turn")
 ```
 
 Run it with `run_agent()` inside an async entrypoint and wire it to your client. Refer to:

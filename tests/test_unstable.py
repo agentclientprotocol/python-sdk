@@ -10,7 +10,6 @@ from acp.schema import (
     ListSessionsResponse,
     McpServerStdio,
     ResumeSessionResponse,
-    SetSessionModelResponse,
     SseMcpServer,
 )
 from tests.conftest import TestAgent
@@ -22,9 +21,6 @@ class UnstableAgent(TestAgent):
 
     async def close_session(self, session_id: str, **kwargs) -> CloseSessionResponse | None:
         return CloseSessionResponse()
-
-    async def set_session_model(self, model_id: str, session_id: str, **kwargs: Any) -> SetSessionModelResponse | None:
-        return SetSessionModelResponse()
 
     async def fork_session(
         self,
@@ -53,9 +49,6 @@ async def test_call_unstable_protocol(connect):
     resp = await agent_conn.list_sessions()
     assert isinstance(resp, ListSessionsResponse)
 
-    resp = await agent_conn.set_session_model(session_id="sess", model_id="gpt-4o-mini")
-    assert isinstance(resp, SetSessionModelResponse)
-
     resp = await agent_conn.fork_session(cwd="/workspace", session_id="sess")
     assert isinstance(resp, ForkSessionResponse)
 
@@ -70,11 +63,6 @@ async def test_call_unstable_protocol(connect):
 @pytest.mark.asyncio
 async def test_call_unstable_protocol_warning(connect):
     _, agent_conn = connect(use_unstable_protocol=False)
-
-    with pytest.warns(UserWarning) as record:
-        with pytest.raises(RequestError):
-            await agent_conn.set_session_model(session_id="sess", model_id="gpt-4o-mini")
-        assert len(record) == 1
 
     with pytest.warns(UserWarning) as record:
         with pytest.raises(RequestError):

@@ -22,6 +22,8 @@ from acp import (
 from acp.core import ClientSideConnection
 from acp.schema import (
     AgentMessageChunk,
+    AgentPlanContentUpdate,
+    AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
     AllowedOutcome,
@@ -124,6 +126,8 @@ class GeminiClient(Client):
         | ToolCallStart
         | ToolCallProgress
         | AgentPlanUpdate
+        | AgentPlanContentUpdate
+        | AgentPlanRemovedUpdate
         | AvailableCommandsUpdate
         | CurrentModeUpdate
         | ConfigOptionUpdate
@@ -143,6 +147,10 @@ class GeminiClient(Client):
             print("\n[plan]")
             for entry in update.entries:
                 print(f" - {entry.status.upper():<10} {entry.content}")
+        elif isinstance(update, AgentPlanContentUpdate):
+            print(f"\n[plan update] {update.plan.id}")
+        elif isinstance(update, AgentPlanRemovedUpdate):
+            print(f"\n[plan removed] {update.id}")
         elif isinstance(update, ToolCallStart):
             print(f"\n🔧 {update.title} ({update.status or 'pending'})")
         elif isinstance(update, ToolCallProgress):

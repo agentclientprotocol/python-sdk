@@ -1,5 +1,5 @@
 # Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/v0.13.3
+# Schema ref: refs/tags/v0.13.6
 AGENT_METHODS = {
     "authenticate": "authenticate",
     "document_did_change": "document/didChange",
@@ -29,7 +29,6 @@ AGENT_METHODS = {
     "session_resume": "session/resume",
     "session_set_config_option": "session/set_config_option",
     "session_set_mode": "session/set_mode",
-    "session_set_model": "session/set_model",
 }
 CLIENT_METHODS = {
     "elicitation_complete": "elicitation/complete",

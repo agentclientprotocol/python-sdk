@@ -1,5 +1,5 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/v0.13.3
+# Schema ref: refs/tags/v0.13.6
 
 from __future__ import annotations
 
@@ -885,27 +885,6 @@ class MessageMcpRequest(BaseModel):
     ] = None
 
 
-class ModelInfo(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # Optional description of the model.
-    description: Annotated[Optional[str], Field(description="Optional description of the model.")] = None
-    # Unique identifier for the model.
-    model_id: Annotated[str, Field(alias="modelId", description="Unique identifier for the model.")]
-    # Human-readable name of the model.
-    name: Annotated[str, Field(description="Human-readable name of the model.")]
-
-
 class NesDiagnosticsCapabilities(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -1219,6 +1198,61 @@ class NumberPropertySchema(BaseModel):
     title: Annotated[Optional[str], Field(description="Optional title for the property.")] = None
 
 
+class PlanCapabilities(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+
+class PlanMarkdown(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # Markdown content for the plan.
+    content: Annotated[str, Field(description="Markdown content for the plan.")]
+    # The plan ID to update.
+    id: Annotated[str, Field(description="The plan ID to update.")]
+
+
+class PlanRemoved(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The plan ID to remove.
+    id: Annotated[str, Field(description="The plan ID to remove.")]
+
+
+class PlanUpdateMarkdown(PlanMarkdown):
+    type: Literal["markdown"]
+
+
 class Position(BaseModel):
     # Zero-based character offset (encoding-dependent).
     character: Annotated[
@@ -1468,10 +1502,6 @@ class SessionInfo(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Additional workspace roots reported for this session. Each path must be absolute.
     #
     # When present, this is the complete ordered additional-root list reported
@@ -1481,7 +1511,7 @@ class SessionInfo(BaseModel):
         Optional[List[str]],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots reported for this session. Each path must be absolute.\n\nWhen present, this is the complete ordered additional-root list reported\nby the Agent. Omitted and empty values are equivalent: the response\nreports no additional roots.",
+            description="Additional workspace roots reported for this session. Each path must be absolute.\n\nWhen present, this is the complete ordered additional-root list reported\nby the Agent. Omitted and empty values are equivalent: the response\nreports no additional roots.",
         ),
     ] = None
     # The working directory for this session. Must be an absolute path.
@@ -1543,34 +1573,6 @@ class SessionListCapabilities(BaseModel):
     ] = None
 
 
-class SessionModelState(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # The set of models that the Agent can use
-    available_models: Annotated[
-        List[ModelInfo],
-        Field(
-            alias="availableModels",
-            description="The set of models that the Agent can use",
-        ),
-    ]
-    # The current model the Agent is in.
-    current_model_id: Annotated[
-        str,
-        Field(alias="currentModelId", description="The current model the Agent is in."),
-    ]
-
-
 class SessionResumeCapabilities(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -1584,6 +1586,10 @@ class SessionResumeCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+
+class AgentPlanRemovedUpdate(PlanRemoved):
+    session_update: Annotated[Literal["plan_removed"], Field(alias="sessionUpdate")]
 
 
 class SessionInfoUpdate(_SessionInfoUpdate):
@@ -1724,43 +1730,6 @@ class SetSessionModeRequest(BaseModel):
 
 
 class SetSessionModeResponse(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-
-
-class SetSessionModelRequest(BaseModel):
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # The ID of the model to set.
-    model_id: Annotated[str, Field(alias="modelId", description="The ID of the model to set.")]
-    # The ID of the session to set the model for.
-    session_id: Annotated[
-        str,
-        Field(alias="sessionId", description="The ID of the session to set the model for."),
-    ]
-
-
-class SetSessionModelResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -3282,6 +3251,60 @@ class PlanEntry(BaseModel):
     status: Annotated[PlanEntryStatus, Field(description="Current execution status of this task.")]
 
 
+class PlanFile(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The plan ID to update.
+    id: Annotated[str, Field(description="The plan ID to update.")]
+    # The URI of the file containing the plan.
+    uri: Annotated[str, Field(description="The URI of the file containing the plan.")]
+
+
+class PlanItems(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The list of tasks to be accomplished.
+    #
+    # When updating an item-based plan, the agent must send a complete list of all entries
+    # with their current status. The client replaces that plan with each update.
+    entries: Annotated[
+        List[PlanEntry],
+        Field(
+            description="The list of tasks to be accomplished.\n\nWhen updating an item-based plan, the agent must send a complete list of all entries\nwith their current status. The client replaces that plan with each update."
+        ),
+    ]
+    # The plan ID to update.
+    id: Annotated[str, Field(description="The plan ID to update.")]
+
+
+class PlanUpdateItems(PlanItems):
+    type: Literal["items"]
+
+
+class PlanUpdateFile(PlanFile):
+    type: Literal["file"]
+
+
 class PromptResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3312,22 +3335,6 @@ class PromptResponse(BaseModel):
         Optional[Usage],
         Field(
             description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nToken usage for this turn (optional)."
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # The acknowledged user message ID.
-    #
-    # If the client provided a `messageId` in the [`PromptRequest`], the agent echoes it here
-    # to confirm it was recorded. If the client did not provide one, the agent MAY assign one
-    # and return it here. Absence of this field indicates the agent did not record a message ID.
-    user_message_id: Annotated[
-        Optional[str],
-        Field(
-            alias="userMessageId",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nThe acknowledged user message ID.\n\nIf the client provided a `messageId` in the [`PromptRequest`], the agent echoes it here\nto confirm it was recorded. If the client did not provide one, the agent MAY assign one\nand return it here. Absence of this field indicates the agent did not record a message ID.",
         ),
     ] = None
 
@@ -3463,10 +3470,6 @@ class SessionCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
     #
     # Agents that also support `session/list` may return
@@ -3476,7 +3479,7 @@ class SessionCapabilities(BaseModel):
         Optional[SessionAdditionalDirectoriesCapabilities],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
+            description="Whether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
         ),
     ] = None
     # Whether the agent supports `session/close`.
@@ -3484,10 +3487,6 @@ class SessionCapabilities(BaseModel):
         Optional[SessionCloseCapabilities],
         Field(description="Whether the agent supports `session/close`."),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Whether the agent supports `session/delete`.
     #
     # Optional. Omitted or `null` both mean the agent does not advertise support.
@@ -3495,7 +3494,7 @@ class SessionCapabilities(BaseModel):
     delete: Annotated[
         Optional[SessionDeleteCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/delete`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports deleting sessions from `session/list`."
+            description="Whether the agent supports `session/delete`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports deleting sessions from `session/list`."
         ),
     ] = None
     # **UNSTABLE**
@@ -3795,6 +3794,20 @@ class ClientCapabilities(BaseModel):
         Optional[ClientNesCapabilities],
         Field(
             description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the client."
+        ),
+    ] = None
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Whether the client supports `plan_update` and `plan_removed` session updates.
+    #
+    # Optional. Omitted means the client does not advertise support.
+    # Supplying `{}` means the client can receive both update types.
+    plan: Annotated[
+        Optional[PlanCapabilities],
+        Field(
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the client supports `plan_update` and `plan_removed` session updates.\n\nOptional. Omitted means the client does not advertise support.\nSupplying `{}` means the client can receive both update types."
         ),
     ] = None
     # **UNSTABLE**
@@ -4160,10 +4173,6 @@ class NewSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Additional workspace roots for this session. Each path must be absolute.
     #
     # These expand the session's filesystem scope without changing `cwd`, which
@@ -4173,7 +4182,7 @@ class NewSessionRequest(BaseModel):
         Optional[List[str]],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots for this session. Each path must be absolute.\n\nThese expand the session's filesystem scope without changing `cwd`, which\nremains the base for relative paths. When omitted or empty, no\nadditional roots are activated for the new session.",
+            description="Additional workspace roots for this session. Each path must be absolute.\n\nThese expand the session's filesystem scope without changing `cwd`, which\nremains the base for relative paths. When omitted or empty, no\nadditional roots are activated for the new session.",
         ),
     ] = None
     # The working directory for this session. Must be an absolute path.
@@ -4216,6 +4225,26 @@ class Plan(BaseModel):
     ]
 
 
+class PlanUpdate(BaseModel):
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # The updated plan content.
+    plan: Annotated[
+        Union[PlanUpdateItems, PlanUpdateFile, PlanUpdateMarkdown],
+        Field(description="The updated plan content.", discriminator="type"),
+    ]
+
+
 class ResumeSessionRequest(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -4229,10 +4258,6 @@ class ResumeSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -4243,7 +4268,7 @@ class ResumeSessionRequest(BaseModel):
         Optional[List[str]],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the resumed\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
+            description="Additional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the resumed\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
         ),
     ] = None
     # The working directory for this session.
@@ -4286,6 +4311,10 @@ class SessionConfigSelectGroup(BaseModel):
 
 class AgentPlanUpdate(Plan):
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")]
+
+
+class AgentPlanContentUpdate(PlanUpdate):
+    session_update: Annotated[Literal["plan_update"], Field(alias="sessionUpdate")]
 
 
 class AvailableCommandsUpdate(_AvailableCommandsUpdate):
@@ -4461,20 +4490,15 @@ class ContentChunk(BaseModel):
         ],
         Field(description="A single item of content", discriminator="type"),
     ]
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # A unique identifier for the message this chunk belongs to.
     #
     # All chunks belonging to the same message share the same `messageId`.
     # A change in `messageId` indicates a new message has started.
-    # Both clients and agents MUST use UUID format for message IDs.
     message_id: Annotated[
         Optional[str],
         Field(
             alias="messageId",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA unique identifier for the message this chunk belongs to.\n\nAll chunks belonging to the same message share the same `messageId`.\nA change in `messageId` indicates a new message has started.\nBoth clients and agents MUST use UUID format for message IDs.",
+            description="A unique identifier for the message this chunk belongs to.\n\nAll chunks belonging to the same message share the same `messageId`.\nA change in `messageId` indicates a new message has started.",
         ),
     ] = None
 
@@ -4528,10 +4552,6 @@ class ForkSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -4541,7 +4561,7 @@ class ForkSessionRequest(BaseModel):
         Optional[List[str]],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the forked\nsession.",
+            description="Additional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the forked\nsession.",
         ),
     ] = None
     # The working directory for this session.
@@ -4625,10 +4645,6 @@ class LoadSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -4639,7 +4655,7 @@ class LoadSessionRequest(BaseModel):
         Optional[List[str]],
         Field(
             alias="additionalDirectories",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdditional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the loaded\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
+            description="Additional workspace roots to activate for this session. Each path must be absolute.\n\nWhen omitted or empty, no additional roots are activated. When non-empty,\nthis is the complete resulting additional-root list for the loaded\nsession. It may differ from any previously used or reported list as long as\nthe request `cwd` matches the session's `cwd`.",
         ),
     ] = None
     # The working directory for this session.
@@ -4667,22 +4683,6 @@ class PromptRequest(BaseModel):
         Field(
             alias="_meta",
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # A client-generated unique identifier for this user message.
-    #
-    # If provided, the Agent SHOULD echo this value as `userMessageId` in the
-    # [`PromptResponse`] to confirm it was recorded.
-    # Both clients and agents MUST use UUID format for message IDs.
-    message_id: Annotated[
-        Optional[str],
-        Field(
-            alias="messageId",
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA client-generated unique identifier for this user message.\n\nIf provided, the Agent SHOULD echo this value as `userMessageId` in the\n[`PromptResponse`] to confirm it was recorded.\nBoth clients and agents MUST use UUID format for message IDs.",
         ),
     ] = None
     # The blocks of content that compose the user's message.
@@ -4778,7 +4778,6 @@ class ClientRequest(BaseModel):
             CloseSessionRequest,
             SetSessionModeRequest,
             PromptRequest,
-            SetSessionModelRequest,
             StartNesRequest,
             SuggestNesRequest,
             CloseNesRequest,
@@ -4973,17 +4972,6 @@ class ForkSessionResponse(BaseModel):
             description="Initial session configuration options if supported by the Agent.",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Initial model state if supported by the Agent
-    models: Annotated[
-        Optional[SessionModelState],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial model state if supported by the Agent"
-        ),
-    ] = None
     # Initial mode state if supported by the Agent
     #
     # See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)
@@ -5024,17 +5012,6 @@ class LoadSessionResponse(BaseModel):
             description="Initial session configuration options if supported by the Agent.",
         ),
     ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Initial model state if supported by the Agent
-    models: Annotated[
-        Optional[SessionModelState],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial model state if supported by the Agent"
-        ),
-    ] = None
     # Initial mode state if supported by the Agent
     #
     # See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)
@@ -5065,17 +5042,6 @@ class NewSessionResponse(BaseModel):
         Field(
             alias="configOptions",
             description="Initial session configuration options if supported by the Agent.",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Initial model state if supported by the Agent
-    models: Annotated[
-        Optional[SessionModelState],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial model state if supported by the Agent"
         ),
     ] = None
     # Initial mode state if supported by the Agent
@@ -5148,17 +5114,6 @@ class ResumeSessionResponse(BaseModel):
         Field(
             alias="configOptions",
             description="Initial session configuration options if supported by the Agent.",
-        ),
-    ] = None
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Initial model state if supported by the Agent
-    models: Annotated[
-        Optional[SessionModelState],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nInitial model state if supported by the Agent"
         ),
     ] = None
     # Initial mode state if supported by the Agent
@@ -5315,7 +5270,6 @@ class AgentResponseMessage(BaseModel):
             SetSessionModeResponse,
             SetSessionConfigOptionResponse,
             PromptResponse,
-            SetSessionModelResponse,
             StartNesResponse,
             SuggestNesResponse,
             CloseNesResponse,
@@ -5365,6 +5319,8 @@ class SessionNotification(BaseModel):
             ToolCallStart,
             ToolCallProgress,
             AgentPlanUpdate,
+            AgentPlanContentUpdate,
+            AgentPlanRemovedUpdate,
             AvailableCommandsUpdate,
             CurrentModeUpdate,
             ConfigOptionUpdate,

@@ -268,14 +268,12 @@ class TestAgent:
             | EmbeddedResourceContentBlock
         ],
         session_id: str,
-        message_id: str | None = None,
         **kwargs: Any,
     ) -> PromptResponse:
         self.prompts.append(
             PromptRequest(
                 prompt=prompt,
                 session_id=session_id,
-                message_id=message_id,
                 field_meta=kwargs or None,
             )
         )

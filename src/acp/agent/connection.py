@@ -9,6 +9,8 @@ from ..interfaces import Agent, Client
 from ..meta import CLIENT_METHODS
 from ..schema import (
     AgentMessageChunk,
+    AgentPlanContentUpdate,
+    AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
     AvailableCommandsUpdate,
@@ -86,6 +88,8 @@ class AgentSideConnection:
         | ToolCallStart
         | ToolCallProgress
         | AgentPlanUpdate
+        | AgentPlanContentUpdate
+        | AgentPlanRemovedUpdate
         | AvailableCommandsUpdate
         | CurrentModeUpdate
         | ConfigOptionUpdate

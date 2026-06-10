@@ -39,8 +39,6 @@ from ..schema import (
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
-    SetSessionModelRequest,
-    SetSessionModelResponse,
     SetSessionModeRequest,
     SetSessionModeResponse,
     SseMcpServer,
@@ -161,15 +159,6 @@ class ClientSideConnection:
             SetSessionModeResponse,
         )
 
-    @param_model(SetSessionModelRequest)
-    async def set_session_model(self, model_id: str, session_id: str, **kwargs: Any) -> SetSessionModelResponse:
-        return await request_model_from_dict(
-            self._conn,
-            AGENT_METHODS["session_set_model"],
-            SetSessionModelRequest(model_id=model_id, session_id=session_id, field_meta=kwargs or None),
-            SetSessionModelResponse,
-        )
-
     @param_models(SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
     async def set_config_option(
         self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
@@ -207,13 +196,12 @@ class ClientSideConnection:
             | EmbeddedResourceContentBlock
         ],
         session_id: str,
-        message_id: str | None = None,
         **kwargs: Any,
     ) -> PromptResponse:
         return await request_model(
             self._conn,
             AGENT_METHODS["session_prompt"],
-            PromptRequest(prompt=prompt, session_id=session_id, message_id=message_id, field_meta=kwargs or None),
+            PromptRequest(prompt=prompt, session_id=session_id, field_meta=kwargs or None),
             PromptResponse,
         )
 

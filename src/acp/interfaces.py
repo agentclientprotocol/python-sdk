@@ -5,6 +5,8 @@ from typing import Any, Protocol
 from .schema import (
     AcpMcpServer,
     AgentMessageChunk,
+    AgentPlanContentUpdate,
+    AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
     AudioContentBlock,
@@ -54,8 +56,6 @@ from .schema import (
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
-    SetSessionModelRequest,
-    SetSessionModelResponse,
     SetSessionModeRequest,
     SetSessionModeResponse,
     SseMcpServer,
@@ -93,6 +93,8 @@ class Client(Protocol):
         | ToolCallStart
         | ToolCallProgress
         | AgentPlanUpdate
+        | AgentPlanContentUpdate
+        | AgentPlanRemovedUpdate
         | AvailableCommandsUpdate
         | CurrentModeUpdate
         | ConfigOptionUpdate
@@ -183,11 +185,6 @@ class Agent(Protocol):
     @param_model(SetSessionModeRequest)
     async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None: ...
 
-    @param_model(SetSessionModelRequest)
-    async def set_session_model(
-        self, model_id: str, session_id: str, **kwargs: Any
-    ) -> SetSessionModelResponse | None: ...
-
     @param_models(SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
     async def set_config_option(
         self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
@@ -207,7 +204,6 @@ class Agent(Protocol):
             | EmbeddedResourceContentBlock
         ],
         session_id: str,
-        message_id: str | None = None,
         **kwargs: Any,
     ) -> PromptResponse: ...
 

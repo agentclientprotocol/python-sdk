@@ -21,7 +21,6 @@ from ..schema import (
     ResumeSessionRequest,
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionSelectRequest,
-    SetSessionModelRequest,
     SetSessionModeRequest,
 )
 from ..utils import model_to_kwargs, normalize_result
@@ -83,14 +82,6 @@ def build_agent_router(agent: Agent, use_unstable_protocol: bool = False) -> Mes
         adapt_result=normalize_result,
     )
     router.route_request(AGENT_METHODS["session_prompt"], PromptRequest, agent, "prompt")
-    router.route_request(
-        AGENT_METHODS["session_set_model"],
-        SetSessionModelRequest,
-        agent,
-        "set_session_model",
-        adapt_result=normalize_result,
-        unstable=True,
-    )
     router.add_route(
         Route(
             method=AGENT_METHODS["session_set_config_option"],

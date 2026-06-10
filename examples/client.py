@@ -6,7 +6,6 @@ import os
 import sys
 from pathlib import Path
 from typing import Any
-from uuid import uuid4
 
 from acp import (
     PROTOCOL_VERSION,
@@ -18,6 +17,8 @@ from acp import (
 from acp.core import ClientSideConnection
 from acp.schema import (
     AgentMessageChunk,
+    AgentPlanContentUpdate,
+    AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
     AudioContentBlock,
@@ -102,6 +103,8 @@ class ExampleClient(Client):
         | ToolCallStart
         | ToolCallProgress
         | AgentPlanUpdate
+        | AgentPlanContentUpdate
+        | AgentPlanRemovedUpdate
         | AvailableCommandsUpdate
         | CurrentModeUpdate
         | ConfigOptionUpdate
@@ -158,7 +161,6 @@ async def interactive_loop(conn: ClientSideConnection, session_id: str) -> None:
             await conn.prompt(
                 session_id=session_id,
                 prompt=[text_block(line)],
-                message_id=str(uuid4()),
             )
         except Exception as exc:
             logging.error("Prompt failed: %s", exc)  # noqa: TRY400
