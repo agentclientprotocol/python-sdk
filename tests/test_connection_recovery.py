@@ -30,7 +30,7 @@ def _make_connection(
 
 
 @pytest.mark.asyncio
-async def test_receive_loop_recovers_from_oversized_frame(caplog: pytest.LogCaptureFixture) -> None:
+async def test_receive_loop_handles_oversized_frame(caplog: pytest.LogCaptureFixture) -> None:
     conn, reader = _make_connection(limit=128)
     processed: list[str] = []
 
@@ -47,12 +47,12 @@ async def test_receive_loop_recovers_from_oversized_frame(caplog: pytest.LogCapt
         await conn._receive_loop()
     await conn.close()
 
-    assert processed == ["survivor"]
-    assert any("oversized JSON-RPC frame" in record.message for record in caplog.records)
+    assert processed == ["too-large", "survivor"]
+    assert "oversized JSON-RPC frame" not in caplog.text
 
 
 @pytest.mark.asyncio
-async def test_receive_loop_recovers_from_consecutive_oversized_frames() -> None:
+async def test_receive_loop_handles_consecutive_oversized_frames() -> None:
     conn, reader = _make_connection(limit=128)
     processed: list[str] = []
 
@@ -70,7 +70,7 @@ async def test_receive_loop_recovers_from_consecutive_oversized_frames() -> None
     await conn._receive_loop()
     await conn.close()
 
-    assert processed == ["survivor"]
+    assert processed == ["too-large-0", "too-large-1", "survivor"]
 
 
 @pytest.mark.asyncio
@@ -96,6 +96,20 @@ async def test_receive_loop_keeps_timeout_semantics() -> None:
     exc = exc_info.value
     assert isinstance(exc, RequestError)
     assert str(exc) == "Internal error"
+    assert exc.data == {"details": "Agent timeout"}
+
+
+@pytest.mark.asyncio
+async def test_receive_loop_keeps_timeout_semantics_while_reading_oversized_frame() -> None:
+    conn, reader = _make_connection(limit=64, receive_timeout=0.01)
+    reader.feed_data(b"X" * 256)
+
+    with pytest.raises(RequestError) as exc_info:
+        await conn._receive_loop()
+    await conn.close()
+
+    exc = exc_info.value
+    assert isinstance(exc, RequestError)
     assert exc.data == {"details": "Agent timeout"}
 
 
