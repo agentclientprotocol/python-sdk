@@ -121,8 +121,8 @@ class ClientSideConnection:
         self,
         cwd: str,
         session_id: str,
-        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        additional_directories: list[str] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse:
         resolved_mcp_servers = mcp_servers or []
@@ -141,7 +141,7 @@ class ClientSideConnection:
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
+        self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
     ) -> ListSessionsResponse:
         return await request_model_from_dict(
             self._conn,
@@ -151,7 +151,7 @@ class ClientSideConnection:
         )
 
     @param_model(SetSessionModeRequest)
-    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse:
+    async def set_session_mode(self, session_id: str, mode_id: str, **kwargs: Any) -> SetSessionModeResponse:
         return await request_model_from_dict(
             self._conn,
             AGENT_METHODS["session_set_mode"],
@@ -188,6 +188,7 @@ class ClientSideConnection:
     @param_model(PromptRequest)
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -195,7 +196,6 @@ class ClientSideConnection:
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         return await request_model(
@@ -208,8 +208,8 @@ class ClientSideConnection:
     @param_model(ForkSessionRequest)
     async def fork_session(
         self,
-        cwd: str,
         session_id: str,
+        cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
@@ -230,8 +230,8 @@ class ClientSideConnection:
     @param_model(ResumeSessionRequest)
     async def resume_session(
         self,
-        cwd: str,
         session_id: str,
+        cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,

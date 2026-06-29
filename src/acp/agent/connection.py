@@ -105,7 +105,7 @@ class AgentSideConnection:
 
     @param_model(RequestPermissionRequest)
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
+        self, session_id: str, tool_call: ToolCallUpdate, options: list[PermissionOption], **kwargs: Any
     ) -> RequestPermissionResponse:
         return await request_model(
             self._conn,
@@ -118,7 +118,7 @@ class AgentSideConnection:
 
     @param_model(ReadTextFileRequest)
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, session_id: str, path: str, line: int | None = None, limit: int | None = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         return await request_model(
             self._conn,
@@ -129,7 +129,7 @@ class AgentSideConnection:
 
     @param_model(WriteTextFileRequest)
     async def write_text_file(
-        self, content: str, path: str, session_id: str, **kwargs: Any
+        self, session_id: str, path: str, content: str, **kwargs: Any
     ) -> WriteTextFileResponse | None:
         return await request_optional_model(
             self._conn,
@@ -141,11 +141,11 @@ class AgentSideConnection:
     @param_model(CreateTerminalRequest)
     async def create_terminal(
         self,
-        command: str,
         session_id: str,
+        command: str,
         args: list[str] | None = None,
-        cwd: str | None = None,
         env: list[EnvVariable] | None = None,
+        cwd: str | None = None,
         output_byte_limit: int | None = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:

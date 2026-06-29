@@ -4,9 +4,9 @@ Every package release tracks an upstream ACP schema tag from [`agentclientprotoc
 
 ## Prep checklist
 
-1. **Choose the schema tag** (e.g. `v0.4.5`) and regenerate artifacts:
+1. **Choose the schema tag** (e.g. `schema-v1.16.0`) and regenerate artifacts:
    ```bash
-   ACP_SCHEMA_VERSION=v0.4.5 make gen-all
+   ACP_SCHEMA_VERSION=schema-v1.16.0 make gen-all
    ```
    This refreshes `schema/` and the generated `src/acp/schema.py`.
 2. **Bump the SDK version** in `pyproject.toml` using a PEP 440 version string (for example `0.9.0a1` for an alpha release), and sync `uv.lock` if the lockfile is tracked.
