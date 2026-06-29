@@ -48,46 +48,62 @@ async def test_spawn_stdio_transport_custom_limit_handles_large_line() -> None:
 async def test_run_agent_stdio_buffer_limit() -> None:
     """Test that run_agent with different buffer limits can handle appropriately sized messages."""
     with tempfile.TemporaryDirectory() as tmpdir:
-        # Test 1: Small buffer (1KB) fails with large message (70KB)
+        # Test 1: Small buffer (1KB) reads a large message (70KB) in chunks
         small_agent = os.path.join(tmpdir, "small_agent.py")
         with open(small_agent, "w") as f:
-            f.write("""
-import asyncio
-from acp.core import run_agent
-from acp.interfaces import Agent
+            f.write(
+                textwrap.dedent(
+                    """
+                    import asyncio
+                    from acp.core import run_agent
+                    from acp.interfaces import Agent
+                    from acp.schema import InitializeResponse
 
-class TestAgent(Agent):
-    async def list_capabilities(self):
-        return {"capabilities": {}}
+                    class TestAgent(Agent):
+                        async def initialize(self, protocol_version, client_capabilities=None, client_info=None, **kwargs):
+                            return InitializeResponse(protocol_version=protocol_version)
 
-asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes=1024))
-""")
+                    asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes=1024))
+                    """
+                ).strip()
+            )
 
-        # Send a 70KB message - should fail with 1KB buffer
-        large_msg = '{"jsonrpc":"2.0","method":"test","params":{"data":"' + "X" * LARGE_LINE_SIZE + '"}}\n'
+        # Send a 70KB message - should be read in chunks despite the 1KB buffer
+        large_msg = (
+            '{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolVersion":1,"_meta":{"data":"'
+            + "X" * LARGE_LINE_SIZE
+            + '"}}}\n'
+        )
         result = subprocess.run(  # noqa: S603
             [sys.executable, small_agent], input=large_msg, capture_output=True, text=True, timeout=2
         )
 
-        # Should have errors in stderr about the buffer limit
-        assert "Error" in result.stderr or result.returncode != 0, (
-            f"Expected error with small buffer, got: {result.stderr}"
-        )
+        assert result.returncode == 0
+        assert "LimitOverrunError" not in result.stderr
+        assert "Separator is found, but chunk is longer than limit" not in result.stderr
+        assert "oversized JSON-RPC frame" not in result.stderr
+        assert '"id":1' in result.stdout
+        assert '"protocolVersion":1' in result.stdout
 
         # Test 2: Large buffer (200KB) succeeds with large message (70KB)
         large_agent = os.path.join(tmpdir, "large_agent.py")
         with open(large_agent, "w") as f:
-            f.write(f"""
-import asyncio
-from acp.core import run_agent
-from acp.interfaces import Agent
+            f.write(
+                textwrap.dedent(
+                    f"""
+                    import asyncio
+                    from acp.core import run_agent
+                    from acp.interfaces import Agent
+                    from acp.schema import InitializeResponse
 
-class TestAgent(Agent):
-    async def list_capabilities(self):
-        return {{"capabilities": {{}}}}
+                    class TestAgent(Agent):
+                        async def initialize(self, protocol_version, client_capabilities=None, client_info=None, **kwargs):
+                            return InitializeResponse(protocol_version=protocol_version)
 
-asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes={LARGE_LINE_SIZE * 3}))
-""")
+                    asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes={LARGE_LINE_SIZE * 3}))
+                    """
+                ).strip()
+            )
 
         # Same message, but with a buffer 3x the size - should handle it
         result = subprocess.run(  # noqa: S603
@@ -98,3 +114,5 @@ asyncio.run(run_agent(TestAgent(), stdio_buffer_limit_bytes={LARGE_LINE_SIZE * 3
         # (it may have other errors from invalid JSON-RPC, but not buffer overrun)
         if "LimitOverrunError" in result.stderr or "buffer" in result.stderr.lower():
             pytest.fail(f"Large buffer still hit limit error: {result.stderr}")
+        assert '"id":1' in result.stdout
+        assert '"protocolVersion":1' in result.stdout

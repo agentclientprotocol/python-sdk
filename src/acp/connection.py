@@ -153,7 +153,7 @@ class Connection:
     async def _receive_loop(self) -> None:
         try:
             while True:
-                line = await asyncio.wait_for(self._reader.readline(), timeout=self._receive_timeout)
+                line = await self._read_line()
                 if not line:
                     break
                 line = line.strip()
@@ -171,6 +171,24 @@ class Connection:
         except asyncio.TimeoutError:
             raise RequestError.internal_error({"details": "Agent timeout"}) from None
         self._disconnect()
+
+    async def _read_line(self) -> bytes:
+        chunks: list[bytes] = []
+        try:
+            while True:
+                try:
+                    line = await self._wait_for_reader(self._reader.readuntil(b"\n"))
+                except asyncio.LimitOverrunError as exc:
+                    chunks.append(await self._wait_for_reader(self._reader.readexactly(exc.consumed)))
+                else:
+                    chunks.append(line)
+                    return b"".join(chunks)
+        except asyncio.IncompleteReadError as exc:
+            chunks.append(exc.partial)
+            return b"".join(chunks)
+
+    async def _wait_for_reader(self, awaitable: Awaitable[bytes]) -> bytes:
+        return await asyncio.wait_for(awaitable, timeout=self._receive_timeout)
 
     async def _process_message(self, message: dict[str, Any]) -> None:
         method = message.get("method")
