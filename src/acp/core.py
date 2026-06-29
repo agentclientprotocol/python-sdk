@@ -7,6 +7,7 @@ from ``acp.core``. Keep the surface API stable by forwarding to the new homes.
 
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 from .agent.connection import AgentSideConnection
@@ -69,7 +70,10 @@ async def run_agent(
         use_unstable_protocol=use_unstable_protocol,
         **connection_kwargs,
     )
-    await conn.listen()
+    try:
+        await conn.listen()
+    finally:
+        await asyncio.shield(conn.close())
 
 
 def connect_to_agent(
