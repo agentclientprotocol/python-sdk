@@ -133,7 +133,7 @@ from acp import Agent, PromptResponse
 
 
 class MyAgent(Agent):
-    async def prompt(self, prompt, session_id, **kwargs) -> PromptResponse:
+    async def prompt(self, session_id, prompt, **kwargs) -> PromptResponse:
         # inspect prompt, stream updates, then finish the turn
         return PromptResponse(stop_reason="end_turn")
 ```
