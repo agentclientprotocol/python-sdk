@@ -4,20 +4,38 @@ import asyncio
 from collections.abc import Callable
 from typing import Any, cast, final
 
+from pydantic import TypeAdapter
+
 from ..connection import Connection
 from ..interfaces import Agent, Client
 from ..meta import CLIENT_METHODS
 from ..schema import (
+    AcceptElicitationResponse,
     AgentMessageChunk,
     AgentPlanContentUpdate,
     AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
     AvailableCommandsUpdate,
+    CancelElicitationResponse,
+    CompleteElicitationNotification,
     ConfigOptionUpdate,
+    CreateElicitationResponse,
+    CreateFormElicitationRequest,
+    CreateFormRequestElicitationRequest,
+    CreateFormSessionElicitationRequest,
     CreateTerminalRequest,
     CreateTerminalResponse,
+    CreateUrlElicitationRequest,
+    CreateUrlRequestElicitationRequest,
+    CreateUrlSessionElicitationRequest,
     CurrentModeUpdate,
+    DeclineElicitationResponse,
+    ElicitationFormRequestMode,
+    ElicitationFormSessionMode,
+    ElicitationMode,
+    ElicitationUrlRequestMode,
+    ElicitationUrlSessionMode,
     EnvVariable,
     KillTerminalRequest,
     KillTerminalResponse,
@@ -42,11 +60,12 @@ from ..schema import (
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
-from ..utils import compatible_class, notify_model, param_model, request_model, request_optional_model
+from ..utils import compatible_class, notify_model, param_model, request_model, request_optional_model, serialize_params
 from .router import build_agent_router
 
 __all__ = ["AgentSideConnection"]
 _AGENT_CONNECTION_ERROR = "AgentSideConnection requires asyncio StreamWriter/StreamReader"
+_CREATE_ELICITATION_RESPONSE_ADAPTER = TypeAdapter(CreateElicitationResponse)
 
 
 @final
@@ -105,7 +124,7 @@ class AgentSideConnection:
 
     @param_model(RequestPermissionRequest)
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
+        self, session_id: str, tool_call: ToolCallUpdate, options: list[PermissionOption], **kwargs: Any
     ) -> RequestPermissionResponse:
         return await request_model(
             self._conn,
@@ -118,7 +137,7 @@ class AgentSideConnection:
 
     @param_model(ReadTextFileRequest)
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, session_id: str, path: str, line: int | None = None, limit: int | None = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         return await request_model(
             self._conn,
@@ -129,7 +148,7 @@ class AgentSideConnection:
 
     @param_model(WriteTextFileRequest)
     async def write_text_file(
-        self, content: str, path: str, session_id: str, **kwargs: Any
+        self, session_id: str, path: str, content: str, **kwargs: Any
     ) -> WriteTextFileResponse | None:
         return await request_optional_model(
             self._conn,
@@ -141,11 +160,11 @@ class AgentSideConnection:
     @param_model(CreateTerminalRequest)
     async def create_terminal(
         self,
-        command: str,
         session_id: str,
+        command: str,
         args: list[str] | None = None,
-        cwd: str | None = None,
         env: list[EnvVariable] | None = None,
+        cwd: str | None = None,
         output_byte_limit: int | None = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:
@@ -204,6 +223,21 @@ class AgentSideConnection:
             KillTerminalResponse,
         )
 
+    async def create_elicitation(
+        self, message: str, mode: ElicitationMode, **kwargs: Any
+    ) -> AcceptElicitationResponse | DeclineElicitationResponse | CancelElicitationResponse:
+        request = _create_elicitation_request(message, mode, kwargs or None)
+        response = await self._conn.send_request(CLIENT_METHODS["elicitation_create"], serialize_params(request))
+        return _CREATE_ELICITATION_RESPONSE_ADAPTER.validate_python(response)
+
+    @param_model(CompleteElicitationNotification)
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None:
+        await notify_model(
+            self._conn,
+            CLIENT_METHODS["elicitation_complete"],
+            CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None),
+        )
+
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         return await self._conn.send_request(f"_{method}", params)
 
@@ -221,3 +255,18 @@ class AgentSideConnection:
 
     def on_connect(self, conn: Agent) -> None:
         pass
+
+
+def _create_elicitation_request(
+    message: str, mode: ElicitationMode, field_meta: dict[str, Any] | None
+) -> CreateFormElicitationRequest | CreateUrlElicitationRequest:
+    mode_fields = mode.model_dump(mode="json", exclude_none=True)
+    if isinstance(mode, ElicitationFormSessionMode):
+        return CreateFormSessionElicitationRequest(message=message, mode="form", field_meta=field_meta, **mode_fields)
+    if isinstance(mode, ElicitationFormRequestMode):
+        return CreateFormRequestElicitationRequest(message=message, mode="form", field_meta=field_meta, **mode_fields)
+    if isinstance(mode, ElicitationUrlSessionMode):
+        return CreateUrlSessionElicitationRequest(message=message, mode="url", field_meta=field_meta, **mode_fields)
+    if isinstance(mode, ElicitationUrlRequestMode):
+        return CreateUrlRequestElicitationRequest(message=message, mode="url", field_meta=field_meta, **mode_fields)
+    raise TypeError(f"Unsupported elicitation mode: {type(mode).__name__}")

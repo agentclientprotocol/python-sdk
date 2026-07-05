@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -22,6 +23,8 @@ META_JSON = SCHEMA_DIR / "meta.json"
 VERSION_FILE = SCHEMA_DIR / "VERSION"
 
 DEFAULT_REPO = "agentclientprotocol/agent-client-protocol"
+LEGACY_SCHEMA_PATHS = ("schema/schema.unstable.json", "schema/meta.unstable.json")
+V1_SCHEMA_PATHS = ("schema/v1/schema.unstable.json", "schema/v1/meta.unstable.json")
 
 
 def parse_args() -> argparse.Namespace:
@@ -45,6 +48,12 @@ def parse_args() -> argparse.Namespace:
         help="Skip downloading schema files even when a version is provided.",
     )
     parser.set_defaults(format_output=True)
+    parser.add_argument(
+        "--no-format",
+        dest="format_output",
+        action="store_false",
+        help="Skip formatting generated Python files after regeneration.",
+    )
     parser.add_argument(
         "--force",
         action="store_true",
@@ -73,11 +82,25 @@ def main() -> None:
     gen_schema.generate_schema()
     gen_meta.generate_meta()
     gen_signature.gen_signature(ROOT / "src" / "acp")
+    if args.format_output:
+        format_generated_files()
 
     if ref:
         print(f"Generated schema using ref: {ref}")
     else:
         print("Generated schema using local schema files")
+
+
+def format_generated_files() -> None:
+    files = [
+        ROOT / "src" / "acp" / "schema.py",
+        ROOT / "src" / "acp" / "meta.py",
+        ROOT / "src" / "acp" / "interfaces.py",
+        ROOT / "src" / "acp" / "agent" / "connection.py",
+        ROOT / "src" / "acp" / "client" / "connection.py",
+    ]
+    subprocess.check_call([sys.executable, "-m", "ruff", "check", "--fix", *(str(path) for path in files)])  # noqa: S603
+    subprocess.check_call([sys.executable, "-m", "ruff", "format", *(str(path) for path in files)])  # noqa: S603
 
 
 def _should_download(args: argparse.Namespace, version: str | None) -> bool:
@@ -101,6 +124,8 @@ def resolve_ref(version: str | None) -> str:
         return "refs/heads/main"
     if version.startswith("refs/"):
         return version
+    if re.fullmatch(r"schema-v\d+\.\d+\.\d+", version):
+        return f"refs/tags/{version}"
     if re.fullmatch(r"v?\d+\.\d+\.\d+", version):
         value = version if version.startswith("v") else f"v{version}"
         return f"refs/tags/{value}"
@@ -109,11 +134,8 @@ def resolve_ref(version: str | None) -> str:
 
 def download_schema(repo: str, ref: str) -> None:
     SCHEMA_DIR.mkdir(parents=True, exist_ok=True)
-    schema_url = f"https://raw.githubusercontent.com/{repo}/{ref}/schema/schema.unstable.json"
-    meta_url = f"https://raw.githubusercontent.com/{repo}/{ref}/schema/meta.unstable.json"
     try:
-        schema_data = fetch_json(schema_url)
-        meta_data = fetch_json(meta_url)
+        schema_data, meta_data = fetch_schema_pair(repo, ref)
     except RuntimeError as exc:  # pragma: no cover - network error path
         print(exc, file=sys.stderr)
         sys.exit(1)
@@ -122,6 +144,26 @@ def download_schema(repo: str, ref: str) -> None:
     META_JSON.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
     VERSION_FILE.write_text(ref + "\n", encoding="utf-8")
     print(f"Fetched schema and meta from {repo}@{ref}")
+
+
+def fetch_schema_pair(repo: str, ref: str) -> tuple[dict, dict]:
+    errors = []
+    for schema_path, meta_path in schema_source_paths(ref):
+        schema_url = f"https://raw.githubusercontent.com/{repo}/{ref}/{schema_path}"
+        meta_url = f"https://raw.githubusercontent.com/{repo}/{ref}/{meta_path}"
+        try:
+            return fetch_json(schema_url), fetch_json(meta_url)
+        except RuntimeError as exc:
+            errors.append(str(exc))
+
+    attempted = "\n".join(f"- {error}" for error in errors)
+    raise RuntimeError(f"Failed to fetch schema and meta from {repo}@{ref}. Attempts:\n{attempted}")
+
+
+def schema_source_paths(ref: str) -> tuple[tuple[str, str], ...]:
+    if re.fullmatch(r"refs/tags/schema-v\d+\.\d+\.\d+", ref):
+        return (V1_SCHEMA_PATHS, LEGACY_SCHEMA_PATHS)
+    return (LEGACY_SCHEMA_PATHS, V1_SCHEMA_PATHS)
 
 
 def fetch_json(url: str) -> dict:

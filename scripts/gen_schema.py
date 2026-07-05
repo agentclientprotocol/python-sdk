@@ -2,14 +2,17 @@
 from __future__ import annotations
 
 import ast
+import copy
 import json
 import re
 import subprocess
 import sys
+import tempfile
 import textwrap
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SCHEMA_DIR = ROOT / "schema"
@@ -78,8 +81,10 @@ RENAME_MAP: dict[str, str] = {
     "ToolCallContent1": "ContentToolCallContent",
     "ToolCallContent2": "FileEditToolCallContent",
     "ToolCallContent3": "TerminalToolCallContent",
-    "CreateElicitationRequest1": "CreateFormElicitationRequest",
-    "CreateElicitationRequest2": "CreateUrlElicitationRequest",
+    "CreateElicitationRequest1": "CreateFormSessionElicitationRequest",
+    "CreateElicitationRequest2": "CreateFormRequestElicitationRequest",
+    "CreateElicitationRequest3": "CreateUrlSessionElicitationRequest",
+    "CreateElicitationRequest4": "CreateUrlRequestElicitationRequest",
     "CreateElicitationResponse1": "AcceptElicitationResponse",
     "CreateElicitationResponse2": "DeclineElicitationResponse",
     "CreateElicitationResponse3": "CancelElicitationResponse",
@@ -215,29 +220,195 @@ def generate_schema() -> None:
         )
         sys.exit(1)
 
-    cmd = [
-        sys.executable,
-        "-m",
-        "datamodel_code_generator",
-        "--input",
-        str(SCHEMA_JSON),
-        "--input-file-type",
-        "jsonschema",
-        "--output",
-        str(SCHEMA_OUT),
-        "--target-python-version",
-        "3.12",
-        "--collapse-root-models",
-        "--output-model-type",
-        "pydantic_v2.BaseModel",
-        "--use-annotated",
-        "--snake-case-field",
-    ]
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        codegen_input = Path(tmp_dir) / "schema.codegen.json"
+        codegen_input.write_text(json.dumps(_preprocess_schema_for_codegen(_load_schema()), indent=2), encoding="utf-8")
 
-    subprocess.check_call(cmd)  # noqa: S603
+        cmd = [
+            sys.executable,
+            "-m",
+            "datamodel_code_generator",
+            "--input",
+            str(codegen_input),
+            "--input-file-type",
+            "jsonschema",
+            "--output",
+            str(SCHEMA_OUT),
+            "--target-python-version",
+            "3.12",
+            "--collapse-root-models",
+            "--output-model-type",
+            "pydantic_v2.BaseModel",
+            "--use-annotated",
+            "--snake-case-field",
+        ]
+
+        subprocess.check_call(cmd)  # noqa: S603
     warnings = postprocess_generated_schema(SCHEMA_OUT)
     for warning in warnings:
         print(f"Warning: {warning}", file=sys.stderr)
+
+
+def _load_schema() -> dict[str, Any]:
+    return json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
+
+
+COMBINATOR_KEYS = ("oneOf", "anyOf")
+
+
+def _preprocess_schema_for_codegen(schema: dict[str, Any]) -> dict[str, Any]:
+    defs = schema.get("$defs", {})
+    return _distribute_composed_object_schemas(schema, defs)
+
+
+def _distribute_composed_object_schemas(node: Any, defs: dict[str, Any]) -> Any:
+    if isinstance(node, list):
+        return [_distribute_composed_object_schemas(item, defs) for item in node]
+    if not isinstance(node, dict):
+        return node
+
+    transformed = {key: _distribute_composed_object_schemas(value, defs) for key, value in node.items()}
+    for combinator in COMBINATOR_KEYS:
+        if combinator not in transformed or "properties" not in transformed:
+            continue
+        result = {combinator: _expand_composed_object_variants(transformed, defs)}
+        for key in ("title", "description", "discriminator"):
+            if key in transformed:
+                result[key] = transformed[key]
+        return result
+    return transformed
+
+
+def _expand_composed_object_variants(node: dict[str, Any], defs: dict[str, Any]) -> list[Any]:
+    for combinator in COMBINATOR_KEYS:
+        if combinator not in node or "properties" not in node:
+            continue
+
+        common_schema = _without_combinators(node)
+        expanded: list[Any] = []
+        for option in node[combinator]:
+            for variant in _expand_allof_union_refs(option, defs):
+                expanded.append(_merge_object_schema(common_schema, variant) if isinstance(variant, dict) else variant)
+        return expanded
+
+    return _expand_allof_union_refs(node, defs)
+
+
+def _expand_allof_union_refs(node: Any, defs: dict[str, Any]) -> list[Any]:
+    if not isinstance(node, dict):
+        return [node]
+
+    variants = [{key: copy.deepcopy(value) for key, value in node.items() if key != "allOf"}]
+    for item in node.get("allOf", []):
+        ref_name = _local_def_ref_name(item.get("$ref")) if isinstance(item, dict) else None
+        ref_schema = defs.get(ref_name) if ref_name else None
+        if isinstance(ref_schema, dict) and any(key in ref_schema for key in COMBINATOR_KEYS):
+            ref_variants = _expand_composed_object_variants(ref_schema, defs)
+        else:
+            ref_variants = [item]
+
+        variants = [
+            _merge_object_schema(variant, ref_variant) if isinstance(ref_variant, dict) else variant
+            for variant in variants
+            for ref_variant in ref_variants
+        ]
+    return variants
+
+
+def _without_combinators(node: dict[str, Any]) -> dict[str, Any]:
+    return {
+        key: copy.deepcopy(value)
+        for key, value in node.items()
+        if key not in COMBINATOR_KEYS and key != "discriminator"
+    }
+
+
+def _local_def_ref_name(ref: Any) -> str | None:
+    if isinstance(ref, str) and ref.startswith("#/$defs/"):
+        return ref.rsplit("/", 1)[-1]
+    return None
+
+
+def _pop_ref_as_allof(schema: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    schema = copy.deepcopy(schema)
+    if "$ref" not in schema:
+        return schema, []
+    return schema, [{"$ref": schema.pop("$ref")}]
+
+
+def _merge_object_schema(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
+    left, left_refs = _pop_ref_as_allof(left)
+    right, right_refs = _pop_ref_as_allof(right)
+    merged: dict[str, Any] = {}
+
+    for key in set(left) | set(right):
+        if key in COMBINATOR_KEYS or key in {"allOf", "discriminator"}:
+            continue
+        if key == "properties":
+            merged[key] = {**left.get(key, {}), **right.get(key, {})}
+        elif key == "required":
+            required = []
+            for item in left.get(key, []) + right.get(key, []):
+                if item not in required:
+                    required.append(item)
+            if required:
+                merged[key] = required
+        elif key in right:
+            merged[key] = right[key]
+        else:
+            merged[key] = left[key]
+
+    all_of = left_refs + left.get("allOf", []) + right_refs + right.get("allOf", [])
+    if all_of:
+        merged["allOf"] = all_of
+    return merged
+
+
+def _required_nullable_fields(schema: dict[str, Any]) -> dict[str, list[str]]:
+    defs = schema.get("$defs", {})
+    fields: dict[str, list[str]] = {}
+    for class_name, definition in defs.items():
+        if not isinstance(definition, dict):
+            continue
+
+        required = set(definition.get("required", []))
+        if not required:
+            continue
+
+        properties = definition.get("properties", {})
+        nullable_fields = [
+            _schema_field_name(property_name)
+            for property_name in sorted(required)
+            if _schema_allows_null(properties.get(property_name), defs)
+        ]
+        if nullable_fields:
+            fields[class_name] = nullable_fields
+    return fields
+
+
+def _schema_allows_null(node: Any, defs: dict[str, Any]) -> bool:
+    if not isinstance(node, dict):
+        return False
+
+    schema_type = node.get("type")
+    if schema_type == "null" or (isinstance(schema_type, list) and "null" in schema_type):
+        return True
+
+    for combinator in COMBINATOR_KEYS:
+        if any(_schema_allows_null(option, defs) for option in node.get(combinator, [])):
+            return True
+
+    ref_name = _local_def_ref_name(node.get("$ref"))
+    if ref_name is not None:
+        return _schema_allows_null(defs.get(ref_name), defs)
+
+    return any(_schema_allows_null(option, defs) for option in node.get("allOf", []))
+
+
+def _schema_field_name(name: str) -> str:
+    if name.startswith("_"):
+        return "field" + name
+    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
 
 
 def postprocess_generated_schema(output_path: Path) -> list[str]:
@@ -254,9 +425,11 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
     processing_steps: tuple[_ProcessingStep, ...] = (
         _ProcessingStep("apply field overrides", _apply_field_overrides),
         _ProcessingStep("apply default overrides", _apply_default_overrides),
+        _ProcessingStep("restore required nullable fields", _restore_required_nullable_fields),
         _ProcessingStep("attach description comments", _add_description_comments),
         _ProcessingStep("ensure custom BaseModel", _ensure_custom_base_model),
         _ProcessingStep("inject field validators", _inject_field_validators),
+        _ProcessingStep("inject schema aliases", _inject_schema_aliases),
     )
 
     for step in processing_steps:
@@ -451,6 +624,64 @@ def _inject_field_validators(content: str) -> str:
                 f"Warning: class {injection.class_name} not found for validator injection",
                 file=sys.stderr,
             )
+    return content
+
+
+def _inject_schema_aliases(content: str) -> str:
+    if "CreateElicitationRequest = Union[" in content:
+        return content
+
+    aliases = textwrap.dedent("""\
+        ElicitationMode = Union[
+            ElicitationFormSessionMode,
+            ElicitationFormRequestMode,
+            ElicitationUrlSessionMode,
+            ElicitationUrlRequestMode,
+        ]
+        CreateFormElicitationRequest = Union[
+            CreateFormSessionElicitationRequest,
+            CreateFormRequestElicitationRequest,
+        ]
+        CreateUrlElicitationRequest = Union[
+            CreateUrlSessionElicitationRequest,
+            CreateUrlRequestElicitationRequest,
+        ]
+        CreateElicitationRequest = Union[
+            CreateFormElicitationRequest,
+            CreateUrlElicitationRequest,
+        ]
+        CreateElicitationResponse = Union[
+            AcceptElicitationResponse,
+            DeclineElicitationResponse,
+            CancelElicitationResponse,
+        ]
+    """)
+    pattern = re.compile(
+        r"^(class CreateFormRequestElicitationRequest\([\s\S]*?\):[\s\S]*?)(?=^class \w+\(|\Z)",
+        re.MULTILINE,
+    )
+    content, count = pattern.subn(lambda match: match.group(1).rstrip() + "\n\n" + aliases + "\n", content, count=1)
+    if count == 0:
+        print("Warning: failed to insert schema aliases", file=sys.stderr)
+    return content
+
+
+def _restore_required_nullable_fields(content: str, schema: dict[str, Any] | None = None) -> str:
+    schema = _load_schema() if schema is None else schema
+    for class_name, field_names in _required_nullable_fields(schema).items():
+        class_pattern = re.compile(
+            rf"(class {re.escape(class_name)}\([^)]*\):)(.*?)(?=\nclass |\Z)",
+            re.DOTALL,
+        )
+
+        def restore_block(match: re.Match[str], _field_names: list[str] = field_names) -> str:
+            header, block = match.group(1), match.group(2)
+            for field_name in _field_names:
+                field_pattern = re.compile(rf"(\n\s+{re.escape(field_name)}:\s+Annotated\[[\s\S]*?\n\s+\]\s*)=\s*None")
+                block = field_pattern.sub(r"\1", block, count=1)
+            return header + block
+
+        content = class_pattern.sub(restore_block, content, count=1)
     return content
 
 

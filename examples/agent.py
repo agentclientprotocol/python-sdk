@@ -89,12 +89,13 @@ class ExampleAgent(Agent):
         self._sessions.add(session_id)
         return LoadSessionResponse()
 
-    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None:
+    async def set_session_mode(self, session_id: str, mode_id: str, **kwargs: Any) -> SetSessionModeResponse | None:
         logging.info("Received set session mode request %s -> %s", session_id, mode_id)
         return SetSessionModeResponse()
 
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -102,7 +103,6 @@ class ExampleAgent(Agent):
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         logging.info("Received prompt request for session %s", session_id)

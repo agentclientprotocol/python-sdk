@@ -5,12 +5,18 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
+from pydantic import AnyUrl
 
 from acp import (
+    AcceptElicitationResponse,
     Agent,
     AuthenticateResponse,
     Client,
     CreateTerminalResponse,
+    ElicitationFormSessionMode,
+    ElicitationSchema,
+    ElicitationStringPropertySchema,
+    ElicitationUrlRequestMode,
     InitializeResponse,
     LoadSessionResponse,
     NewSessionResponse,
@@ -152,8 +158,8 @@ async def test_on_connect_create_terminal_handle(server):
 
         async def prompt(
             self,
-            prompt: list[TextContentBlock],
             session_id: str,
+            prompt: list[TextContentBlock],
             **kwargs: Any,
         ) -> PromptResponse:
             assert self._conn is not None
@@ -166,11 +172,11 @@ async def test_on_connect_create_terminal_handle(server):
 
         async def create_terminal(
             self,
-            command: str,
             session_id: str,
+            command: str,
             args: list[str] | None = None,
-            cwd: str | None = None,
             env: list[EnvVariable] | None = None,
+            cwd: str | None = None,
             output_byte_limit: int | None = None,
             **kwargs: Any,
         ) -> CreateTerminalResponse:
@@ -186,6 +192,68 @@ async def test_on_connect_create_terminal_handle(server):
 
     await client_conn.close()
     await agent_conn.close()
+
+
+@pytest.mark.asyncio
+async def test_create_form_elicitation_roundtrip(connect, client):
+    agent_conn, _ = connect(use_unstable_protocol=True)
+    requested_schema = ElicitationSchema(
+        properties={"target": ElicitationStringPropertySchema(type="string")},
+        required=["target"],
+    )
+
+    response = await agent_conn.create_elicitation(
+        message="Need deployment target",
+        mode=ElicitationFormSessionMode(
+            session_id="sess",
+            tool_call_id="tool-1",
+            requested_schema=requested_schema,
+        ),
+        trace_id="trace-1",
+    )
+
+    assert isinstance(response, AcceptElicitationResponse)
+    assert len(client.elicitation_requests) == 1
+    message, mode, metadata = client.elicitation_requests[0]
+    assert message == "Need deployment target"
+    assert isinstance(mode, ElicitationFormSessionMode)
+    assert mode.session_id == "sess"
+    assert mode.tool_call_id == "tool-1"
+    assert mode.requested_schema.required == ["target"]
+    assert metadata == {"trace_id": "trace-1"}
+
+
+@pytest.mark.asyncio
+async def test_create_url_elicitation_and_complete_roundtrip(connect, client):
+    agent_conn, _ = connect(use_unstable_protocol=True)
+
+    response = await agent_conn.create_elicitation(
+        message="Open authorization page",
+        mode=ElicitationUrlRequestMode(
+            request_id="req-1",
+            elicitation_id="elicitation-1",
+            url=AnyUrl("https://example.com/auth"),
+        ),
+    )
+    await agent_conn.complete_elicitation(elicitation_id="elicitation-1", source="browser")
+
+    assert isinstance(response, AcceptElicitationResponse)
+    assert len(client.elicitation_requests) == 1
+    message, mode, metadata = client.elicitation_requests[0]
+    assert message == "Open authorization page"
+    assert isinstance(mode, ElicitationUrlRequestMode)
+    assert mode.request_id == "req-1"
+    assert mode.elicitation_id == "elicitation-1"
+    assert str(mode.url) == "https://example.com/auth"
+    assert metadata == {}
+
+    for _ in range(50):
+        if client.completed_elicitations:
+            break
+        await asyncio.sleep(0.01)
+    assert len(client.completed_elicitations) == 1
+    assert client.completed_elicitations[0].elicitation_id == "elicitation-1"
+    assert client.completed_elicitations[0].field_meta == {"source": "browser"}
 
 
 @pytest.mark.asyncio
@@ -481,12 +549,17 @@ class _ExampleAgent(Agent):
         return InitializeResponse(protocol_version=protocol_version)
 
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self,
+        cwd: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> NewSessionResponse:
         return NewSessionResponse(session_id="sess_demo")
 
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -494,7 +567,6 @@ class _ExampleAgent(Agent):
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         assert self._conn is not None
@@ -561,15 +633,15 @@ class _ExampleClient(TestClient):
 
     async def request_permission(
         self,
-        options: list[PermissionOption] | RequestPermissionRequest,
-        session_id: str | None = None,
+        session_id: str | RequestPermissionRequest,
         tool_call: ToolCallUpdate | None = None,
+        options: list[PermissionOption] | None = None,
         **kwargs: Any,
     ) -> RequestPermissionResponse:
-        if isinstance(options, RequestPermissionRequest):
-            params = options
+        if isinstance(session_id, RequestPermissionRequest):
+            params = session_id
         else:
-            assert session_id is not None and tool_call is not None
+            assert tool_call is not None and options is not None
             params = RequestPermissionRequest(
                 options=options,
                 session_id=session_id,

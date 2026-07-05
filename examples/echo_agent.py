@@ -58,6 +58,7 @@ class EchoAgent(Agent):
 
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -65,7 +66,6 @@ class EchoAgent(Agent):
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         for block in prompt:

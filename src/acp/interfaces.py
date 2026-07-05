@@ -17,10 +17,13 @@ from .schema import (
     ClientCapabilities,
     CloseSessionRequest,
     CloseSessionResponse,
+    CompleteElicitationNotification,
     ConfigOptionUpdate,
+    CreateElicitationResponse,
     CreateTerminalRequest,
     CreateTerminalResponse,
     CurrentModeUpdate,
+    ElicitationMode,
     EmbeddedResourceContentBlock,
     EnvVariable,
     ForkSessionRequest,
@@ -80,7 +83,7 @@ __all__ = ["Agent", "Client"]
 class Client(Protocol):
     @param_model(RequestPermissionRequest)
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
+        self, session_id: str, tool_call: ToolCallUpdate, options: list[PermissionOption], **kwargs: Any
     ) -> RequestPermissionResponse: ...
 
     @param_model(SessionNotification)
@@ -105,22 +108,22 @@ class Client(Protocol):
 
     @param_model(WriteTextFileRequest)
     async def write_text_file(
-        self, content: str, path: str, session_id: str, **kwargs: Any
+        self, session_id: str, path: str, content: str, **kwargs: Any
     ) -> WriteTextFileResponse | None: ...
 
     @param_model(ReadTextFileRequest)
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, session_id: str, path: str, line: int | None = None, limit: int | None = None, **kwargs: Any
     ) -> ReadTextFileResponse: ...
 
     @param_model(CreateTerminalRequest)
     async def create_terminal(
         self,
-        command: str,
         session_id: str,
+        command: str,
         args: list[str] | None = None,
-        cwd: str | None = None,
         env: list[EnvVariable] | None = None,
+        cwd: str | None = None,
         output_byte_limit: int | None = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse: ...
@@ -140,6 +143,13 @@ class Client(Protocol):
 
     @param_model(KillTerminalRequest)
     async def kill_terminal(self, session_id: str, terminal_id: str, **kwargs: Any) -> KillTerminalResponse | None: ...
+
+    async def create_elicitation(
+        self, message: str, mode: ElicitationMode, **kwargs: Any
+    ) -> CreateElicitationResponse: ...
+
+    @param_model(CompleteElicitationNotification)
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None: ...
 
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]: ...
 
@@ -172,18 +182,18 @@ class Agent(Protocol):
         self,
         cwd: str,
         session_id: str,
-        additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        additional_directories: list[str] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse | None: ...
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cursor: str | None = None, cwd: str | None = None, **kwargs: Any
+        self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
     ) -> ListSessionsResponse: ...
 
     @param_model(SetSessionModeRequest)
-    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None: ...
+    async def set_session_mode(self, session_id: str, mode_id: str, **kwargs: Any) -> SetSessionModeResponse | None: ...
 
     @param_models(SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
     async def set_config_option(
@@ -196,6 +206,7 @@ class Agent(Protocol):
     @param_model(PromptRequest)
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -203,15 +214,14 @@ class Agent(Protocol):
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse: ...
 
     @param_model(ForkSessionRequest)
     async def fork_session(
         self,
-        cwd: str,
         session_id: str,
+        cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,
@@ -220,8 +230,8 @@ class Agent(Protocol):
     @param_model(ResumeSessionRequest)
     async def resume_session(
         self,
-        cwd: str,
         session_id: str,
+        cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         **kwargs: Any,

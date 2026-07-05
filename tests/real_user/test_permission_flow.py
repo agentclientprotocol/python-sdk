@@ -29,6 +29,7 @@ class PermissionRequestAgent(TestAgent):
 
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -36,7 +37,6 @@ class PermissionRequestAgent(TestAgent):
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         permission = await self._conn.request_permission(
@@ -48,7 +48,7 @@ class PermissionRequestAgent(TestAgent):
             tool_call=ToolCallUpdate(tool_call_id="call-1", title="Write File"),
         )
         self.permission_responses.append(permission)
-        return await super().prompt(prompt, session_id, **kwargs)
+        return await super().prompt(session_id=session_id, prompt=prompt, **kwargs)
 
 
 @pytest.mark.asyncio
