@@ -38,6 +38,7 @@ Next steps live in the [Quickstart](quickstart.md): launch the echo agent, wire 
 | Real-world adopters | [use-cases.md](use-cases.md) |
 | Contrib helpers | [contrib.md](contrib.md) |
 | Releasing workflow | [releasing.md](releasing.md) |
+| Upgrade to 0.11 | [migration-guide-0.11.md](migration-guide-0.11.md) |
 | Example scripts | [github.com/agentclientprotocol/python-sdk/tree/main/examples](https://github.com/agentclientprotocol/python-sdk/tree/main/examples) |
 
 ## Choose a path
@@ -52,6 +53,7 @@ Next steps live in the [Quickstart](quickstart.md): launch the echo agent, wire 
 - [Use Cases](use-cases.md) — real adopters with succinct descriptions of what they build.
 - [Experimental Contrib](contrib.md) — deep dives on the `acp.contrib` utilities.
 - [Releasing](releasing.md) — schema upgrade process, versioning policy, and publishing checklist.
+- [0.11 Migration Guide](migration-guide-0.11.md) — interface signature updates, elicitation, and schema notes for 0.10 users.
 
 Need API-level details? Browse the source in `src/acp/` or generate docs with `mkdocstrings`.
 

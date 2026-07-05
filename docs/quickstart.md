@@ -99,7 +99,7 @@ from acp.interfaces import Client
 
 class SimpleClient(Client):
     async def request_permission(
-        self, options, session_id, tool_call, **kwargs: Any
+        self, session_id, tool_call, options, **kwargs: Any
     ):
         return {"outcome": {"outcome": "cancelled"}}
 
