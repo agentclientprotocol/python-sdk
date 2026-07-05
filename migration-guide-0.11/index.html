@@ -12,13 +12,13 @@
         <meta name="author" content="Chojan Shang">
       
       
-        <link rel="canonical" href="https://agentclientprotocol.github.io/python-sdk/quickstart/">
+        <link rel="canonical" href="https://agentclientprotocol.github.io/python-sdk/migration-guide-0.11/">
       
       
-        <link rel="prev" href="..">
+        <link rel="prev" href="../releasing/">
       
       
-        <link rel="next" href="../use-cases/">
+        <link rel="next" href="../migration-guide-0.7/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -26,7 +26,7 @@
     
     
       
-        <title>Quick Start - Agent Client Protocol - Python SDK</title>
+        <title>0.11 Migration Guide - Agent Client Protocol - Python SDK</title>
       
     
     
@@ -80,7 +80,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#quickstart" class="md-skip">
+        <a href="#migrating-to-acp-python-sdk-011" class="md-skip">
           Skip to content
         </a>
       
@@ -116,7 +116,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              Quick Start
+              0.11 Migration Guide
             
           </span>
         </div>
@@ -281,32 +281,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    Quick Start
-    
-  </span>
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../quickstart/" class="md-nav__link">
         
   
   
@@ -317,131 +295,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#quick-checklist" class="md-nav__link">
-    <span class="md-ellipsis">
-      Quick checklist
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#before-you-begin" class="md-nav__link">
-    <span class="md-ellipsis">
-      Before you begin
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-install-the-sdk" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1 — Install the SDK
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-launch-the-echo-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Launch the Echo agent
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-connect-from-an-acp-aware-client" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Connect from an ACP-aware client
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 3 — Connect from an ACP-aware client">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#zed" class="md-nav__link">
-    <span class="md-ellipsis">
-      Zed
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#other-clients" class="md-nav__link">
-    <span class="md-ellipsis">
-      Other clients
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#programmatic-launch" class="md-nav__link">
-    <span class="md-ellipsis">
-      Programmatic launch
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-4-extend-the-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 4 — Extend the agent
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#optional-talk-to-the-gemini-cli" class="md-nav__link">
-    <span class="md-ellipsis">
-      Optional — Talk to the Gemini CLI
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
-    <span class="md-ellipsis">
-      Next steps
-    </span>
-  </a>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -516,10 +369,32 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../migration-guide-0.11/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    0.11 Migration Guide
+    
+  </span>
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -530,6 +405,113 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#1-regenerate-schema-derived-code" class="md-nav__link">
+    <span class="md-ellipsis">
+      1. Regenerate schema-derived code
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#2-update-interface-method-signatures" class="md-nav__link">
+    <span class="md-ellipsis">
+      2. Update interface method signatures
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="2. Update interface method signatures">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#client-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Client methods
+    </span>
+  </a>
+  
+</li>
+        
+          <li class="md-nav__item">
+  <a href="#agent-methods" class="md-nav__link">
+    <span class="md-ellipsis">
+      Agent methods
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#3-remove-sessionmodel-handling" class="md-nav__link">
+    <span class="md-ellipsis">
+      3. Remove session/model handling
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#4-handle-elicitation-if-your-agent-or-client-advertises-it" class="md-nav__link">
+    <span class="md-ellipsis">
+      4. Handle elicitation if your agent or client advertises it
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#5-review-new-session-update-variants" class="md-nav__link">
+    <span class="md-ellipsis">
+      5. Review new session update variants
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-review-mcp-server-configuration-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Review MCP server configuration types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-re-run-examples-and-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Re-run examples and checks
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -605,73 +587,37 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#quick-checklist" class="md-nav__link">
+  <a href="#1-regenerate-schema-derived-code" class="md-nav__link">
     <span class="md-ellipsis">
-      Quick checklist
+      1. Regenerate schema-derived code
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#before-you-begin" class="md-nav__link">
+  <a href="#2-update-interface-method-signatures" class="md-nav__link">
     <span class="md-ellipsis">
-      Before you begin
+      2. Update interface method signatures
     </span>
   </a>
   
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-1-install-the-sdk" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 1 — Install the SDK
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-2-launch-the-echo-agent" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 2 — Launch the Echo agent
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#step-3-connect-from-an-acp-aware-client" class="md-nav__link">
-    <span class="md-ellipsis">
-      Step 3 — Connect from an ACP-aware client
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="Step 3 — Connect from an ACP-aware client">
+    <nav class="md-nav" aria-label="2. Update interface method signatures">
       <ul class="md-nav__list">
         
           <li class="md-nav__item">
-  <a href="#zed" class="md-nav__link">
+  <a href="#client-methods" class="md-nav__link">
     <span class="md-ellipsis">
-      Zed
+      Client methods
     </span>
   </a>
   
 </li>
         
           <li class="md-nav__item">
-  <a href="#other-clients" class="md-nav__link">
+  <a href="#agent-methods" class="md-nav__link">
     <span class="md-ellipsis">
-      Other clients
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#programmatic-launch" class="md-nav__link">
-    <span class="md-ellipsis">
-      Programmatic launch
+      Agent methods
     </span>
   </a>
   
@@ -683,27 +629,45 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#step-4-extend-the-agent" class="md-nav__link">
+  <a href="#3-remove-sessionmodel-handling" class="md-nav__link">
     <span class="md-ellipsis">
-      Step 4 — Extend the agent
+      3. Remove session/model handling
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#optional-talk-to-the-gemini-cli" class="md-nav__link">
+  <a href="#4-handle-elicitation-if-your-agent-or-client-advertises-it" class="md-nav__link">
     <span class="md-ellipsis">
-      Optional — Talk to the Gemini CLI
+      4. Handle elicitation if your agent or client advertises it
     </span>
   </a>
   
 </li>
       
         <li class="md-nav__item">
-  <a href="#next-steps" class="md-nav__link">
+  <a href="#5-review-new-session-update-variants" class="md-nav__link">
     <span class="md-ellipsis">
-      Next steps
+      5. Review new session update variants
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#6-review-mcp-server-configuration-types" class="md-nav__link">
+    <span class="md-ellipsis">
+      6. Review MCP server configuration types
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#7-re-run-examples-and-checks" class="md-nav__link">
+    <span class="md-ellipsis">
+      7. Re-run examples and checks
     </span>
   </a>
   
@@ -728,172 +692,101 @@
   
 
 
-<h1 id="quickstart">Quickstart<a class="headerlink" href="#quickstart" title="Permanent link">&para;</a></h1>
-<p>Spin up a working ACP agent/client loop in minutes. Keep this page beside the terminal and check off each section as you go. Want inspiration? Hop to the <a href="../use-cases/">Use Cases</a> list to see how teams like kimi-cli or Zed apply the SDK in production.</p>
-<h2 id="quick-checklist">Quick checklist<a class="headerlink" href="#quick-checklist" title="Permanent link">&para;</a></h2>
-<table>
-<thead>
-<tr>
-<th>Goal</th>
-<th>Command / Link</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Install the SDK</td>
-<td><code>pip install agent-client-protocol</code> or <code>uv add agent-client-protocol</code></td>
-</tr>
-<tr>
-<td>Run the echo agent</td>
-<td><code>python examples/echo_agent.py</code></td>
-</tr>
-<tr>
-<td>Point Zed (or another client) at it</td>
-<td>Update <code>settings.json</code> as shown below</td>
-</tr>
-<tr>
-<td>Programmatically drive an agent</td>
-<td>Copy the <code>spawn_agent_process</code> example</td>
-</tr>
-<tr>
-<td>Run tests before hacking further</td>
-<td><code>make check &amp;&amp; make test</code></td>
-</tr>
-</tbody>
-</table>
-<h2 id="before-you-begin">Before you begin<a class="headerlink" href="#before-you-begin" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Python 3.10–3.14 with <code>pip</code> or <code>uv</code></li>
-<li>An ACP-capable client such as Zed (recommended for validation)</li>
-<li>Optional: the Gemini CLI (<code>gemini --acp</code>; use <code>--experimental-acp</code> for older versions) for the bridge example</li>
-</ul>
-<h2 id="step-1-install-the-sdk">Step 1 — Install the SDK<a class="headerlink" href="#step-1-install-the-sdk" title="Permanent link">&para;</a></h2>
-<p><em>Install the library from PyPI or add it to your uv workspace.</em></p>
-<pre><code class="language-bash">pip install agent-client-protocol
-# or
-uv add agent-client-protocol
+<h1 id="migrating-to-acp-python-sdk-011">Migrating to ACP Python SDK 0.11<a class="headerlink" href="#migrating-to-acp-python-sdk-011" title="Permanent link">&para;</a></h1>
+<p>ACP Python SDK 0.11 updates the generated bindings to <code>schema-v1.16.0</code> and aligns the high-level interfaces with the new schema. Most applications only need to update method signatures and review the new unstable capabilities. Agents and clients that already pass keyword arguments are the easiest to migrate.</p>
+<h2 id="1-regenerate-schema-derived-code">1. Regenerate schema-derived code<a class="headerlink" href="#1-regenerate-schema-derived-code" title="Permanent link">&para;</a></h2>
+<p>If your project vendors ACP schema files, generated models, or protocol metadata, regenerate them against the same upstream schema tag:</p>
+<pre><code class="language-bash">ACP_SCHEMA_VERSION=schema-v1.16.0 make gen-all
 </code></pre>
-<h2 id="step-2-launch-the-echo-agent">Step 2 — Launch the Echo agent<a class="headerlink" href="#step-2-launch-the-echo-agent" title="Permanent link">&para;</a></h2>
-<p><em>Run the provided streaming agent so clients have something to talk to.</em></p>
-<p>Start the ready-made echo example; it streams text blocks back to any ACP client. Leave it running in a terminal:</p>
-<pre><code class="language-bash">python examples/echo_agent.py
+<p>The SDK package version is <code>0.11.0</code>, while the protocol schema tag is <code>schema-v1.16.0</code>.</p>
+<h2 id="2-update-interface-method-signatures">2. Update interface method signatures<a class="headerlink" href="#2-update-interface-method-signatures" title="Permanent link">&para;</a></h2>
+<p>Several generated request models changed field order or fields. The SDK now exposes those shapes through <code>Agent</code> and <code>Client</code> protocol methods. Prefer keyword calls when invoking connection helpers; keyword calls are stable across field-order changes.</p>
+<h3 id="client-methods">Client methods<a class="headerlink" href="#client-methods" title="Permanent link">&para;</a></h3>
+<p>Update client implementations from the 0.10 positional order:</p>
+<pre><code class="language-python">async def request_permission(self, options, session_id, tool_call, **kwargs): ...
+async def write_text_file(self, content, path, session_id, **kwargs): ...
+async def read_text_file(self, path, session_id, limit=None, line=None, **kwargs): ...
+async def create_terminal(self, command, session_id, args=None, cwd=None, env=None, **kwargs): ...
 </code></pre>
-<h2 id="step-3-connect-from-an-acp-aware-client">Step 3 — Connect from an ACP-aware client<a class="headerlink" href="#step-3-connect-from-an-acp-aware-client" title="Permanent link">&para;</a></h2>
-<p><em>Point a client at the script and confirm you can exchange streamed updates.</em></p>
-<h3 id="zed">Zed<a class="headerlink" href="#zed" title="Permanent link">&para;</a></h3>
-<p>Add an Agent Server entry in <code>settings.json</code> (Zed → Settings → Agents panel):</p>
-<pre><code class="language-json">{
-  &quot;agent_servers&quot;: {
-    &quot;Echo Agent (Python)&quot;: {
-      &quot;type&quot;: &quot;custom&quot;,
-      &quot;command&quot;: &quot;/abs/path/to/python&quot;,
-      &quot;args&quot;: [
-        &quot;/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py&quot;
-      ]
-    }
-  }
-}
+<p>to the 0.11 order:</p>
+<pre><code class="language-python">async def request_permission(self, session_id, tool_call, options, **kwargs): ...
+async def write_text_file(self, session_id, path, content, **kwargs): ...
+async def read_text_file(self, session_id, path, line=None, limit=None, **kwargs): ...
+async def create_terminal(self, session_id, command, args=None, env=None, cwd=None, **kwargs): ...
 </code></pre>
-<p>Or, if using <code>uv</code>:</p>
-<pre><code class="language-json">{
-  &quot;agent_servers&quot;: {
-    &quot;Echo Agent (Python)&quot;: {
-      &quot;type&quot;: &quot;custom&quot;,
-      &quot;command&quot;: &quot;uv&quot;,
-      &quot;args&quot;: [
-        &quot;run&quot;,
-        &quot;/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py&quot;
-      ]
-    }
-  }
-}
+<h3 id="agent-methods">Agent methods<a class="headerlink" href="#agent-methods" title="Permanent link">&para;</a></h3>
+<p>Update agent implementations from the 0.10 prompt and mode signatures:</p>
+<pre><code class="language-python">async def set_session_mode(self, mode_id, session_id, **kwargs): ...
+async def prompt(self, prompt, session_id, message_id=None, **kwargs): ...
 </code></pre>
-<p>Open the Agents panel and start the session. Each message you send should be echoed back via streamed <code>session/update</code> notifications.</p>
-<h3 id="other-clients">Other clients<a class="headerlink" href="#other-clients" title="Permanent link">&para;</a></h3>
-<p>Any ACP client that communicates over stdio can spawn the same script; no additional transport configuration is required.</p>
-<h3 id="programmatic-launch">Programmatic launch<a class="headerlink" href="#programmatic-launch" title="Permanent link">&para;</a></h3>
-<p>Prefer to drive agents directly from Python? The <code>spawn_agent_process</code> helper wires stdio and lifecycle management for you:</p>
-<pre><code class="language-python">import asyncio
-import sys
-from pathlib import Path
-from typing import Any
-
-from acp import PROTOCOL_VERSION, spawn_agent_process, text_block
-from acp.interfaces import Client
-
-
-class SimpleClient(Client):
-    async def request_permission(
-        self, session_id, tool_call, options, **kwargs: Any
-    ):
-        return {&quot;outcome&quot;: {&quot;outcome&quot;: &quot;cancelled&quot;}}
-
-    async def session_update(self, session_id, update, **kwargs):
-        print(&quot;update:&quot;, session_id, update)
-
-
-async def main() -&gt; None:
-    script = Path(&quot;examples/echo_agent.py&quot;)
-    async with spawn_agent_process(SimpleClient(), sys.executable, str(script)) as (conn, _proc):
-        await conn.initialize(protocol_version=PROTOCOL_VERSION)
-        session = await conn.new_session(cwd=str(script.parent), mcp_servers=[])
-        await conn.prompt(
-            session_id=session.session_id,
-            prompt=[text_block(&quot;Hello from spawn!&quot;)],
-        )
-
-asyncio.run(main())
+<p>to the 0.11 signatures:</p>
+<pre><code class="language-python">async def set_session_mode(self, session_id, mode_id, **kwargs): ...
+async def prompt(self, session_id, prompt, **kwargs): ...
 </code></pre>
-<p><code>spawn_agent_process</code> manages the child process, wires its stdio into ACP framing, and closes everything when the block exits. The mirror helper <code>spawn_client_process</code> lets you drive an ACP client from Python as well.</p>
-<h2 id="step-4-extend-the-agent">Step 4 — Extend the agent<a class="headerlink" href="#step-4-extend-the-agent" title="Permanent link">&para;</a></h2>
-<p><em>Swap the echo demo for your own <code>Agent</code> subclass.</em></p>
-<p>Create your own agent by subclassing <code>acp.Agent</code>. The pattern mirrors the echo example:</p>
-<pre><code class="language-python">from acp import Agent, PromptResponse
+<p>The <code>message_id</code> field was removed from <code>PromptRequest</code>. If your client generated a user message ID before calling <code>conn.prompt(...)</code>, stop passing it there. Message IDs now belong to streamed content chunks such as <code>UserMessageChunk</code> and <code>AgentMessageChunk</code>.</p>
+<h2 id="3-remove-sessionmodel-handling">3. Remove <code>session/model</code> handling<a class="headerlink" href="#3-remove-sessionmodel-handling" title="Permanent link">&para;</a></h2>
+<p>The generated <code>SetSessionModelRequest</code> and <code>SetSessionModelResponse</code> types are no longer exported, and the <code>Agent.set_session_model(...)</code> protocol method is gone. If your agent used this endpoint to switch models, move that behavior into session modes or configuration options exposed through <code>set_session_mode(...)</code> and <code>set_config_option(...)</code>.</p>
+<h2 id="4-handle-elicitation-if-your-agent-or-client-advertises-it">4. Handle elicitation if your agent or client advertises it<a class="headerlink" href="#4-handle-elicitation-if-your-agent-or-client-advertises-it" title="Permanent link">&para;</a></h2>
+<p>0.11 adds schema and connection support for the unstable <code>elicitation/create</code> request and <code>elicitation/complete</code> notification.</p>
+<p>Clients that advertise elicitation support should implement:</p>
+<pre><code class="language-python">from typing import Any
+
+from acp import AcceptElicitationResponse, Client, CreateElicitationResponse, ElicitationMode
 
 
-class MyAgent(Agent):
-    async def prompt(self, session_id, prompt, **kwargs) -&gt; PromptResponse:
-        # inspect prompt, stream updates, then finish the turn
-        return PromptResponse(stop_reason=&quot;end_turn&quot;)
+class MyClient(Client):
+    async def create_elicitation(
+        self,
+        message: str,
+        mode: ElicitationMode,
+        **kwargs: Any,
+    ) -&gt; CreateElicitationResponse:
+        return AcceptElicitationResponse(action=&quot;accept&quot;, content={})
+
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -&gt; None:
+        ...
 </code></pre>
-<p>Run it with <code>run_agent()</code> inside an async entrypoint and wire it to your client. Refer to:</p>
-<ul>
-<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/echo_agent.py"><code>examples/echo_agent.py</code></a> for the smallest streaming agent</li>
-<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/agent.py"><code>examples/agent.py</code></a> for an implementation that negotiates capabilities and streams richer updates</li>
-<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py"><code>examples/duet.py</code></a> to see <code>spawn_agent_process</code> in action alongside the interactive client</li>
-<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py"><code>examples/gemini.py</code></a> to drive the Gemini CLI (<code>--acp</code>; use <code>--experimental-acp</code> for older versions) directly from Python</li>
-</ul>
-<p>Need builders for common payloads? <code>acp.helpers</code> mirrors the Go/TS helper APIs:</p>
-<pre><code class="language-python">from acp import start_tool_call, update_tool_call, text_block, tool_content
+<p>Agents can request structured input through the connected client:</p>
+<pre><code class="language-python">from acp import (
+    ElicitationFormSessionMode,
+    ElicitationSchema,
+    ElicitationStringPropertySchema,
+)
 
-start_update = start_tool_call(&quot;call-42&quot;, &quot;Open file&quot;, kind=&quot;read&quot;, status=&quot;pending&quot;)
-finish_update = update_tool_call(
-    &quot;call-42&quot;,
-    status=&quot;completed&quot;,
-    content=[tool_content(text_block(&quot;File opened.&quot;))],
+response = await client_conn.create_elicitation(
+    message=&quot;Choose a deployment target&quot;,
+    mode=ElicitationFormSessionMode(
+        session_id=session_id,
+        requested_schema=ElicitationSchema(
+            properties={&quot;target&quot;: ElicitationStringPropertySchema(type=&quot;string&quot;)},
+            required=[&quot;target&quot;],
+        ),
+    ),
 )
 </code></pre>
-<p>Each helper wraps the generated Pydantic models in <code>acp.schema</code>, so the right discriminator fields (<code>type</code>, <code>sessionUpdate</code>, and friends) are always populated. That keeps examples readable while maintaining the same validation guarantees as constructing the models directly. Golden fixtures in <code>tests/test_golden.py</code> ensure the helpers stay in sync with future schema revisions.</p>
-<h2 id="optional-talk-to-the-gemini-cli">Optional — Talk to the Gemini CLI<a class="headerlink" href="#optional-talk-to-the-gemini-cli" title="Permanent link">&para;</a></h2>
-<p><em>Have the Gemini CLI installed? Run the bridge to exercise permission flows.</em></p>
-<p>If you have the Gemini CLI installed and authenticated:</p>
-<pre><code class="language-bash">python examples/gemini.py --skip-trust --yolo   # auto-approve permission prompts
-python examples/gemini.py --skip-trust --sandbox --model gemini-1.5-pro
+<p>For URL-based flows, use <code>ElicitationUrlSessionMode</code> or <code>ElicitationUrlRequestMode</code> and call <code>complete_elicitation(...)</code> once the external flow finishes.</p>
+<h2 id="5-review-new-session-update-variants">5. Review new session update variants<a class="headerlink" href="#5-review-new-session-update-variants" title="Permanent link">&para;</a></h2>
+<p>Clients that exhaustively match <code>session_update</code> variants should add the new plan update variants:</p>
+<pre><code class="language-python">from acp.schema import AgentPlanContentUpdate, AgentPlanRemovedUpdate
+
+async def session_update(self, session_id, update, **kwargs):
+    if isinstance(update, AgentPlanContentUpdate):
+        ...
+    elif isinstance(update, AgentPlanRemovedUpdate):
+        ...
 </code></pre>
-<p>Environment helpers:</p>
-<ul>
-<li><code>ACP_GEMINI_BIN</code> — override the CLI path (defaults to <code>PATH</code> lookup)</li>
-<li><code>ACP_GEMINI_TEST_ARGS</code> — extra flags forwarded during the smoke test</li>
-<li><code>ACP_ENABLE_GEMINI_TESTS=1</code> — opt-in toggle for <code>tests/test_gemini_example.py</code></li>
-</ul>
-<p>Authentication hiccups (e.g. missing <code>GOOGLE_CLOUD_PROJECT</code>) are surfaced but treated as skips during testing so the suite stays green on machines without credentials.</p>
-<h2 id="next-steps">Next steps<a class="headerlink" href="#next-steps" title="Permanent link">&para;</a></h2>
-<ul>
-<li>Compare what you built with the real integrations listed on the <a href="../use-cases/">Use Cases</a> page.</li>
-<li>Explore <code>docs/contrib.md</code> for higher-level utilities like session accumulators and permission brokers.</li>
-<li>Run <code>make check</code> / <code>make test</code> before committing changes, and regenerate schema artifacts with <code>make gen-all</code> when ACP versions advance.</li>
-<li>Need help? Start a thread in <a href="https://github.com/agentclientprotocol/python-sdk/discussions">GitHub Discussions</a> or chat with other ACP developers at <a href="https://agentclientprotocol.zulipchat.com/">agentclientprotocol.zulipchat.com</a>.</li>
-</ul>
+<p>The existing full-plan <code>AgentPlanUpdate</code> variant remains available.</p>
+<h2 id="6-review-mcp-server-configuration-types">6. Review MCP server configuration types<a class="headerlink" href="#6-review-mcp-server-configuration-types" title="Permanent link">&para;</a></h2>
+<p>Session creation, loading, forking, and resuming now accept <code>AcpMcpServer</code> in addition to HTTP, SSE, and stdio MCP server definitions:</p>
+<pre><code class="language-python">from acp.schema import AcpMcpServer, HttpMcpServer, McpServerStdio, SseMcpServer
+</code></pre>
+<p>If you validate <code>mcp_servers</code> with your own union, add <code>AcpMcpServer</code> to keep accepting all SDK-supported server types.</p>
+<h2 id="7-re-run-examples-and-checks">7. Re-run examples and checks<a class="headerlink" href="#7-re-run-examples-and-checks" title="Permanent link">&para;</a></h2>
+<p>After changing signatures, run the standard gates:</p>
+<pre><code class="language-bash">make check
+make test
+</code></pre>
+<p>Also run any example or integration that subclasses <code>Agent</code> or <code>Client</code>. Positional argument bugs usually surface there first; using keyword arguments for connection calls avoids most of them.</p>
 
 
 

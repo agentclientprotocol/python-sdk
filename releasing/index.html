@@ -18,7 +18,7 @@
         <link rel="prev" href="../contrib/">
       
       
-        <link rel="next" href="../migration-guide-0.7/">
+        <link rel="next" href="../migration-guide-0.11/">
       
       
       <link rel="icon" href="../assets/images/favicon.png">
@@ -450,6 +450,28 @@
   
   
     <li class="md-nav__item">
+      <a href="../migration-guide-0.11/" class="md-nav__link">
+        
+  
+  
+  <span class="md-ellipsis">
+    0.11 Migration Guide
+    
+  </span>
+  
+
+      </a>
+    </li>
+  
+
+    
+      
+      
+  
+  
+  
+  
+    <li class="md-nav__item">
       <a href="../migration-guide-0.7/" class="md-nav__link">
         
   
@@ -572,9 +594,9 @@
 <p>Every package release tracks an upstream ACP schema tag from <a href="https://github.com/agentclientprotocol/agent-client-protocol"><code>agentclientprotocol/agent-client-protocol</code></a>. Follow this checklist to stay in lockstep.</p>
 <h2 id="prep-checklist">Prep checklist<a class="headerlink" href="#prep-checklist" title="Permanent link">&para;</a></h2>
 <ol>
-<li><strong>Choose the schema tag</strong> (e.g. <code>v0.4.5</code>) and regenerate artifacts:
+<li><strong>Choose the schema tag</strong> (e.g. <code>schema-v1.16.0</code>) and regenerate artifacts:
    <code>bash
-   ACP_SCHEMA_VERSION=v0.4.5 make gen-all</code>
+   ACP_SCHEMA_VERSION=schema-v1.16.0 make gen-all</code>
    This refreshes <code>schema/</code> and the generated <code>src/acp/schema.py</code>.</li>
 <li><strong>Bump the SDK version</strong> in <code>pyproject.toml</code> using a PEP 440 version string (for example <code>0.9.0a1</code> for an alpha release), and sync <code>uv.lock</code> if the lockfile is tracked.</li>
 <li><strong>Run the standard gates:</strong>
