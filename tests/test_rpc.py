@@ -158,8 +158,8 @@ async def test_on_connect_create_terminal_handle(server):
 
         async def prompt(
             self,
-            prompt: list[TextContentBlock],
             session_id: str,
+            prompt: list[TextContentBlock],
             **kwargs: Any,
         ) -> PromptResponse:
             assert self._conn is not None
@@ -172,11 +172,11 @@ async def test_on_connect_create_terminal_handle(server):
 
         async def create_terminal(
             self,
-            command: str,
             session_id: str,
+            command: str,
             args: list[str] | None = None,
-            cwd: str | None = None,
             env: list[EnvVariable] | None = None,
+            cwd: str | None = None,
             output_byte_limit: int | None = None,
             **kwargs: Any,
         ) -> CreateTerminalResponse:
@@ -549,12 +549,17 @@ class _ExampleAgent(Agent):
         return InitializeResponse(protocol_version=protocol_version)
 
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self,
+        cwd: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> NewSessionResponse:
         return NewSessionResponse(session_id="sess_demo")
 
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -562,7 +567,6 @@ class _ExampleAgent(Agent):
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         assert self._conn is not None
@@ -629,15 +633,15 @@ class _ExampleClient(TestClient):
 
     async def request_permission(
         self,
-        options: list[PermissionOption] | RequestPermissionRequest,
-        session_id: str | None = None,
+        session_id: str | RequestPermissionRequest,
         tool_call: ToolCallUpdate | None = None,
+        options: list[PermissionOption] | None = None,
         **kwargs: Any,
     ) -> RequestPermissionResponse:
-        if isinstance(options, RequestPermissionRequest):
-            params = options
+        if isinstance(session_id, RequestPermissionRequest):
+            params = session_id
         else:
-            assert session_id is not None and tool_call is not None
+            assert tool_call is not None and options is not None
             params = RequestPermissionRequest(
                 options=options,
                 session_id=session_id,

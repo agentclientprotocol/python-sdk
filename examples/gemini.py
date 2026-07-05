@@ -30,9 +30,12 @@ from acp.schema import (
     AvailableCommandsUpdate,
     ClientCapabilities,
     ConfigOptionUpdate,
+    CreateElicitationResponse,
     CreateTerminalResponse,
     CurrentModeUpdate,
+    DeclineElicitationResponse,
     DeniedOutcome,
+    ElicitationMode,
     EmbeddedResourceContentBlock,
     EnvVariable,
     FileEditToolCallContent,
@@ -64,7 +67,7 @@ class GeminiClient(Client):
         self._auto_approve = auto_approve
 
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
+        self, session_id: str, tool_call: ToolCallUpdate, options: list[PermissionOption], **kwargs: Any
     ) -> RequestPermissionResponse:
         if self._auto_approve:
             option = _pick_preferred_option(options)
@@ -95,7 +98,7 @@ class GeminiClient(Client):
             print("Invalid selection, try again.")
 
     async def write_text_file(
-        self, content: str, path: str, session_id: str, **kwargs: Any
+        self, session_id: str, path: str, content: str, **kwargs: Any
     ) -> WriteTextFileResponse | None:
         pathlib_path = Path(path)
         if not pathlib_path.is_absolute():
@@ -106,7 +109,7 @@ class GeminiClient(Client):
         return WriteTextFileResponse()
 
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, session_id: str, path: str, line: int | None = None, limit: int | None = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         pathlib_path = Path(path)
         if not pathlib_path.is_absolute():
@@ -170,16 +173,23 @@ class GeminiClient(Client):
     # Optional / terminal-related methods ---------------------------------
     async def create_terminal(
         self,
-        command: str,
         session_id: str,
+        command: str,
         args: list[str] | None = None,
-        cwd: str | None = None,
         env: list[EnvVariable] | None = None,
+        cwd: str | None = None,
         output_byte_limit: int | None = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:
         print(f"[Client] createTerminal: {command} {args or []} (cwd={cwd})")
         return CreateTerminalResponse(terminal_id="term-1")
+
+    async def create_elicitation(self, message: str, mode: ElicitationMode, **kwargs: Any) -> CreateElicitationResponse:
+        print(f"\n[elicitation] {message} ({type(mode).__name__})")
+        return DeclineElicitationResponse(action="decline")
+
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None:
+        print(f"\n[elicitation complete] {elicitation_id}")
 
     async def terminal_output(self, session_id: str, terminal_id: str, **kwargs: Any) -> TerminalOutputResponse:
         print(f"[Client] terminalOutput: {session_id} {terminal_id}")

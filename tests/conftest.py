@@ -153,20 +153,20 @@ class TestClient:
         )
 
     async def request_permission(
-        self, options: list[PermissionOption], session_id: str, tool_call: ToolCallUpdate, **kwargs: Any
+        self, session_id: str, tool_call: ToolCallUpdate, options: list[PermissionOption], **kwargs: Any
     ) -> RequestPermissionResponse:
         if self.permission_outcomes:
             return self.permission_outcomes.pop()
         return RequestPermissionResponse(outcome=DeniedOutcome(outcome="cancelled"))
 
     async def write_text_file(
-        self, content: str, path: str, session_id: str, **kwargs: Any
+        self, session_id: str, path: str, content: str, **kwargs: Any
     ) -> WriteTextFileResponse | None:
         self.files[str(path)] = content
         return WriteTextFileResponse()
 
     async def read_text_file(
-        self, path: str, session_id: str, limit: int | None = None, line: int | None = None, **kwargs: Any
+        self, session_id: str, path: str, line: int | None = None, limit: int | None = None, **kwargs: Any
     ) -> ReadTextFileResponse:
         content = self.files.get(str(path), "default content")
         return ReadTextFileResponse(content=content)
@@ -191,11 +191,11 @@ class TestClient:
     # Optional terminal methods (not implemented in this test client)
     async def create_terminal(
         self,
-        command: str,
         session_id: str,
+        command: str,
         args: list[str] | None = None,
-        cwd: str | None = None,
         env: list[EnvVariable] | None = None,
+        cwd: str | None = None,
         output_byte_limit: int | None = None,
         **kwargs: Any,
     ) -> CreateTerminalResponse:
@@ -266,12 +266,21 @@ class TestAgent:
         return InitializeResponse(protocol_version=protocol_version, agent_capabilities=None, auth_methods=[])
 
     async def new_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], **kwargs: Any
+        self,
+        cwd: str,
+        additional_directories: list[str] | None = None,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        **kwargs: Any,
     ) -> NewSessionResponse:
         return NewSessionResponse(session_id="test-session-123")
 
     async def load_session(
-        self, cwd: str, mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio], session_id: str, **kwargs: Any
+        self,
+        cwd: str,
+        session_id: str,
+        mcp_servers: list[HttpMcpServer | SseMcpServer | McpServerStdio] | None = None,
+        additional_directories: list[str] | None = None,
+        **kwargs: Any,
     ) -> LoadSessionResponse | None:
         return LoadSessionResponse()
 
@@ -280,6 +289,7 @@ class TestAgent:
 
     async def prompt(
         self,
+        session_id: str,
         prompt: list[
             TextContentBlock
             | ImageContentBlock
@@ -287,7 +297,6 @@ class TestAgent:
             | ResourceContentBlock
             | EmbeddedResourceContentBlock
         ],
-        session_id: str,
         **kwargs: Any,
     ) -> PromptResponse:
         self.prompts.append(
@@ -307,7 +316,7 @@ class TestAgent:
     ) -> ListSessionsResponse:
         return ListSessionsResponse(sessions=[])
 
-    async def set_session_mode(self, mode_id: str, session_id: str, **kwargs: Any) -> SetSessionModeResponse | None:
+    async def set_session_mode(self, session_id: str, mode_id: str, **kwargs: Any) -> SetSessionModeResponse | None:
         return SetSessionModeResponse()
 
     async def set_config_option(
