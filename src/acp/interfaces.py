@@ -17,10 +17,13 @@ from .schema import (
     ClientCapabilities,
     CloseSessionRequest,
     CloseSessionResponse,
+    CompleteElicitationNotification,
     ConfigOptionUpdate,
+    CreateElicitationResponse,
     CreateTerminalRequest,
     CreateTerminalResponse,
     CurrentModeUpdate,
+    ElicitationMode,
     EmbeddedResourceContentBlock,
     EnvVariable,
     ForkSessionRequest,
@@ -140,6 +143,13 @@ class Client(Protocol):
 
     @param_model(KillTerminalRequest)
     async def kill_terminal(self, session_id: str, terminal_id: str, **kwargs: Any) -> KillTerminalResponse | None: ...
+
+    async def create_elicitation(
+        self, message: str, mode: ElicitationMode, **kwargs: Any
+    ) -> CreateElicitationResponse: ...
+
+    @param_model(CompleteElicitationNotification)
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None: ...
 
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]: ...
 

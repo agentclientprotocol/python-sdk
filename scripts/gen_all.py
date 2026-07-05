@@ -5,6 +5,7 @@ import argparse
 import json
 import os
 import re
+import subprocess
 import sys
 import urllib.error
 import urllib.request
@@ -48,6 +49,12 @@ def parse_args() -> argparse.Namespace:
     )
     parser.set_defaults(format_output=True)
     parser.add_argument(
+        "--no-format",
+        dest="format_output",
+        action="store_false",
+        help="Skip formatting generated Python files after regeneration.",
+    )
+    parser.add_argument(
         "--force",
         action="store_true",
         help="Force schema download even if the requested ref is already cached locally.",
@@ -75,11 +82,25 @@ def main() -> None:
     gen_schema.generate_schema()
     gen_meta.generate_meta()
     gen_signature.gen_signature(ROOT / "src" / "acp")
+    if args.format_output:
+        format_generated_files()
 
     if ref:
         print(f"Generated schema using ref: {ref}")
     else:
         print("Generated schema using local schema files")
+
+
+def format_generated_files() -> None:
+    files = [
+        ROOT / "src" / "acp" / "schema.py",
+        ROOT / "src" / "acp" / "meta.py",
+        ROOT / "src" / "acp" / "interfaces.py",
+        ROOT / "src" / "acp" / "agent" / "connection.py",
+        ROOT / "src" / "acp" / "client" / "connection.py",
+    ]
+    subprocess.check_call([sys.executable, "-m", "ruff", "check", "--fix", *(str(path) for path in files)])  # noqa: S603
+    subprocess.check_call([sys.executable, "-m", "ruff", "format", *(str(path) for path in files)])  # noqa: S603
 
 
 def _should_download(args: argparse.Namespace, version: str | None) -> bool:

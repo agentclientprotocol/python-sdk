@@ -295,7 +295,7 @@ class ElicitationRequestScope(BaseModel):
     request_id: Annotated[
         Optional[Union[int, str]],
         Field(alias="requestId", description="The request this elicitation is tied to."),
-    ] = None
+    ]
 
 
 class EnumOption(BaseModel):
@@ -2760,7 +2760,7 @@ class CancelRequestNotification(BaseModel):
     request_id: Annotated[
         Optional[Union[int, str]],
         Field(alias="requestId", description="The ID of the request to cancel."),
-    ] = None
+    ]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -3067,7 +3067,7 @@ class CreateTerminalRequest(BaseModel):
     ] = None
 
 
-class CreateUrlElicitationRequest(BaseModel):
+class CreateUrlSessionElicitationRequest(ElicitationSessionScope):
     # A human-readable message describing what input is needed.
     message: Annotated[
         str,
@@ -3086,6 +3086,47 @@ class CreateUrlElicitationRequest(BaseModel):
         ),
     ] = None
     mode: Literal["url"]
+    # The unique identifier for this elicitation.
+    elicitation_id: Annotated[
+        str,
+        Field(
+            alias="elicitationId",
+            description="The unique identifier for this elicitation.",
+        ),
+    ]
+    # The URL to direct the user to.
+    url: Annotated[AnyUrl, Field(description="The URL to direct the user to.")]
+
+
+class CreateUrlRequestElicitationRequest(ElicitationRequestScope):
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    mode: Literal["url"]
+    # The unique identifier for this elicitation.
+    elicitation_id: Annotated[
+        str,
+        Field(
+            alias="elicitationId",
+            description="The unique identifier for this elicitation.",
+        ),
+    ]
+    # The URL to direct the user to.
+    url: Annotated[AnyUrl, Field(description="The URL to direct the user to.")]
 
 
 class ElicitationStringPropertySchema(StringPropertySchema):
@@ -5504,7 +5545,7 @@ class RequestPermissionRequest(BaseModel):
     ] = None
 
 
-class CreateFormElicitationRequest(BaseModel):
+class CreateFormSessionElicitationRequest(ElicitationSessionScope):
     # A human-readable message describing what input is needed.
     message: Annotated[
         str,
@@ -5523,6 +5564,68 @@ class CreateFormElicitationRequest(BaseModel):
         ),
     ] = None
     mode: Literal["form"]
+    # A JSON Schema describing the form fields to present to the user.
+    requested_schema: Annotated[
+        ElicitationSchema,
+        Field(
+            alias="requestedSchema",
+            description="A JSON Schema describing the form fields to present to the user.",
+        ),
+    ]
+
+
+class CreateFormRequestElicitationRequest(ElicitationRequestScope):
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    mode: Literal["form"]
+    # A JSON Schema describing the form fields to present to the user.
+    requested_schema: Annotated[
+        ElicitationSchema,
+        Field(
+            alias="requestedSchema",
+            description="A JSON Schema describing the form fields to present to the user.",
+        ),
+    ]
+
+
+ElicitationMode = Union[
+    ElicitationFormSessionMode,
+    ElicitationFormRequestMode,
+    ElicitationUrlSessionMode,
+    ElicitationUrlRequestMode,
+]
+CreateFormElicitationRequest = Union[
+    CreateFormSessionElicitationRequest,
+    CreateFormRequestElicitationRequest,
+]
+CreateUrlElicitationRequest = Union[
+    CreateUrlSessionElicitationRequest,
+    CreateUrlRequestElicitationRequest,
+]
+CreateElicitationRequest = Union[
+    CreateFormElicitationRequest,
+    CreateUrlElicitationRequest,
+]
+CreateElicitationResponse = Union[
+    AcceptElicitationResponse,
+    DeclineElicitationResponse,
+    CancelElicitationResponse,
+]
 
 
 class AgentCapabilities(BaseModel):
@@ -5660,7 +5763,7 @@ class ClientRequest(BaseModel):
     id: Annotated[
         Optional[Union[int, str]],
         Field(description="The request id used to correlate the matching response."),
-    ] = None
+    ]
     # The method name to invoke.
     method: Annotated[str, Field(description="The method name to invoke.")]
     # Method-specific request parameters.
@@ -5699,7 +5802,7 @@ class AgentRequest(BaseModel):
     id: Annotated[
         Optional[Union[int, str]],
         Field(description="The request id used to correlate the matching response."),
-    ] = None
+    ]
     # The method name to invoke.
     method: Annotated[str, Field(description="The method name to invoke.")]
     # Method-specific request parameters.
@@ -5717,7 +5820,12 @@ class AgentRequest(BaseModel):
                 ConnectMcpRequest,
                 MessageMcpRequest,
                 DisconnectMcpRequest,
-                Union[CreateFormElicitationRequest, CreateUrlElicitationRequest],
+                Union[
+                    CreateFormSessionElicitationRequest,
+                    CreateFormRequestElicitationRequest,
+                    CreateUrlSessionElicitationRequest,
+                    CreateUrlRequestElicitationRequest,
+                ],
                 Any,
             ]
         ],

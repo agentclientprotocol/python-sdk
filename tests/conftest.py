@@ -7,8 +7,12 @@ import pytest
 import pytest_asyncio
 
 from acp import (
+    AcceptElicitationResponse,
     AuthenticateResponse,
+    CompleteElicitationNotification,
+    CreateElicitationResponse,
     CreateTerminalResponse,
+    ElicitationMode,
     InitializeResponse,
     KillTerminalResponse,
     LoadSessionResponse,
@@ -131,6 +135,8 @@ class TestClient:
         self.permission_outcomes: list[RequestPermissionResponse] = []
         self.files: dict[str, str] = {}
         self.notifications: list[SessionNotification] = []
+        self.elicitation_requests: list[tuple[str, ElicitationMode, dict[str, Any]]] = []
+        self.completed_elicitations: list[CompleteElicitationNotification] = []
         self.ext_calls: list[tuple[str, dict]] = []
         self.ext_notes: list[tuple[str, dict]] = []
         self._agent_conn = None
@@ -214,6 +220,20 @@ class TestClient:
         self, session_id: str, terminal_id: str | None = None, **kwargs: Any
     ) -> KillTerminalResponse | None:
         raise NotImplementedError
+
+    async def create_elicitation(
+        self,
+        message: str,
+        mode: ElicitationMode,
+        **kwargs: Any,
+    ) -> CreateElicitationResponse:
+        self.elicitation_requests.append((message, mode, kwargs))
+        return AcceptElicitationResponse(action="accept", content={})
+
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None:
+        self.completed_elicitations.append(
+            CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None)
+        )
 
     async def ext_method(self, method: str, params: dict) -> dict:
         self.ext_calls.append((method, params))

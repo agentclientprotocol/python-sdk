@@ -53,7 +53,7 @@ def model_to_kwargs(model_obj: BaseModel, models: MultiParamModelSpec) -> dict[s
 
 def serialize_params(params: BaseModel) -> dict[str, Any]:
     """Return a JSON-serializable representation used for RPC calls."""
-    return params.model_dump(by_alias=True, exclude_none=True, exclude_defaults=True)
+    return params.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_defaults=True)
 
 
 def normalize_result(payload: Any) -> dict[str, Any]:
