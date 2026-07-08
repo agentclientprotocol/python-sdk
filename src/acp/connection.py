@@ -255,6 +255,11 @@ class Connection:
                 self._notify_observers(StreamDirection.OUTGOING, payload)
                 raise err from None
             except Exception as exc:
+                logging.exception(
+                    "Unhandled error while handling request method=%s",
+                    method,
+                    exc_info=exc,
+                )
                 try:
                     data = json.loads(str(exc))
                 except Exception:
