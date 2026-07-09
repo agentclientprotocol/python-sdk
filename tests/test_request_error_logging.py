@@ -44,3 +44,35 @@ async def test_unexpected_handler_error_is_logged_and_returns_internal_error(ser
     # The original exception (with its traceback) must be logged, not silently
     # swallowed into the JSON-RPC response.
     assert any(record.exc_info for record in caplog.records)
+
+
+@pytest.mark.asyncio
+async def test_unexpected_notification_error_is_logged_and_not_swallowed(server, caplog):
+    class _RaisingCancelAgent(TestAgent):
+        __test__ = False
+
+        def __init__(self) -> None:
+            super().__init__()
+            self.cancel_called = asyncio.Event()
+
+        async def cancel(self, session_id, **kwargs):
+            self.cancel_called.set()
+            raise RuntimeError("boom")
+
+    agent = _RaisingCancelAgent()
+    AgentSideConnection(
+        cast(Agent, agent),
+        server.server_writer,
+        server.server_reader,
+        listening=True,
+    )
+
+    note = {"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": "s1"}}
+    with caplog.at_level(logging.ERROR):
+        server.client_writer.write((json.dumps(note) + "\n").encode())
+        await server.client_writer.drain()
+        await asyncio.wait_for(agent.cancel_called.wait(), timeout=1)
+
+    # A notification handler that raises must be logged, not silently swallowed,
+    # so integrators can surface it (e.g. to Sentry).
+    assert any(record.exc_info for record in caplog.records)

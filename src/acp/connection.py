@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import asyncio
-import contextlib
 import copy
 import inspect
 import json
@@ -272,8 +271,15 @@ class Connection:
 
     async def _run_notification(self, message: dict[str, Any]) -> None:
         method = message["method"]
-        with span_context("acp.notification", attributes={"method": method}), contextlib.suppress(Exception):
-            await self._handler(method, message.get("params"), True)
+        with span_context("acp.notification", attributes={"method": method}):
+            try:
+                await self._handler(method, message.get("params"), True)
+            except Exception as exc:
+                logging.exception(
+                    "Unhandled error while handling notification method=%s",
+                    method,
+                    exc_info=exc,
+                )
 
     async def _handle_response(self, message: dict[str, Any]) -> None:
         request_id = message["id"]
