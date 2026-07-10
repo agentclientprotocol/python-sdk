@@ -1,12 +1,12 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.16.0
+# Schema ref: refs/tags/schema-v1.19.0
 
 from __future__ import annotations
 
 from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from pydantic import AnyUrl, BaseModel as _BaseModel, Field, RootModel, ConfigDict, field_validator
+from pydantic import AnyUrl, BaseModel as _BaseModel, ConfigDict, Field, RootModel, field_validator
 
 PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
 PlanEntryPriority = Literal["high", "medium", "low"]
@@ -111,8 +111,8 @@ class BlobResourceContents(BaseModel):
 
 
 class Diff(BaseModel):
-    # The file path being modified.
-    path: Annotated[str, Field(description="The file path being modified.")]
+    # The absolute file path being modified.
+    path: Annotated[str, Field(description="The absolute file path being modified.")]
     # The original content (None for new files).
     old_text: Annotated[
         Optional[str],
@@ -158,8 +158,8 @@ class Terminal(BaseModel):
 
 
 class ToolCallLocation(BaseModel):
-    # The file path being accessed or modified.
-    path: Annotated[str, Field(description="The file path being accessed or modified.")]
+    # The absolute file path being accessed or modified.
+    path: Annotated[str, Field(description="The absolute file path being accessed or modified.")]
     # Optional line number within the file.
     line: Annotated[Optional[int], Field(description="Optional line number within the file.", ge=0)] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -277,6 +277,50 @@ class KillTerminalRequest(BaseModel):
     ] = None
 
 
+class CreateOtherElicitationRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # Custom or future elicitation mode.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    mode: Annotated[
+        str,
+        Field(
+            description="Custom or future elicitation mode.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _reject_known_mode(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("form", "url"):
+            raise ValueError("mode value is reserved by a known variant")
+        return value
+
+
 class ElicitationSessionScope(BaseModel):
     # The session this elicitation is tied to.
     session_id: Annotated[
@@ -298,11 +342,40 @@ class ElicitationRequestScope(BaseModel):
     ]
 
 
+class ElicitationOtherPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # Custom or future elicitation property schema type.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    type: Annotated[
+        str,
+        Field(
+            description="Custom or future elicitation property schema type.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _reject_known_type(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("string", "number", "integer", "boolean", "array"):
+            raise ValueError("type value is reserved by a known variant")
+        return value
+
+
 class EnumOption(BaseModel):
     # The constant value for this option.
     const: Annotated[str, Field(description="The constant value for this option.")]
     # Human-readable title for this option.
     title: Annotated[str, Field(description="Human-readable title for this option.")]
+    # Human-readable description.
+    description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -422,6 +495,50 @@ class BooleanPropertySchema(BaseModel):
     description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
     # Default value.
     default: Annotated[Optional[bool], Field(description="Default value.")] = None
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+
+class OtherMultiSelectItems(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # Custom or future multi-select item type.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    type: Annotated[
+        str,
+        Field(
+            description="Custom or future multi-select item type.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _reject_known_type(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("string",):
+            raise ValueError("type value is reserved by a known variant")
+        return value
+
+
+class _StringMultiSelectItems(BaseModel):
+    # Allowed enum values.
+    enum: Annotated[List[str], Field(description="Allowed enum values.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -1063,7 +1180,7 @@ class AuthenticateResponse(BaseModel):
 class ProviderCurrentConfig(BaseModel):
     # Protocol currently used by this provider.
     api_type: Annotated[
-        str,
+        Union[str, Dict[str, Any]],
         Field(alias="apiType", description="Protocol currently used by this provider."),
     ]
     # Base URL currently used by this provider.
@@ -1466,7 +1583,7 @@ class CloseNesResponse(BaseModel):
 
 class PlanFile(BaseModel):
     # The plan ID to update.
-    id: Annotated[str, Field(description="The plan ID to update.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to update.")]
     # The URI of the file containing the plan.
     uri: Annotated[str, Field(description="The URI of the file containing the plan.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1485,7 +1602,7 @@ class PlanFile(BaseModel):
 
 class PlanMarkdown(BaseModel):
     # The plan ID to update.
-    id: Annotated[str, Field(description="The plan ID to update.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to update.")]
     # Markdown content for the plan.
     content: Annotated[str, Field(description="Markdown content for the plan.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1504,7 +1621,7 @@ class PlanMarkdown(BaseModel):
 
 class PlanRemoved(BaseModel):
     # The plan ID to remove.
-    id: Annotated[str, Field(description="The plan ID to remove.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to remove.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -1881,10 +1998,13 @@ class ListProvidersRequest(BaseModel):
 
 
 class SetProviderRequest(BaseModel):
-    # Provider id to configure.
-    id: Annotated[str, Field(description="Provider id to configure.")]
+    # Provider ID to configure.
+    provider_id: Annotated[str, Field(alias="providerId", description="Provider ID to configure.")]
     # Protocol type for this provider.
-    api_type: Annotated[str, Field(alias="apiType", description="Protocol type for this provider.")]
+    api_type: Annotated[
+        Union[str, Dict[str, Any]],
+        Field(alias="apiType", description="Protocol type for this provider."),
+    ]
     # Base URL for requests sent through this provider.
     base_url: Annotated[
         str,
@@ -1916,8 +2036,8 @@ class SetProviderRequest(BaseModel):
 
 
 class DisableProviderRequest(BaseModel):
-    # Provider id to disable.
-    id: Annotated[str, Field(description="Provider id to disable.")]
+    # Provider ID to disable.
+    provider_id: Annotated[str, Field(alias="providerId", description="Provider ID to disable.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -2021,10 +2141,11 @@ class McpServerAcp(BaseModel):
     #
     # Providers MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible
     # on the same ACP connection.
-    id: Annotated[
+    server_id: Annotated[
         str,
         Field(
-            description="Unique identifier for this MCP server, generated by the component providing it.\n\nProviders MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible\non the same ACP connection."
+            alias="serverId",
+            description="Unique identifier for this MCP server, generated by the component providing it.\n\nProviders MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible\non the same ACP connection.",
         ),
     ]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2044,8 +2165,8 @@ class McpServerAcp(BaseModel):
 class McpServerStdio(BaseModel):
     # Human-readable name identifying this MCP server.
     name: Annotated[str, Field(description="Human-readable name identifying this MCP server.")]
-    # Path to the MCP server executable.
-    command: Annotated[str, Field(description="Path to the MCP server executable.")]
+    # Absolute path to the MCP server executable.
+    command: Annotated[str, Field(description="Absolute path to the MCP server executable.")]
     # Command-line arguments to pass to the MCP server.
     args: Annotated[
         List[str],
@@ -2578,6 +2699,45 @@ class CancelElicitationResponse(BaseModel):
     action: Literal["cancel"]
 
 
+class OtherElicitationResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # Custom or future elicitation action.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    action: Annotated[
+        str,
+        Field(
+            description="Custom or future elicitation action.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def _reject_known_action(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("accept", "decline", "cancel"):
+            raise ValueError("action value is reserved by a known variant")
+        return value
+
+
 class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]):
     # Allowed wire representations for [`ElicitationContentValue`].
     root: Annotated[
@@ -3032,10 +3192,10 @@ class CreateTerminalRequest(BaseModel):
         Optional[List[EnvVariable]],
         Field(description="Environment variables for the command."),
     ] = None
-    # Working directory for the command (absolute path).
+    # Working directory for the command. Must be an absolute path.
     cwd: Annotated[
         Optional[str],
-        Field(description="Working directory for the command (absolute path)."),
+        Field(description="Working directory for the command. Must be an absolute path."),
     ] = None
     # Maximum number of output bytes to retain.
     #
@@ -3145,11 +3305,32 @@ class ElicitationBooleanPropertySchema(BooleanPropertySchema):
     type: Literal["boolean"]
 
 
-class UntitledMultiSelectItems(BaseModel):
-    # Item type discriminator. Must be `"string"`.
-    type: Annotated[str, Field(description='Item type discriminator. Must be `"string"`.')]
-    # Allowed enum values.
-    enum: Annotated[List[str], Field(description="Allowed enum values.")]
+class StringMultiSelectItems(_StringMultiSelectItems):
+    type: Literal["string"]
+
+
+class MultiSelectPropertySchema(BaseModel):
+    # Optional title for the property.
+    title: Annotated[Optional[str], Field(description="Optional title for the property.")] = None
+    # Human-readable description.
+    description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
+    # Minimum number of items to select.
+    min_items: Annotated[
+        Optional[int],
+        Field(alias="minItems", description="Minimum number of items to select.", ge=0),
+    ] = None
+    # Maximum number of items to select.
+    max_items: Annotated[
+        Optional[int],
+        Field(alias="maxItems", description="Maximum number of items to select.", ge=0),
+    ] = None
+    # The items definition describing allowed values.
+    items: Annotated[
+        Union[StringMultiSelectItems, OtherMultiSelectItems, TitledMultiSelectItems],
+        Field(description="The items definition describing allowed values."),
+    ]
+    # Default selected values.
+    default: Annotated[Optional[List[str]], Field(description="Default selected values.")] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -3166,10 +3347,10 @@ class UntitledMultiSelectItems(BaseModel):
 
 class ConnectMcpRequest(BaseModel):
     # The ACP MCP server ID that was provided by the component declaring the MCP server.
-    acp_id: Annotated[
+    server_id: Annotated[
         str,
         Field(
-            alias="acpId",
+            alias="serverId",
             description="The ACP MCP server ID that was provided by the component declaring the MCP server.",
         ),
     ]
@@ -3223,9 +3404,14 @@ class MessageMcpRequest(BaseModel):
 
 class SessionCapabilities(BaseModel):
     # Whether the agent supports `session/list`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports listing sessions.
     list: Annotated[
         Optional[SessionListCapabilities],
-        Field(description="Whether the agent supports `session/list`."),
+        Field(
+            description="Whether the agent supports `session/list`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports listing sessions."
+        ),
     ] = None
     # Whether the agent supports `session/delete`.
     #
@@ -3239,6 +3425,10 @@ class SessionCapabilities(BaseModel):
     ] = None
     # Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
     #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports `additionalDirectories` on
+    # supported session lifecycle requests.
+    #
     # Agents that also support `session/list` may return
     # `SessionInfo.additionalDirectories` to report the complete ordered
     # additional-root list associated with a listed session.
@@ -3246,7 +3436,7 @@ class SessionCapabilities(BaseModel):
         Optional[SessionAdditionalDirectoriesCapabilities],
         Field(
             alias="additionalDirectories",
-            description="Whether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
+            description="Whether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports `additionalDirectories` on\nsupported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
         ),
     ] = None
     # **UNSTABLE**
@@ -3254,21 +3444,34 @@ class SessionCapabilities(BaseModel):
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
     # Whether the agent supports `session/fork`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports forking sessions.
     fork: Annotated[
         Optional[SessionForkCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/fork`."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/fork`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports forking sessions."
         ),
     ] = None
     # Whether the agent supports `session/resume`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports resuming sessions.
     resume: Annotated[
         Optional[SessionResumeCapabilities],
-        Field(description="Whether the agent supports `session/resume`."),
+        Field(
+            description="Whether the agent supports `session/resume`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports resuming sessions."
+        ),
     ] = None
     # Whether the agent supports `session/close`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports closing sessions.
     close: Annotated[
         Optional[SessionCloseCapabilities],
-        Field(description="Whether the agent supports `session/close`."),
+        Field(
+            description="Whether the agent supports `session/close`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports closing sessions."
+        ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3287,11 +3490,12 @@ class SessionCapabilities(BaseModel):
 class AgentAuthCapabilities(BaseModel):
     # Whether the agent supports the logout method.
     #
-    # By supplying `{}` it means that the agent supports the logout method.
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports the logout method.
     logout: Annotated[
         Optional[LogoutCapabilities],
         Field(
-            description="Whether the agent supports the logout method.\n\nBy supplying `{}` it means that the agent supports the logout method."
+            description="Whether the agent supports the logout method.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports the logout method."
         ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -3398,15 +3602,24 @@ class TerminalAuthMethod(AuthMethodTerminal):
 
 class ProviderInfo(BaseModel):
     # Provider identifier, for example "main" or "openai".
-    id: Annotated[str, Field(description='Provider identifier, for example "main" or "openai".')]
+    provider_id: Annotated[
+        str,
+        Field(
+            alias="providerId",
+            description='Provider identifier, for example "main" or "openai".',
+        ),
+    ]
     # Supported protocol types for this provider.
-    supported: Annotated[List[str], Field(description="Supported protocol types for this provider.")]
+    supported: Annotated[
+        List[Union[str, Dict[str, Any]]],
+        Field(description="Supported protocol types for this provider."),
+    ]
     # Whether this provider is mandatory and cannot be disabled via `providers/disable`.
-    # If true, clients must not call `providers/disable` for this id.
+    # If true, clients must not call `providers/disable` for this provider ID.
     required: Annotated[
         bool,
         Field(
-            description="Whether this provider is mandatory and cannot be disabled via `providers/disable`.\nIf true, clients must not call `providers/disable` for this id."
+            description="Whether this provider is mandatory and cannot be disabled via `providers/disable`.\nIf true, clients must not call `providers/disable` for this provider ID."
         ),
     ]
     # Current effective non-secret routing config.
@@ -3469,7 +3682,7 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     ] = None
     # Optional semantic category for this option (UX only).
     category: Annotated[
-        Optional[str],
+        Optional[Union[str, Dict[str, Any]]],
         Field(description="Optional semantic category for this option (UX only)."),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -3710,7 +3923,7 @@ class PlanUpdateMarkdown(PlanMarkdown):
 
 class PlanItems(BaseModel):
     # The plan ID to update.
-    id: Annotated[str, Field(description="The plan ID to update.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to update.")]
     # The list of tasks to be accomplished.
     #
     # When updating an item-based plan, the agent must send a complete list of all entries
@@ -3746,14 +3959,14 @@ class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
 class SessionConfigOptionsCapabilities(BaseModel):
     # Whether the client supports boolean session configuration options.
     #
-    # Omitted or `null` means the client does not advertise support.
+    # Optional. Omitted or `null` both mean the client does not advertise support.
     # Supplying `{}` means agents may include `type: "boolean"` entries in
     # `configOptions`, and the client may send `session/set_config_option`
     # requests with `type: "boolean"` and a boolean `value`.
     boolean: Annotated[
         Optional[BooleanConfigOptionCapabilities],
         Field(
-            description='Whether the client supports boolean session configuration options.\n\nOmitted or `null` means the client does not advertise support.\nSupplying `{}` means agents may include `type: "boolean"` entries in\n`configOptions`, and the client may send `session/set_config_option`\nrequests with `type: "boolean"` and a boolean `value`.'
+            description='Whether the client supports boolean session configuration options.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means agents may include `type: "boolean"` entries in\n`configOptions`, and the client may send `session/set_config_option`\nrequests with `type: "boolean"` and a boolean `value`.'
         ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -3772,14 +3985,24 @@ class SessionConfigOptionsCapabilities(BaseModel):
 
 class ElicitationCapabilities(BaseModel):
     # Whether the client supports form-based elicitation.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise support.
+    # Supplying `{}` means the client supports form-based elicitation.
     form: Annotated[
         Optional[ElicitationFormCapabilities],
-        Field(description="Whether the client supports form-based elicitation."),
+        Field(
+            description="Whether the client supports form-based elicitation.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client supports form-based elicitation."
+        ),
     ] = None
     # Whether the client supports URL-based elicitation.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise support.
+    # Supplying `{}` means the client supports URL-based elicitation.
     url: Annotated[
         Optional[ElicitationUrlCapabilities],
-        Field(description="Whether the client supports URL-based elicitation."),
+        Field(
+            description="Whether the client supports URL-based elicitation.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client supports URL-based elicitation."
+        ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3849,8 +4072,11 @@ class LoadSessionRequest(BaseModel):
             description="List of MCP servers to connect to for this session.",
         ),
     ]
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -3883,8 +4109,11 @@ class LoadSessionRequest(BaseModel):
 class ForkSessionRequest(BaseModel):
     # The ID of the session to fork.
     session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to fork.")]
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -3922,8 +4151,11 @@ class ForkSessionRequest(BaseModel):
 class ResumeSessionRequest(BaseModel):
     # The ID of the session to resume.
     session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to resume.")]
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -4243,40 +4475,8 @@ class Content(BaseModel):
     ] = None
 
 
-class MultiSelectPropertySchema(BaseModel):
-    # Optional title for the property.
-    title: Annotated[Optional[str], Field(description="Optional title for the property.")] = None
-    # Human-readable description.
-    description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
-    # Minimum number of items to select.
-    min_items: Annotated[
-        Optional[int],
-        Field(alias="minItems", description="Minimum number of items to select.", ge=0),
-    ] = None
-    # Maximum number of items to select.
-    max_items: Annotated[
-        Optional[int],
-        Field(alias="maxItems", description="Maximum number of items to select.", ge=0),
-    ] = None
-    # The items definition describing allowed values.
-    items: Annotated[
-        Union[UntitledMultiSelectItems, TitledMultiSelectItems],
-        Field(description="The items definition describing allowed values."),
-    ]
-    # Default selected values.
-    default: Annotated[Optional[List[str]], Field(description="Default selected values.")] = None
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
+class ElicitationMultiSelectPropertySchema(MultiSelectPropertySchema):
+    type: Literal["array"]
 
 
 class AgentErrorMessage(BaseModel):
@@ -4533,13 +4733,13 @@ class _AvailableCommandsUpdate(BaseModel):
 class ClientSessionCapabilities(BaseModel):
     # Config option capabilities supported by the client.
     #
-    # Omitted or `null` means the client does not advertise support for any
+    # Omitted or `null` both mean the client does not advertise support for any
     # config option extensions.
     config_options: Annotated[
         Optional[SessionConfigOptionsCapabilities],
         Field(
             alias="configOptions",
-            description="Config option capabilities supported by the client.\n\nOmitted or `null` means the client does not advertise support for any\nconfig option extensions.",
+            description="Config option capabilities supported by the client.\n\nOmitted or `null` both mean the client does not advertise support for any\nconfig option extensions.",
         ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4750,8 +4950,83 @@ class ContentToolCallContent(Content):
     type: Literal["content"]
 
 
-class ElicitationMultiSelectPropertySchema(MultiSelectPropertySchema):
-    type: Literal["array"]
+class ElicitationSchema(BaseModel):
+    # Type discriminator. Always `"object"`.
+    type: Annotated[Optional[str], Field(description='Type discriminator. Always `"object"`.')] = "object"
+    # Optional title for the schema.
+    title: Annotated[Optional[str], Field(description="Optional title for the schema.")] = None
+    # Property definitions (must be primitive types).
+    properties: Annotated[
+        Optional[
+            Dict[
+                str,
+                Union[
+                    ElicitationStringPropertySchema,
+                    ElicitationNumberPropertySchema,
+                    ElicitationIntegerPropertySchema,
+                    ElicitationBooleanPropertySchema,
+                    ElicitationMultiSelectPropertySchema,
+                    ElicitationOtherPropertySchema,
+                ],
+            ]
+        ],
+        Field(description="Property definitions (must be primitive types)."),
+    ] = {}
+    # List of required property names.
+    required: Annotated[Optional[List[str]], Field(description="List of required property names.")] = None
+    # Optional description of what this schema represents.
+    description: Annotated[
+        Optional[str],
+        Field(description="Optional description of what this schema represents."),
+    ] = None
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+
+class ElicitationFormSessionMode(ElicitationSessionScope):
+    # A JSON Schema describing the form fields to present to the user.
+    requested_schema: Annotated[
+        ElicitationSchema,
+        Field(
+            alias="requestedSchema",
+            description="A JSON Schema describing the form fields to present to the user.",
+        ),
+    ]
+
+
+class ElicitationFormRequestMode(ElicitationRequestScope):
+    # A JSON Schema describing the form fields to present to the user.
+    requested_schema: Annotated[
+        ElicitationSchema,
+        Field(
+            alias="requestedSchema",
+            description="A JSON Schema describing the form fields to present to the user.",
+        ),
+    ]
+
+
+class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, ElicitationFormRequestMode]]):
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Form-based elicitation mode where the client renders a form from the provided schema.
+    root: Annotated[
+        Union[ElicitationFormSessionMode, ElicitationFormRequestMode],
+        Field(
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nForm-based elicitation mode where the client renders a form from the provided schema."
+        ),
+    ]
 
 
 class NesEventCapabilities(BaseModel):
@@ -4786,7 +5061,7 @@ class SessionConfigOptionSelect(SessionConfigSelect):
     ] = None
     # Optional semantic category for this option (UX only).
     category: Annotated[
-        Optional[str],
+        Optional[Union[str, Dict[str, Any]]],
         Field(description="Optional semantic category for this option (UX only)."),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -5051,15 +5326,14 @@ class ClientCapabilities(BaseModel):
         Optional[bool],
         Field(description="Whether the Client support all `terminal/*` methods."),
     ] = False
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Session-related capabilities supported by the client.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise any
+    # session-related extensions.
     session: Annotated[
         Optional[ClientSessionCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nSession-related capabilities supported by the client."
+            description="Session-related capabilities supported by the client.\n\nOptional. Omitted or `null` both mean the client does not advertise any\nsession-related extensions."
         ),
     ] = None
     # **UNSTABLE**
@@ -5068,12 +5342,12 @@ class ClientCapabilities(BaseModel):
     #
     # Whether the client supports `plan_update` and `plan_removed` session updates.
     #
-    # Optional. Omitted means the client does not advertise support.
+    # Optional. Omitted or `null` both mean the client does not advertise support.
     # Supplying `{}` means the client can receive both update types.
     plan: Annotated[
         Optional[PlanCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the client supports `plan_update` and `plan_removed` session updates.\n\nOptional. Omitted means the client does not advertise support.\nSupplying `{}` means the client can receive both update types."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the client supports `plan_update` and `plan_removed` session updates.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client can receive both update types."
         ),
     ] = None
     # **UNSTABLE**
@@ -5095,10 +5369,13 @@ class ClientCapabilities(BaseModel):
     #
     # Elicitation capabilities supported by the client.
     # Determines which elicitation modes the agent may use.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise
+    # elicitation support.
     elicitation: Annotated[
         Optional[ElicitationCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nElicitation capabilities supported by the client.\nDetermines which elicitation modes the agent may use."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nElicitation capabilities supported by the client.\nDetermines which elicitation modes the agent may use.\n\nOptional. Omitted or `null` both mean the client does not advertise\nelicitation support."
         ),
     ] = None
     # **UNSTABLE**
@@ -5106,10 +5383,13 @@ class ClientCapabilities(BaseModel):
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
     # NES (Next Edit Suggestions) capabilities supported by the client.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise any
+    # NES suggestion-kind extensions.
     nes: Annotated[
         Optional[ClientNesCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the client."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the client.\n\nOptional. Omitted or `null` both mean the client does not advertise any\nNES suggestion-kind extensions."
         ),
     ] = None
     # **UNSTABLE**
@@ -5196,6 +5476,7 @@ class ClientResponseMessage(BaseModel):
                 AcceptElicitationResponse,
                 DeclineElicitationResponse,
                 CancelElicitationResponse,
+                OtherElicitationResponse,
             ],
             Any,
         ],
@@ -5274,34 +5555,12 @@ class ToolCallUpdate(BaseModel):
     ] = None
 
 
-class ElicitationSchema(BaseModel):
-    # Type discriminator. Always `"object"`.
-    type: Annotated[Optional[str], Field(description='Type discriminator. Always `"object"`.')] = "object"
-    # Optional title for the schema.
-    title: Annotated[Optional[str], Field(description="Optional title for the schema.")] = None
-    # Property definitions (must be primitive types).
-    properties: Annotated[
-        Optional[
-            Dict[
-                str,
-                Union[
-                    ElicitationStringPropertySchema,
-                    ElicitationNumberPropertySchema,
-                    ElicitationIntegerPropertySchema,
-                    ElicitationBooleanPropertySchema,
-                    ElicitationMultiSelectPropertySchema,
-                ],
-            ]
-        ],
-        Field(description="Property definitions (must be primitive types)."),
-    ] = {}
-    # List of required property names.
-    required: Annotated[Optional[List[str]], Field(description="List of required property names.")] = None
-    # Optional description of what this schema represents.
-    description: Annotated[
-        Optional[str],
-        Field(description="Optional description of what this schema represents."),
-    ] = None
+class CreateFormSessionElicitationRequest(ElicitationSessionScope):
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -5314,9 +5573,7 @@ class ElicitationSchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-
-
-class ElicitationFormSessionMode(ElicitationSessionScope):
+    mode: Literal["form"]
     # A JSON Schema describing the form fields to present to the user.
     requested_schema: Annotated[
         ElicitationSchema,
@@ -5327,7 +5584,25 @@ class ElicitationFormSessionMode(ElicitationSessionScope):
     ]
 
 
-class ElicitationFormRequestMode(ElicitationRequestScope):
+class CreateFormRequestElicitationRequest(ElicitationRequestScope):
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    mode: Literal["form"]
     # A JSON Schema describing the form fields to present to the user.
     requested_schema: Annotated[
         ElicitationSchema,
@@ -5338,18 +5613,31 @@ class ElicitationFormRequestMode(ElicitationRequestScope):
     ]
 
 
-class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, ElicitationFormRequestMode]]):
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Form-based elicitation mode where the client renders a form from the provided schema.
-    root: Annotated[
-        Union[ElicitationFormSessionMode, ElicitationFormRequestMode],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nForm-based elicitation mode where the client renders a form from the provided schema."
-        ),
-    ]
+ElicitationMode = Union[
+    ElicitationFormSessionMode,
+    ElicitationFormRequestMode,
+    ElicitationUrlSessionMode,
+    ElicitationUrlRequestMode,
+]
+CreateFormElicitationRequest = Union[
+    CreateFormSessionElicitationRequest,
+    CreateFormRequestElicitationRequest,
+]
+CreateUrlElicitationRequest = Union[
+    CreateUrlSessionElicitationRequest,
+    CreateUrlRequestElicitationRequest,
+]
+CreateElicitationRequest = Union[
+    CreateFormElicitationRequest,
+    CreateUrlElicitationRequest,
+    CreateOtherElicitationRequest,
+]
+CreateElicitationResponse = Union[
+    AcceptElicitationResponse,
+    DeclineElicitationResponse,
+    CancelElicitationResponse,
+    OtherElicitationResponse,
+]
 
 
 class NesCapabilities(BaseModel):
@@ -5545,89 +5833,6 @@ class RequestPermissionRequest(BaseModel):
     ] = None
 
 
-class CreateFormSessionElicitationRequest(ElicitationSessionScope):
-    # A human-readable message describing what input is needed.
-    message: Annotated[
-        str,
-        Field(description="A human-readable message describing what input is needed."),
-    ]
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    mode: Literal["form"]
-    # A JSON Schema describing the form fields to present to the user.
-    requested_schema: Annotated[
-        ElicitationSchema,
-        Field(
-            alias="requestedSchema",
-            description="A JSON Schema describing the form fields to present to the user.",
-        ),
-    ]
-
-
-class CreateFormRequestElicitationRequest(ElicitationRequestScope):
-    # A human-readable message describing what input is needed.
-    message: Annotated[
-        str,
-        Field(description="A human-readable message describing what input is needed."),
-    ]
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    mode: Literal["form"]
-    # A JSON Schema describing the form fields to present to the user.
-    requested_schema: Annotated[
-        ElicitationSchema,
-        Field(
-            alias="requestedSchema",
-            description="A JSON Schema describing the form fields to present to the user.",
-        ),
-    ]
-
-
-ElicitationMode = Union[
-    ElicitationFormSessionMode,
-    ElicitationFormRequestMode,
-    ElicitationUrlSessionMode,
-    ElicitationUrlRequestMode,
-]
-CreateFormElicitationRequest = Union[
-    CreateFormSessionElicitationRequest,
-    CreateFormRequestElicitationRequest,
-]
-CreateUrlElicitationRequest = Union[
-    CreateUrlSessionElicitationRequest,
-    CreateUrlRequestElicitationRequest,
-]
-CreateElicitationRequest = Union[
-    CreateFormElicitationRequest,
-    CreateUrlElicitationRequest,
-]
-CreateElicitationResponse = Union[
-    AcceptElicitationResponse,
-    DeclineElicitationResponse,
-    CancelElicitationResponse,
-]
-
-
 class AgentCapabilities(BaseModel):
     # Whether the agent supports `session/load`.
     load_session: Annotated[
@@ -5672,11 +5877,12 @@ class AgentCapabilities(BaseModel):
     #
     # Provider configuration capabilities supported by the agent.
     #
-    # By supplying `{}` it means that the agent supports provider configuration methods.
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports provider configuration methods.
     providers: Annotated[
         Optional[ProvidersCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nProvider configuration capabilities supported by the agent.\n\nBy supplying `{}` it means that the agent supports provider configuration methods."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nProvider configuration capabilities supported by the agent.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports provider configuration methods."
         ),
     ] = None
     # **UNSTABLE**
@@ -5684,10 +5890,13 @@ class AgentCapabilities(BaseModel):
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
     # NES (Next Edit Suggestions) capabilities supported by the agent.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support
+    # for NES methods.
     nes: Annotated[
         Optional[NesCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the agent."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the agent.\n\nOptional. Omitted or `null` both mean the agent does not advertise support\nfor NES methods."
         ),
     ] = None
     # **UNSTABLE**
@@ -5825,6 +6034,7 @@ class AgentRequest(BaseModel):
                     CreateFormRequestElicitationRequest,
                     CreateUrlSessionElicitationRequest,
                     CreateUrlRequestElicitationRequest,
+                    CreateOtherElicitationRequest,
                 ],
                 Any,
             ]

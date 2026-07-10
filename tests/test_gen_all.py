@@ -1,5 +1,10 @@
 from scripts.gen_all import resolve_ref, schema_source_paths
-from scripts.gen_schema import _preprocess_schema_for_codegen, _restore_required_nullable_fields
+from scripts.gen_schema import (
+    _extensible_union_excluded_tags,
+    _normalize_catchall_unions,
+    _preprocess_schema_for_codegen,
+    _restore_required_nullable_fields,
+)
 
 
 def test_resolve_ref_accepts_schema_release_tags() -> None:
@@ -85,6 +90,60 @@ def test_codegen_preprocess_distributes_common_object_properties() -> None:
     assert request["oneOf"][0]["properties"].keys() >= {"message", "kind", "payload"}
     assert request["oneOf"][0]["allOf"] == [{"$ref": "#/$defs/ScopeA"}]
     assert request["oneOf"][1]["allOf"] == [{"$ref": "#/$defs/ScopeB"}]
+
+
+def test_codegen_preprocess_normalizes_catchall_unions() -> None:
+    schema = {
+        "anyOf": [
+            {
+                "type": "object",
+                "properties": {"type": {"type": "string", "const": "known"}},
+                "required": ["type"],
+            },
+            {
+                "title": "other",
+                "description": "Custom or future.",
+                "type": "object",
+                "properties": {"type": {"type": "string"}},
+                "required": ["type"],
+                "not": {"anyOf": [{"const": "known"}]},
+                "unevaluatedProperties": True,
+            },
+        ],
+        "discriminator": {"propertyName": "type"},
+    }
+
+    normalized = _normalize_catchall_unions(schema)
+
+    assert "discriminator" not in normalized
+    known, other = normalized["anyOf"]
+    assert known["properties"]["type"]["const"] == "known"
+    assert other["additionalProperties"] is True
+    assert other["properties"] == {"type": {"type": "string"}}
+    assert other["required"] == ["type"]
+    assert "not" not in other
+    assert "unevaluatedProperties" not in other
+
+
+def test_extensible_union_excluded_tags_reads_not_clause() -> None:
+    union_def = {
+        "discriminator": {"propertyName": "action"},
+        "anyOf": [
+            {"properties": {"action": {"const": "accept"}}, "required": ["action"]},
+            {
+                "title": "other",
+                "properties": {"action": {"type": "string"}},
+                "not": {
+                    "anyOf": [
+                        {"properties": {"action": {"const": "accept"}}},
+                        {"properties": {"action": {"const": "decline"}}},
+                    ]
+                },
+            },
+        ],
+    }
+
+    assert _extensible_union_excluded_tags(union_def, "action") == ("accept", "decline")
 
 
 def test_codegen_postprocess_preserves_required_nullable_fields() -> None:

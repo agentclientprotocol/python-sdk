@@ -85,9 +85,11 @@ RENAME_MAP: dict[str, str] = {
     "CreateElicitationRequest2": "CreateFormRequestElicitationRequest",
     "CreateElicitationRequest3": "CreateUrlSessionElicitationRequest",
     "CreateElicitationRequest4": "CreateUrlRequestElicitationRequest",
+    "CreateElicitationRequest5": "CreateOtherElicitationRequest",
     "CreateElicitationResponse1": "AcceptElicitationResponse",
     "CreateElicitationResponse2": "DeclineElicitationResponse",
     "CreateElicitationResponse3": "CancelElicitationResponse",
+    "CreateElicitationResponse4": "OtherElicitationResponse",
     "ElicitationFormMode1": "ElicitationFormSessionMode",
     "ElicitationFormMode2": "ElicitationFormRequestMode",
     "ElicitationPropertySchema1": "ElicitationStringPropertySchema",
@@ -95,12 +97,30 @@ RENAME_MAP: dict[str, str] = {
     "ElicitationPropertySchema3": "ElicitationIntegerPropertySchema",
     "ElicitationPropertySchema4": "ElicitationBooleanPropertySchema",
     "ElicitationPropertySchema5": "ElicitationMultiSelectPropertySchema",
+    "ElicitationPropertySchema6": "ElicitationOtherPropertySchema",
+    "MultiSelectItems1": "StringMultiSelectItems",
+    "MultiSelectItems2": "OtherMultiSelectItems",
     "ElicitationUrlMode1": "ElicitationUrlSessionMode",
     "ElicitationUrlMode2": "ElicitationUrlRequestMode",
     "NesSuggestion1": "NesEditSuggestionVariant",
     "NesSuggestion2": "NesJumpSuggestionVariant",
     "NesSuggestion3": "NesRenameSuggestionVariant",
     "NesSuggestion4": "NesSearchAndReplaceSuggestionVariant",
+}
+
+# Extensible ("custom or future") unions: known const-tagged variants plus a
+# catch-all member tagged `"title": "other"`. _normalize_catchall_unions strips the
+# discriminator and the catch-all's `not` clause so datamodel-codegen produces a plain
+# union; the exclusion is restored at runtime by a field_validator injected into the
+# catch-all class, so a malformed known variant fails instead of silently parsing as
+# custom (mirrors the TypeScript SDK's excludeKnownTags). Maps union def name ->
+# catch-all class name; the set is asserted against the schema in
+# _validate_schema_alignment.
+EXTENSIBLE_UNIONS: dict[str, str] = {
+    "CreateElicitationRequest": "CreateOtherElicitationRequest",
+    "CreateElicitationResponse": "OtherElicitationResponse",
+    "ElicitationPropertySchema": "ElicitationOtherPropertySchema",
+    "MultiSelectItems": "OtherMultiSelectItems",
 }
 
 ENUM_LITERAL_MAP: dict[str, tuple[str, ...]] = {
@@ -257,8 +277,43 @@ COMBINATOR_KEYS = ("oneOf", "anyOf")
 
 
 def _preprocess_schema_for_codegen(schema: dict[str, Any]) -> dict[str, Any]:
+    schema = _normalize_catchall_unions(schema)
     defs = schema.get("$defs", {})
     return _distribute_composed_object_schemas(schema, defs)
+
+
+def _normalize_catchall_unions(node: Any) -> Any:
+    # ACP "custom or future" unions include a member tagged `"title": "other"` whose
+    # discriminator (type/mode/action) is a free-form string. datamodel-codegen cannot
+    # put that in a discriminated union, so it emits `#-special-#` placeholder literals.
+    # Drop the discriminator (the union is then validated structurally) and collapse the
+    # catch-all to a permissive object so unknown variants round-trip their raw payload.
+    if isinstance(node, list):
+        return [_normalize_catchall_unions(item) for item in node]
+    if not isinstance(node, dict):
+        return node
+
+    transformed = {key: _normalize_catchall_unions(value) for key, value in node.items()}
+    for combinator in COMBINATOR_KEYS:
+        members = transformed.get(combinator)
+        if not isinstance(members, list):
+            continue
+        if not any(isinstance(member, dict) and member.get("title") == "other" for member in members):
+            continue
+        transformed.pop("discriminator", None)
+        transformed[combinator] = [
+            _collapse_catchall_member(member) if isinstance(member, dict) and member.get("title") == "other" else member
+            for member in members
+        ]
+    return transformed
+
+
+def _collapse_catchall_member(member: dict[str, Any]) -> dict[str, Any]:
+    collapsed: dict[str, Any] = {"type": "object", "additionalProperties": True}
+    for key in ("title", "description", "properties", "required"):
+        if key in member:
+            collapsed[key] = member[key]
+    return collapsed
 
 
 def _distribute_composed_object_schemas(node: Any, defs: dict[str, Any]) -> Any:
@@ -522,7 +577,27 @@ def _validate_schema_alignment() -> list[str]:
             warnings.append(
                 f"Enum mismatch for '{enum_name}': schema.json -> {schema_values}, generated aliases -> {expected_values}"
             )
+
+    detected_unions = _detect_extensible_unions()
+    if detected_unions != set(EXTENSIBLE_UNIONS):
+        warnings.append(
+            f"Extensible union drift: schema defines {sorted(detected_unions)}, "
+            f"EXTENSIBLE_UNIONS lists {sorted(EXTENSIBLE_UNIONS)}. Update EXTENSIBLE_UNIONS, the "
+            "RENAME_MAP catch-all names, and the alias template together."
+        )
     return warnings
+
+
+def _detect_extensible_unions() -> set[str]:
+    defs = _load_schema().get("$defs", {})
+    detected: set[str] = set()
+    for name, definition in defs.items():
+        if not isinstance(definition, dict) or "discriminator" not in definition:
+            continue
+        members = definition.get("anyOf") or definition.get("oneOf") or []
+        if any(isinstance(member, dict) and member.get("title") == "other" for member in members):
+            detected.add(name)
+    return detected
 
 
 def _load_schema_enum_literals() -> dict[str, tuple[str, ...]]:
@@ -600,9 +675,58 @@ def _ensure_pydantic_import(content: str, name: str) -> str:
     return content
 
 
+def _extensible_union_excluded_tags(union_def: dict[str, Any], discriminator: str) -> tuple[str, ...]:
+    members = union_def.get("anyOf") or union_def.get("oneOf") or []
+    other = next((member for member in members if isinstance(member, dict) and member.get("title") == "other"), None)
+    if other is None:
+        return ()
+    tags: list[str] = []
+    for excluded in other.get("not", {}).get("anyOf", []):
+        const = excluded.get("properties", {}).get(discriminator, {}).get("const")
+        if isinstance(const, str) and const not in tags:
+            tags.append(const)
+    return tuple(tags)
+
+
+def _catchall_exclusion_injections() -> list[FieldValidatorInjection]:
+    defs = _load_schema().get("$defs", {})
+    injections: list[FieldValidatorInjection] = []
+    for union_name, catchall_class in EXTENSIBLE_UNIONS.items():
+        union_def = defs.get(union_name)
+        if not isinstance(union_def, dict):
+            continue
+        discriminator = union_def.get("discriminator", {}).get("propertyName")
+        if not discriminator:
+            continue
+        tags = _extensible_union_excluded_tags(union_def, discriminator)
+        if not tags:
+            continue
+        field = _schema_field_name(discriminator)
+        injections.append(
+            FieldValidatorInjection(
+                class_name=catchall_class,
+                field_name=field,
+                method_name=f"_reject_known_{field}",
+                argument_name="value",
+                return_type="Any",
+                comment_lines=(
+                    "Restore the schema's `not` clause dropped for codegen: reject the known",
+                    "variants' discriminator values so a malformed known variant fails instead",
+                    "of silently parsing as this catch-all.",
+                ),
+                body_lines=(
+                    f"if value in {tags!r}:",
+                    f'    raise ValueError("{field} value is reserved by a known variant")',
+                    "return value",
+                ),
+            )
+        )
+    return injections
+
+
 def _inject_field_validators(content: str) -> str:
-    """Inject field_validator methods into classes listed in CLASS_VALIDATOR_INJECTIONS."""
-    for injection in CLASS_VALIDATOR_INJECTIONS:
+    """Inject field_validator methods for CLASS_VALIDATOR_INJECTIONS and catch-all exclusions."""
+    for injection in (*CLASS_VALIDATOR_INJECTIONS, *_catchall_exclusion_injections()):
         content = _ensure_pydantic_import(content, "field_validator")
 
         class_pattern = re.compile(
@@ -649,11 +773,13 @@ def _inject_schema_aliases(content: str) -> str:
         CreateElicitationRequest = Union[
             CreateFormElicitationRequest,
             CreateUrlElicitationRequest,
+            CreateOtherElicitationRequest,
         ]
         CreateElicitationResponse = Union[
             AcceptElicitationResponse,
             DeclineElicitationResponse,
             CancelElicitationResponse,
+            OtherElicitationResponse,
         ]
     """)
     pattern = re.compile(
