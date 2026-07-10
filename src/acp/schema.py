@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from pydantic import AnyUrl, BaseModel as _BaseModel, ConfigDict, Field, RootModel, field_validator
+from acp._deserialize import salvage_on_error, skip_invalid_items
 
 PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
 PlanEntryPriority = Literal["high", "medium", "low"]
@@ -24,6 +25,11 @@ class BaseModel(_BaseModel):
             snake_cased = "".join("_" + c.lower() if c.isupper() and i > 0 else c.lower() for i, c in enumerate(item))
             return getattr(self, snake_cased)
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
+
+    @field_validator("field_meta", mode="wrap", check_fields=False)
+    @classmethod
+    def _salvage_meta_on_error(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class Jsonrpc(Enum):
@@ -55,6 +61,11 @@ class ReadTextFileRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("limit", "line", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class TextResourceContents(BaseModel):
     # MIME type describing the encoded media payload.
@@ -81,6 +92,11 @@ class TextResourceContents(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("mime_type", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class BlobResourceContents(BaseModel):
@@ -109,6 +125,11 @@ class BlobResourceContents(BaseModel):
         ),
     ] = None
 
+    @field_validator("mime_type", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class Diff(BaseModel):
     # The absolute file path being modified.
@@ -132,6 +153,11 @@ class Diff(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("old_text", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class Terminal(BaseModel):
@@ -174,6 +200,11 @@ class ToolCallLocation(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("line", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class EnvVariable(BaseModel):
@@ -333,6 +364,11 @@ class ElicitationSessionScope(BaseModel):
         Field(alias="toolCallId", description="Optional tool call within the session."),
     ] = None
 
+    @field_validator("tool_call_id", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class ElicitationRequestScope(BaseModel):
     # The request this elicitation is tied to.
@@ -389,6 +425,11 @@ class EnumOption(BaseModel):
         ),
     ] = None
 
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class StringPropertySchema(BaseModel):
     # Optional title for the property.
@@ -437,6 +478,11 @@ class StringPropertySchema(BaseModel):
         ),
     ] = None
 
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NumberPropertySchema(BaseModel):
     # Optional title for the property.
@@ -461,6 +507,11 @@ class NumberPropertySchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class IntegerPropertySchema(BaseModel):
@@ -487,6 +538,11 @@ class IntegerPropertySchema(BaseModel):
         ),
     ] = None
 
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class BooleanPropertySchema(BaseModel):
     # Optional title for the property.
@@ -507,6 +563,11 @@ class BooleanPropertySchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class OtherMultiSelectItems(BaseModel):
@@ -659,6 +720,11 @@ class PromptCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("audio", "embedded_context", "image", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
 
 class McpCapabilities(BaseModel):
     # Agent supports [`McpServer::Http`].
@@ -688,6 +754,11 @@ class McpCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("acp", "http", "sse", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
 
 
 class SessionListCapabilities(BaseModel):
@@ -893,6 +964,11 @@ class NesRecentFilesCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("max_count", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NesRelatedSnippetsCapabilities(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -932,6 +1008,11 @@ class NesEditHistoryCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("max_count", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NesUserActionsCapabilities(BaseModel):
     # Maximum number of user actions the agent can use.
@@ -955,6 +1036,11 @@ class NesUserActionsCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("max_count", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesOpenFilesCapabilities(BaseModel):
@@ -1028,6 +1114,21 @@ class AuthEnvVar(BaseModel):
         ),
     ] = None
 
+    @field_validator("optional", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
+    @field_validator("label", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("secret", mode="wrap")
+    @classmethod
+    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: True)
+
 
 class AuthMethodEnvVar(BaseModel):
     # Unique identifier for this authentication method.
@@ -1061,6 +1162,16 @@ class AuthMethodEnvVar(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", "link", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("vars", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class AuthMethodTerminal(BaseModel):
@@ -1096,6 +1207,16 @@ class AuthMethodTerminal(BaseModel):
         ),
     ] = None
 
+    @field_validator("description", "env", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("args", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class AuthMethodAgent(BaseModel):
     # Unique identifier for this authentication method.
@@ -1119,6 +1240,11 @@ class AuthMethodAgent(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class Implementation(BaseModel):
@@ -1160,6 +1286,11 @@ class Implementation(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class AuthenticateResponse(BaseModel):
@@ -1273,6 +1404,11 @@ class SessionMode(BaseModel):
         ),
     ] = None
 
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class SessionConfigSelectOption(BaseModel):
     # Unique identifier for this option value.
@@ -1293,6 +1429,11 @@ class SessionConfigSelectOption(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class SessionConfigBoolean(BaseModel):
@@ -1342,6 +1483,16 @@ class SessionInfo(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("title", "updated_at", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class DeleteSessionResponse(BaseModel):
@@ -1444,6 +1595,11 @@ class Usage(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("cached_read_tokens", "cached_write_tokens", "thought_tokens", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class StartNesResponse(BaseModel):
@@ -1700,6 +1856,11 @@ class _SessionInfoUpdate(BaseModel):
         ),
     ] = None
 
+    @field_validator("title", "updated_at", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class Cost(BaseModel):
     # Total cumulative cost for session.
@@ -1739,6 +1900,11 @@ class _UsageUpdate(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("cost", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class CompleteElicitationNotification(BaseModel):
@@ -1797,6 +1963,11 @@ class MessageMcpNotification(BaseModel):
         ),
     ] = None
 
+    @field_validator("params", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class FileSystemCapabilities(BaseModel):
     # Whether the Client supports `fs/read_text_file` requests.
@@ -1827,6 +1998,11 @@ class FileSystemCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("read_text_file", "write_text_file", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
 
 
 class BooleanConfigOptionCapabilities(BaseModel):
@@ -1881,6 +2057,11 @@ class AuthCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("terminal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
 
 
 class ElicitationFormCapabilities(BaseModel):
@@ -2607,6 +2788,11 @@ class TerminalExitStatus(BaseModel):
         ),
     ] = None
 
+    @field_validator("exit_code", "signal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class ReleaseTerminalResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2650,6 +2836,11 @@ class WaitForTerminalExitResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("exit_code", "signal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class KillTerminalResponse(BaseModel):
@@ -2996,6 +3187,16 @@ class Annotations(BaseModel):
         ),
     ] = None
 
+    @field_validator("last_modified", "priority", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("audience", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class TextContent(BaseModel):
     # Optional annotations that help clients decide how to display or route this content.
@@ -3017,6 +3218,11 @@ class TextContent(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("annotations", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ImageContent(BaseModel):
@@ -3053,6 +3259,11 @@ class ImageContent(BaseModel):
         ),
     ] = None
 
+    @field_validator("annotations", "uri", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class AudioContent(BaseModel):
     # Optional annotations that help clients decide how to display or route this content.
@@ -3082,6 +3293,11 @@ class AudioContent(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("annotations", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ResourceLink(BaseModel):
@@ -3127,6 +3343,11 @@ class ResourceLink(BaseModel):
         ),
     ] = None
 
+    @field_validator("annotations", "description", "mime_type", "size", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class EmbeddedResource(BaseModel):
     # Optional annotations that help clients decide how to display or route this content.
@@ -3151,6 +3372,11 @@ class EmbeddedResource(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("annotations", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class PermissionOption(BaseModel):
@@ -3225,6 +3451,21 @@ class CreateTerminalRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("cwd", "output_byte_limit", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("args", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("env", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class CreateUrlSessionElicitationRequest(ElicitationSessionScope):
@@ -3343,6 +3584,16 @@ class MultiSelectPropertySchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("default", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ConnectMcpRequest(BaseModel):
@@ -3486,6 +3737,11 @@ class SessionCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("additional_directories", "close", "delete", "fork", "list", "resume", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class AgentAuthCapabilities(BaseModel):
     # Whether the agent supports the logout method.
@@ -3510,6 +3766,11 @@ class AgentAuthCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("logout", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesDocumentDidChangeCapabilities(BaseModel):
@@ -3591,6 +3852,13 @@ class NesContextCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator(
+        "diagnostics", "edit_history", "open_files", "recent_files", "related_snippets", "user_actions", mode="wrap"
+    )
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class EnvVarAuthMethod(AuthMethodEnvVar):
     type: Literal["env_var"]
@@ -3641,6 +3909,11 @@ class ProviderInfo(BaseModel):
         ),
     ] = None
 
+    @field_validator("supported", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class SessionModeState(BaseModel):
     # The current mode the Agent is in.
@@ -3668,6 +3941,11 @@ class SessionModeState(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("available_modes", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class SessionConfigOptionBoolean(SessionConfigBoolean):
@@ -3699,6 +3977,11 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     ] = None
     type: Literal["boolean"]
 
+    @field_validator("category", "description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class SessionConfigSelectGroup(BaseModel):
     # Unique identifier for this group.
@@ -3722,6 +4005,11 @@ class SessionConfigSelectGroup(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ListSessionsResponse(BaseModel):
@@ -3748,6 +4036,16 @@ class ListSessionsResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("next_cursor", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("sessions", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class PromptResponse(BaseModel):
@@ -3782,6 +4080,11 @@ class PromptResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("usage", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesJumpSuggestionVariant(NesJumpSuggestion):
@@ -3840,6 +4143,11 @@ class Error(BaseModel):
             description="Optional primitive or structured value that contains additional information about the error.\nThis may include debugging information or context-specific details."
         ),
     ] = None
+
+    @field_validator("data", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class AgentPlanRemovedUpdate(PlanRemoved):
@@ -3912,6 +4220,11 @@ class Plan(BaseModel):
         ),
     ] = None
 
+    @field_validator("entries", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class PlanUpdateFile(PlanFile):
     type: Literal["file"]
@@ -3946,6 +4259,11 @@ class PlanItems(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("entries", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
@@ -3982,6 +4300,11 @@ class SessionConfigOptionsCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("boolean", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class ElicitationCapabilities(BaseModel):
     # Whether the client supports form-based elicitation.
@@ -4017,6 +4340,11 @@ class ElicitationCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("form", "url", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class ClientNesCapabilities(BaseModel):
     # Whether the client supports the `jump` suggestion kind.
@@ -4049,6 +4377,11 @@ class ClientNesCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("jump", "rename", "search_and_replace", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class HttpMcpServer(McpServerHttp):
@@ -4105,6 +4438,16 @@ class LoadSessionRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ForkSessionRequest(BaseModel):
     # The ID of the session to fork.
@@ -4146,6 +4489,16 @@ class ForkSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ResumeSessionRequest(BaseModel):
@@ -4190,6 +4543,16 @@ class ResumeSessionRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class StartNesRequest(BaseModel):
     # The root URI of the workspace.
@@ -4219,6 +4582,11 @@ class StartNesRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("repository", "workspace_uri", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesRelatedSnippet(BaseModel):
@@ -4271,6 +4639,11 @@ class NesOpenFile(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("last_focused_ms", "visible_range", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesDiagnostic(BaseModel):
@@ -4332,6 +4705,11 @@ class TerminalOutputResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("exit_status", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class AcceptElicitationResponse(ElicitationAcceptAction):
@@ -4431,6 +4809,11 @@ class RejectNesNotification(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("reason", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class TextContentBlock(TextContent):
@@ -4543,6 +4926,11 @@ class NesDocumentEventCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("did_change", "did_close", "did_focus", "did_open", "did_save", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class ListProvidersResponse(BaseModel):
     # Configurable providers with current routing info suitable for UI display.
@@ -4621,6 +5009,11 @@ class NesEditSuggestion(BaseModel):
         ),
     ] = None
 
+    @field_validator("cursor_position", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class AgentPlanUpdate(Plan):
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")]
@@ -4657,6 +5050,11 @@ class ContentChunk(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("message_id", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class PlanUpdateItems(PlanItems):
@@ -4709,6 +5107,11 @@ class AvailableCommand(BaseModel):
         ),
     ] = None
 
+    @field_validator("input", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class _AvailableCommandsUpdate(BaseModel):
     # Commands the agent can execute
@@ -4728,6 +5131,11 @@ class _AvailableCommandsUpdate(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("available_commands", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ClientSessionCapabilities(BaseModel):
@@ -4754,6 +5162,11 @@ class ClientSessionCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NewSessionRequest(BaseModel):
@@ -4794,6 +5207,16 @@ class NewSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class PromptRequest(BaseModel):
@@ -4945,6 +5368,11 @@ class DidChangeDocumentNotification(BaseModel):
         ),
     ] = None
 
+    @field_validator("content_changes", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ContentToolCallContent(Content):
     type: Literal["content"]
@@ -4991,6 +5419,16 @@ class ElicitationSchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("type", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: "object")
+
+    @field_validator("description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ElicitationFormSessionMode(ElicitationSessionScope):
@@ -5048,6 +5486,11 @@ class NesEventCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("document", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class SessionConfigOptionSelect(SessionConfigSelect):
     # Unique identifier for the configuration option.
@@ -5077,6 +5520,11 @@ class SessionConfigOptionSelect(SessionConfigSelect):
         ),
     ] = None
     type: Literal["select"]
+
+    @field_validator("category", "description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class LoadSessionResponse(BaseModel):
@@ -5109,6 +5557,16 @@ class LoadSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ForkSessionResponse(BaseModel):
@@ -5150,6 +5608,16 @@ class ForkSessionResponse(BaseModel):
         ),
     ] = None
 
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ResumeSessionResponse(BaseModel):
     # Initial mode state if supported by the Agent
@@ -5182,6 +5650,16 @@ class ResumeSessionResponse(BaseModel):
         ),
     ] = None
 
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class SetSessionConfigOptionResponse(BaseModel):
     # The full set of configuration options and their current values.
@@ -5204,6 +5682,11 @@ class SetSessionConfigOptionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class NesEditSuggestionVariant(NesEditSuggestion):
@@ -5288,6 +5771,21 @@ class ToolCall(BaseModel):
         ),
     ] = None
 
+    @field_validator("kind", "raw_input", "raw_output", "status", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("content", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("locations", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class _ConfigOptionUpdate(BaseModel):
     # The full set of configuration options and their current values.
@@ -5310,6 +5808,11 @@ class _ConfigOptionUpdate(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ClientCapabilities(BaseModel):
@@ -5416,6 +5919,31 @@ class ClientCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("terminal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
+    @field_validator("elicitation", "nes", "plan", "session", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("fs", mode="wrap")
+    @classmethod
+    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"readTextFile": False, "writeTextFile": False})
+
+    @field_validator("auth", mode="wrap")
+    @classmethod
+    def _salvage_on_error_3(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"terminal": False})
+
+    @field_validator("position_encodings", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class SuggestNesRequest(BaseModel):
@@ -5554,6 +6082,21 @@ class ToolCallUpdate(BaseModel):
         ),
     ] = None
 
+    @field_validator("kind", "raw_input", "raw_output", "status", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("content", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("locations", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class CreateFormSessionElicitationRequest(ElicitationSessionScope):
     # A human-readable message describing what input is needed.
@@ -5664,6 +6207,11 @@ class NesCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("context", "events", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NewSessionResponse(BaseModel):
     # Unique identifier for the created session.
@@ -5705,6 +6253,16 @@ class NewSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class SuggestNesResponse(BaseModel):
@@ -5801,6 +6359,24 @@ class InitializeRequest(BaseModel):
             return int(value)
         except (TypeError, ValueError):
             return 1
+
+    @field_validator("client_info", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("client_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(
+            value,
+            handler,
+            lambda: {
+                "fs": {"readTextFile": False, "writeTextFile": False},
+                "terminal": False,
+                "auth": {"terminal": False},
+            },
+        )
 
 
 class RequestPermissionRequest(BaseModel):
@@ -5923,6 +6499,31 @@ class AgentCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("load_session", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
+    @field_validator("nes", "position_encoding", "providers", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("mcp_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"http": False, "sse": False, "acp": False})
+
+    @field_validator("prompt_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_3(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"image": False, "audio": False, "embeddedContext": False})
+
+    @field_validator("auth", "session_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_4(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {})
 
 
 class SessionNotification(BaseModel):
@@ -6095,6 +6696,31 @@ class InitializeResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("agent_info", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("agent_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(
+            value,
+            handler,
+            lambda: {
+                "loadSession": False,
+                "promptCapabilities": {"image": False, "audio": False, "embeddedContext": False},
+                "mcpCapabilities": {"http": False, "sse": False, "acp": False},
+                "sessionCapabilities": {},
+                "auth": {},
+            },
+        )
+
+    @field_validator("auth_methods", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class AgentNotification(BaseModel):

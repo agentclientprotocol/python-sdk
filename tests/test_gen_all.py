@@ -1,6 +1,8 @@
 from scripts.gen_all import resolve_ref, schema_source_paths
 from scripts.gen_schema import (
+    _deserialize_field_specs,
     _extensible_union_excluded_tags,
+    _fallback_expression,
     _normalize_catchall_unions,
     _preprocess_schema_for_codegen,
     _restore_required_nullable_fields,
@@ -144,6 +146,30 @@ def test_extensible_union_excluded_tags_reads_not_clause() -> None:
     }
 
     assert _extensible_union_excluded_tags(union_def, "action") == ("accept", "decline")
+
+
+def test_deserialize_field_specs_groups_by_fallback_and_excludes_meta() -> None:
+    definition = {
+        "required": ["items"],
+        "properties": {
+            "_meta": {"x-deserialize-default-on-error": True},
+            "note": {"type": "string", "x-deserialize-default-on-error": True},
+            "flag": {"type": "boolean", "default": False, "x-deserialize-default-on-error": True},
+            "items": {"type": "array", "x-deserialize-skip-invalid-items": True},
+        },
+    }
+
+    salvage, skip = _deserialize_field_specs(definition)
+
+    assert salvage == {"lambda: None": ["note"], "lambda: False": ["flag"]}
+    assert skip == ["items"]
+
+
+def test_fallback_expression_matches_schema_default_rules() -> None:
+    assert _fallback_expression({"default": False}, is_required=False) == "lambda: False"
+    assert _fallback_expression({"type": "array"}, is_required=True) == "lambda: []"
+    assert _fallback_expression({"type": ["array", "null"]}, is_required=False) == "lambda: None"
+    assert _fallback_expression({"type": "string"}, is_required=False) == "lambda: None"
 
 
 def test_codegen_postprocess_preserves_required_nullable_fields() -> None:

@@ -484,6 +484,7 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
         _ProcessingStep("attach description comments", _add_description_comments),
         _ProcessingStep("ensure custom BaseModel", _ensure_custom_base_model),
         _ProcessingStep("inject field validators", _inject_field_validators),
+        _ProcessingStep("inject deserialize defaults", _inject_deserialize_defaults),
         _ProcessingStep("inject schema aliases", _inject_schema_aliases),
     )
 
@@ -748,6 +749,118 @@ def _inject_field_validators(content: str) -> str:
                 f"Warning: class {injection.class_name} not found for validator injection",
                 file=sys.stderr,
             )
+    return content
+
+
+def _inject_deserialize_defaults(content: str) -> str:
+    defs = _load_schema().get("$defs", {})
+
+    # `_meta` carries x-deserialize-default-on-error on almost every model; handle it once
+    # on the shared BaseModel with check_fields=False so every subclass inherits the salvage.
+    meta_validator = (
+        '@field_validator("field_meta", mode="wrap", check_fields=False)\n'
+        "@classmethod\n"
+        "def _salvage_meta_on_error(cls, value: Any, handler: Any) -> Any:\n"
+        "    return salvage_on_error(value, handler, lambda: None)\n"
+    )
+    content, count = _append_class_method(content, r"class BaseModel\(_BaseModel\):", meta_validator)
+    if count == 0:
+        print("Warning: custom BaseModel not found for _meta salvage injection", file=sys.stderr)
+
+    for class_name, definition in defs.items():
+        if not isinstance(definition, dict):
+            continue
+        salvage_groups, skip_fields = _deserialize_field_specs(definition)
+        methods: list[str] = []
+        for index, (fallback, fields) in enumerate(sorted(salvage_groups.items())):
+            arguments = ", ".join(f'"{field}"' for field in sorted(fields))
+            methods.append(
+                f'@field_validator({arguments}, mode="wrap")\n'
+                "@classmethod\n"
+                f"def _salvage_on_error_{index}(cls, value: Any, handler: Any) -> Any:\n"
+                f"    return salvage_on_error(value, handler, {fallback})\n"
+            )
+        for index, field in enumerate(sorted(skip_fields)):
+            methods.append(
+                f'@field_validator("{field}", mode="wrap")\n'
+                "@classmethod\n"
+                f"def _skip_invalid_items_{index}(cls, value: Any, handler: Any) -> Any:\n"
+                "    return skip_invalid_items(value, handler)\n"
+            )
+        # A plain object $def renders as `class Name(BaseModel)` (or `_Name` after a
+        # collision rename). A union $def has no class of its own; its common properties
+        # distribute to the member variant classes, so target those instead.
+        targets = [rf"class _?{re.escape(class_name)}\(BaseModel\):"]
+        members = _union_member_classes(class_name)
+        if members:
+            targets = [rf"class {re.escape(member)}\(\w+\):" for member in members]
+        for method in methods:
+            for target in targets:
+                content, count = _append_class_method(content, target, method)
+                if count == 0:
+                    print(f"Warning: no class matched {target!r} for deserialize injection", file=sys.stderr)
+
+    content = _ensure_pydantic_import(content, "field_validator")
+    return _ensure_deserialize_import(content)
+
+
+def _union_member_classes(union_name: str) -> list[str]:
+    return [new for old, new in RENAME_MAP.items() if re.fullmatch(rf"{re.escape(union_name)}\d+", old)]
+
+
+def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[dict[str, list[str]], list[str]]:
+    """Return ({fallback_expr: [field, ...]}, [skip_field, ...]) for a $def. `_meta` is handled
+    on the shared BaseModel and excluded here."""
+    required = set(definition.get("required", []))
+    salvage: dict[str, list[str]] = {}
+    skip: list[str] = []
+    for prop_name, prop in definition.get("properties", {}).items():
+        if not isinstance(prop, dict) or prop_name == "_meta":
+            continue
+        field = _schema_field_name(prop_name)
+        if prop.get("x-deserialize-skip-invalid-items"):
+            skip.append(field)
+        elif prop.get("x-deserialize-default-on-error"):
+            salvage.setdefault(_fallback_expression(prop, prop_name in required), []).append(field)
+    return salvage, skip
+
+
+def _fallback_expression(prop: dict[str, Any], is_required: bool) -> str:
+    if "default" in prop:
+        return f"lambda: {prop['default']!r}"
+    if _is_array_schema(prop) and (is_required or not _schema_allows_null(prop, {})):
+        return "lambda: []"
+    return "lambda: None"
+
+
+def _is_array_schema(prop: dict[str, Any]) -> bool:
+    prop_type = prop.get("type")
+    if prop_type == "array" or (isinstance(prop_type, list) and "array" in prop_type):
+        return True
+    return "items" in prop
+
+
+def _append_class_method(content: str, header_pattern: str, method_text: str) -> tuple[str, int]:
+    pattern = re.compile(rf"({header_pattern})(.*?)(?=\nclass |\Z)", re.DOTALL)
+
+    def _append(match: re.Match[str]) -> str:
+        indented = "\n" + textwrap.indent(method_text, "    ")
+        return match.group(1) + match.group(2) + indented + "\n"
+
+    return pattern.subn(_append, content, count=1)
+
+
+def _ensure_deserialize_import(content: str) -> str:
+    # Absolute import (not relative): gen_signature.py loads schema.py as a standalone
+    # module with no package context, where `from ._deserialize` cannot resolve.
+    statement = "from acp._deserialize import salvage_on_error, skip_invalid_items"
+    if statement in content:
+        return content
+    lines = content.splitlines()
+    for idx, line in enumerate(lines):
+        if line.startswith("from pydantic import "):
+            lines.insert(idx + 1, statement)
+            return "\n".join(lines) + "\n"
     return content
 
 
