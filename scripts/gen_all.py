@@ -140,8 +140,8 @@ def download_schema(repo: str, ref: str) -> None:
         print(exc, file=sys.stderr)
         sys.exit(1)
 
-    SCHEMA_JSON.write_text(json.dumps(schema_data, indent=2), encoding="utf-8")
-    META_JSON.write_text(json.dumps(meta_data, indent=2), encoding="utf-8")
+    SCHEMA_JSON.write_text(json.dumps(schema_data, indent=2) + "\n", encoding="utf-8")
+    META_JSON.write_text(json.dumps(meta_data, indent=2) + "\n", encoding="utf-8")
     VERSION_FILE.write_text(ref + "\n", encoding="utf-8")
     print(f"Fetched schema and meta from {repo}@{ref}")
 
