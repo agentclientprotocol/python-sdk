@@ -8,6 +8,8 @@ known values must still resolve to their specific typed variant.
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
+from acp.client.router import _mode_from_create_elicitation_request
+from acp.exceptions import RequestError
 from acp.schema import (
     AcceptElicitationResponse,
     CreateElicitationRequest,
@@ -53,6 +55,17 @@ def test_custom_elicitation_request_preserves_mode_and_payload() -> None:
     assert isinstance(parsed, CreateOtherElicitationRequest)
     assert parsed.mode == "x-voice"
     assert parsed.model_dump(by_alias=True)["codec"] == "opus"
+
+
+def test_unknown_elicitation_mode_dispatches_to_clean_request_error() -> None:
+    # A custom mode parses (above); the client router must then reject it with a clean
+    # RequestError (invalid params) rather than a bare TypeError that surfaces as an
+    # opaque -32603 internal error.
+    request = CreateOtherElicitationRequest(message="hi", mode="x-voice")
+    with pytest.raises(RequestError) as exc_info:
+        _mode_from_create_elicitation_request(request)
+    assert isinstance(exc_info.value, RequestError)
+    assert exc_info.value.code == -32602
 
 
 def test_elicitation_property_schema_catchall() -> None:
