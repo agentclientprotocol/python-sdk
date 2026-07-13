@@ -79,17 +79,26 @@ async def run_agent(
 def connect_to_agent(
     client: Client,
     input_stream: Any,
-    output_stream: Any,
+    output_stream: Any = None,
     *,
     use_unstable_protocol: bool = False,
     **connection_kwargs: Any,
 ) -> ClientSideConnection:
-    """Create a ClientSideConnection to an ACP agent over the given input/output streams.
+    """Create a ClientSideConnection to an ACP agent.
+
+    Two forms are supported:
+
+    * **Byte streams (stdio):** pass ``input_stream`` (an ``asyncio.StreamWriter``)
+      and ``output_stream`` (an ``asyncio.StreamReader``).
+    * **Message transport (HTTP/WebSocket):** pass a single
+      :class:`~acp._transport.Transport` as ``input_stream`` and leave
+      ``output_stream`` as ``None``.
 
     Args:
         client: The client implementation to use.
-        input_stream: The (agent) input stream to write to (default: ``sys.stdin``).
-        output_stream: The (agent) output stream to read from (default: ``sys.stdout``).
+        input_stream: The agent input stream (``StreamWriter``) or a ``Transport``.
+        output_stream: The agent output stream (``StreamReader``), or ``None`` when
+            passing a ``Transport``.
         use_unstable_protocol: Whether to enable unstable protocol features.
         **connection_kwargs: Additional keyword arguments to pass to the
             :class:`ClientSideConnection` constructor.

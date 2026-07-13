@@ -44,10 +44,15 @@ dev = [
     "mkdocstrings[python]>=0.26.1",
     "python-dotenv>=1.1.1",
     "prek>=0.2.17",
+    "httpx[http2]>=0.27",
+    "websockets>=12.0",
+    "uvicorn>=0.30",
 ]
 
 [project.optional-dependencies]
 logfire = ["logfire>=0.14", "opentelemetry-sdk>=1.28.0"]
+# Experimental remote transports (Streamable HTTP + WebSocket), client + server.
+http = ["httpx[http2]>=0.27", "websockets>=12.0"]
 
 [build-system]
 requires = ["pdm-backend"]

@@ -4,6 +4,7 @@ import asyncio
 from collections.abc import Callable
 from typing import Any, cast, final
 
+from .._transport import Transport
 from ..connection import Connection
 from ..interfaces import Agent, Client
 from ..meta import AGENT_METHODS
@@ -62,16 +63,23 @@ class ClientSideConnection:
         self,
         to_client: Callable[[Agent], Client] | Client,
         input_stream: Any,
-        output_stream: Any,
+        output_stream: Any = None,
         *,
         use_unstable_protocol: bool = False,
         **connection_kwargs: Any,
     ) -> None:
-        if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(output_stream, asyncio.StreamReader):
-            raise TypeError(_CLIENT_CONNECTION_ERROR)
         client = to_client(self) if callable(to_client) else to_client
         handler = build_client_router(cast(Client, client), use_unstable_protocol=use_unstable_protocol)
-        self._conn = Connection(handler, input_stream, output_stream, **connection_kwargs)
+        if isinstance(input_stream, Transport):
+            if output_stream is not None:
+                raise TypeError(_CLIENT_CONNECTION_ERROR)
+            self._conn = Connection(handler, input_stream, **connection_kwargs)
+        else:
+            if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(
+                output_stream, asyncio.StreamReader
+            ):
+                raise TypeError(_CLIENT_CONNECTION_ERROR)
+            self._conn = Connection(handler, input_stream, output_stream, **connection_kwargs)
         if on_connect := getattr(client, "on_connect", None):
             on_connect(self)
 

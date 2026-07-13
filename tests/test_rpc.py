@@ -744,7 +744,7 @@ async def test_connection_init_under_eager_task_factory(server):
 
     # Regression: under asyncio.eager_task_factory the receive loop runs synchronously
     # up to its first await inside Connection.__init__, so every attribute it reads
-    # (e.g. _receive_timeout) must be assigned before _tasks.create(_receive_loop()).
+    # (i.e. the message transport) must be assigned before _tasks.create(_receive_loop()).
     loop = asyncio.get_running_loop()
     previous_factory = loop.get_task_factory()
     loop.set_task_factory(eager_task_factory)
@@ -758,7 +758,7 @@ async def test_connection_init_under_eager_task_factory(server):
     finally:
         loop.set_task_factory(previous_factory)
 
-    assert conn._receive_timeout == 0.5
+    assert conn._transport._receive_timeout == 0.5  # type: ignore[attr-defined]
     # Let the loop tick once so any deferred receive-task crash would land.
     await asyncio.sleep(0)
     assert conn._disconnected is False

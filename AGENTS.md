@@ -7,6 +7,7 @@ Use this page as the quick orientation for the Python SDK repo. It mirrors the t
 | Path | Why it exists |
 | --- | --- |
 | `src/acp/` | Runtime package: agent/client bases, transports, helpers, schema bindings, contrib utilities |
+| `src/acp/http/`, `src/acp/ws/` | Experimental remote transports (Streamable HTTP + WebSocket), client + server; opt-in via the `[http]` extra |
 | `schema/` | Upstream JSON schema sources (regenerate with `make gen-all`) |
 | `examples/` | Runnable scripts such as `echo_agent.py`, `client.py`, `gemini.py`, `duet.py` |
 | `tests/` | Pytest suite, including optional Gemini smoke tests in `tests/test_gemini_example.py` |

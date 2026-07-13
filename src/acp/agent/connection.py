@@ -6,6 +6,7 @@ from typing import Any, cast, final
 
 from pydantic import TypeAdapter
 
+from .._transport import Transport
 from ..connection import Connection
 from ..interfaces import Agent, Client
 from ..meta import CLIENT_METHODS
@@ -79,17 +80,24 @@ class AgentSideConnection:
         self,
         to_agent: Callable[[Client], Agent] | Agent,
         input_stream: Any,
-        output_stream: Any,
+        output_stream: Any = None,
         listening: bool = True,
         *,
         use_unstable_protocol: bool = False,
         **connection_kwargs: Any,
     ) -> None:
         agent = to_agent(self) if callable(to_agent) else to_agent
-        if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(output_stream, asyncio.StreamReader):
-            raise TypeError(_AGENT_CONNECTION_ERROR)
         handler = build_agent_router(cast(Agent, agent), use_unstable_protocol=use_unstable_protocol)
-        self._conn = Connection(handler, input_stream, output_stream, listening=listening, **connection_kwargs)
+        if isinstance(input_stream, Transport):
+            if output_stream is not None:
+                raise TypeError(_AGENT_CONNECTION_ERROR)
+            self._conn = Connection(handler, input_stream, listening=listening, **connection_kwargs)
+        else:
+            if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(
+                output_stream, asyncio.StreamReader
+            ):
+                raise TypeError(_AGENT_CONNECTION_ERROR)
+            self._conn = Connection(handler, input_stream, output_stream, listening=listening, **connection_kwargs)
         if on_connect := getattr(agent, "on_connect", None):
             on_connect(self)
 
