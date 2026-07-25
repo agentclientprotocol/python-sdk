@@ -54,7 +54,7 @@ requires = ["pdm-backend"]
 build-backend = "pdm.backend"
 
 [tool.pdm.build]
-source-includes = ["examples/", "tests/"]
+source-includes = ["examples/", "tests/", "scripts/"]
 
 [tool.ty.environment]
 python = "./.venv"
