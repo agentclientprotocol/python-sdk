@@ -1,5 +1,5 @@
 # Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.16.0
+# Schema ref: refs/tags/schema-v1.19.0
 AGENT_METHODS = {
     "initialize": "initialize",
     "authenticate": "authenticate",

@@ -11,11 +11,9 @@ from ..router import MessageRouter, Route, _resolve_handler, _warn_legacy_handle
 from ..schema import (
     CompleteElicitationNotification,
     CreateElicitationRequest,
-    CreateFormElicitationRequest,
     CreateFormRequestElicitationRequest,
     CreateFormSessionElicitationRequest,
     CreateTerminalRequest,
-    CreateUrlElicitationRequest,
     CreateUrlRequestElicitationRequest,
     CreateUrlSessionElicitationRequest,
     ElicitationFormRequestMode,
@@ -37,12 +35,12 @@ __all__ = ["build_client_router"]
 _CREATE_ELICITATION_REQUEST_ADAPTER = TypeAdapter(CreateElicitationRequest)
 
 
-def _validate_create_elicitation_request(params: Any) -> CreateFormElicitationRequest | CreateUrlElicitationRequest:
+def _validate_create_elicitation_request(params: Any) -> CreateElicitationRequest:
     return _CREATE_ELICITATION_REQUEST_ADAPTER.validate_python(params)
 
 
 def _mode_from_create_elicitation_request(
-    request: CreateFormElicitationRequest | CreateUrlElicitationRequest,
+    request: CreateElicitationRequest,
 ) -> ElicitationFormSessionMode | ElicitationFormRequestMode | ElicitationUrlSessionMode | ElicitationUrlRequestMode:
     if isinstance(request, CreateFormSessionElicitationRequest):
         return ElicitationFormSessionMode(
@@ -69,7 +67,7 @@ def _mode_from_create_elicitation_request(
             elicitation_id=request.elicitation_id,
             url=request.url,
         )
-    raise TypeError(f"Unsupported elicitation request: {type(request).__name__}")
+    raise RequestError.invalid_params({"details": f"Unsupported elicitation mode: {request.mode!r}"})
 
 
 def _make_create_elicitation_handler(client: Client) -> Any:

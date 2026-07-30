@@ -1,12 +1,13 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.16.0
+# Schema ref: refs/tags/schema-v1.19.0
 
 from __future__ import annotations
 
 from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from pydantic import AnyUrl, BaseModel as _BaseModel, Field, RootModel, ConfigDict, field_validator
+from pydantic import AnyUrl, BaseModel as _BaseModel, ConfigDict, Field, RootModel, field_validator
+from acp._deserialize import salvage_on_error, skip_invalid_items
 
 PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
 PlanEntryPriority = Literal["high", "medium", "low"]
@@ -24,6 +25,11 @@ class BaseModel(_BaseModel):
             snake_cased = "".join("_" + c.lower() if c.isupper() and i > 0 else c.lower() for i, c in enumerate(item))
             return getattr(self, snake_cased)
         raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
+
+    @field_validator("field_meta", mode="wrap", check_fields=False)
+    @classmethod
+    def _salvage_meta_on_error(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class Jsonrpc(Enum):
@@ -55,6 +61,11 @@ class ReadTextFileRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("limit", "line", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class TextResourceContents(BaseModel):
     # MIME type describing the encoded media payload.
@@ -81,6 +92,11 @@ class TextResourceContents(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("mime_type", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class BlobResourceContents(BaseModel):
@@ -109,10 +125,15 @@ class BlobResourceContents(BaseModel):
         ),
     ] = None
 
+    @field_validator("mime_type", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class Diff(BaseModel):
-    # The file path being modified.
-    path: Annotated[str, Field(description="The file path being modified.")]
+    # The absolute file path being modified.
+    path: Annotated[str, Field(description="The absolute file path being modified.")]
     # The original content (None for new files).
     old_text: Annotated[
         Optional[str],
@@ -132,6 +153,11 @@ class Diff(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("old_text", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class Terminal(BaseModel):
@@ -158,8 +184,8 @@ class Terminal(BaseModel):
 
 
 class ToolCallLocation(BaseModel):
-    # The file path being accessed or modified.
-    path: Annotated[str, Field(description="The file path being accessed or modified.")]
+    # The absolute file path being accessed or modified.
+    path: Annotated[str, Field(description="The absolute file path being accessed or modified.")]
     # Optional line number within the file.
     line: Annotated[Optional[int], Field(description="Optional line number within the file.", ge=0)] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -174,6 +200,11 @@ class ToolCallLocation(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("line", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class EnvVariable(BaseModel):
@@ -277,32 +308,15 @@ class KillTerminalRequest(BaseModel):
     ] = None
 
 
-class ElicitationSessionScope(BaseModel):
-    # The session this elicitation is tied to.
-    session_id: Annotated[
+class CreateOtherElicitationRequest(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # A human-readable message describing what input is needed.
+    message: Annotated[
         str,
-        Field(alias="sessionId", description="The session this elicitation is tied to."),
+        Field(description="A human-readable message describing what input is needed."),
     ]
-    # Optional tool call within the session.
-    tool_call_id: Annotated[
-        Optional[str],
-        Field(alias="toolCallId", description="Optional tool call within the session."),
-    ] = None
-
-
-class ElicitationRequestScope(BaseModel):
-    # The request this elicitation is tied to.
-    request_id: Annotated[
-        Optional[Union[int, str]],
-        Field(alias="requestId", description="The request this elicitation is tied to."),
-    ]
-
-
-class EnumOption(BaseModel):
-    # The constant value for this option.
-    const: Annotated[str, Field(description="The constant value for this option.")]
-    # Human-readable title for this option.
-    title: Annotated[str, Field(description="Human-readable title for this option.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -315,6 +329,106 @@ class EnumOption(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+    # Custom or future elicitation mode.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    mode: Annotated[
+        str,
+        Field(
+            description="Custom or future elicitation mode.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("mode", mode="before")
+    @classmethod
+    def _reject_known_mode(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("form", "url"):
+            raise ValueError("mode value is reserved by a known variant")
+        return value
+
+
+class ElicitationSessionScope(BaseModel):
+    # The session this elicitation is tied to.
+    session_id: Annotated[
+        str,
+        Field(alias="sessionId", description="The session this elicitation is tied to."),
+    ]
+    # Optional tool call within the session.
+    tool_call_id: Annotated[
+        Optional[str],
+        Field(alias="toolCallId", description="Optional tool call within the session."),
+    ] = None
+
+    @field_validator("tool_call_id", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+
+class ElicitationRequestScope(BaseModel):
+    # The request this elicitation is tied to.
+    request_id: Annotated[
+        Optional[Union[int, str]],
+        Field(alias="requestId", description="The request this elicitation is tied to."),
+    ]
+
+
+class ElicitationOtherPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # Custom or future elicitation property schema type.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    type: Annotated[
+        str,
+        Field(
+            description="Custom or future elicitation property schema type.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _reject_known_type(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("string", "number", "integer", "boolean", "array"):
+            raise ValueError("type value is reserved by a known variant")
+        return value
+
+
+class EnumOption(BaseModel):
+    # The constant value for this option.
+    const: Annotated[str, Field(description="The constant value for this option.")]
+    # Human-readable title for this option.
+    title: Annotated[str, Field(description="Human-readable title for this option.")]
+    # Human-readable description.
+    description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class StringPropertySchema(BaseModel):
@@ -364,6 +478,11 @@ class StringPropertySchema(BaseModel):
         ),
     ] = None
 
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NumberPropertySchema(BaseModel):
     # Optional title for the property.
@@ -388,6 +507,11 @@ class NumberPropertySchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class IntegerPropertySchema(BaseModel):
@@ -414,6 +538,11 @@ class IntegerPropertySchema(BaseModel):
         ),
     ] = None
 
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class BooleanPropertySchema(BaseModel):
     # Optional title for the property.
@@ -422,6 +551,55 @@ class BooleanPropertySchema(BaseModel):
     description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
     # Default value.
     default: Annotated[Optional[bool], Field(description="Default value.")] = None
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+
+class OtherMultiSelectItems(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # Custom or future multi-select item type.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    type: Annotated[
+        str,
+        Field(
+            description="Custom or future multi-select item type.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def _reject_known_type(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("string",):
+            raise ValueError("type value is reserved by a known variant")
+        return value
+
+
+class _StringMultiSelectItems(BaseModel):
+    # Allowed enum values.
+    enum: Annotated[List[str], Field(description="Allowed enum values.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -542,6 +720,11 @@ class PromptCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("audio", "embedded_context", "image", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
 
 class McpCapabilities(BaseModel):
     # Agent supports [`McpServer::Http`].
@@ -571,6 +754,11 @@ class McpCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("acp", "http", "sse", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
 
 
 class SessionListCapabilities(BaseModel):
@@ -776,6 +964,11 @@ class NesRecentFilesCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("max_count", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NesRelatedSnippetsCapabilities(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -815,6 +1008,11 @@ class NesEditHistoryCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("max_count", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class NesUserActionsCapabilities(BaseModel):
     # Maximum number of user actions the agent can use.
@@ -838,6 +1036,11 @@ class NesUserActionsCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("max_count", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesOpenFilesCapabilities(BaseModel):
@@ -911,6 +1114,21 @@ class AuthEnvVar(BaseModel):
         ),
     ] = None
 
+    @field_validator("optional", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
+    @field_validator("label", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("secret", mode="wrap")
+    @classmethod
+    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: True)
+
 
 class AuthMethodEnvVar(BaseModel):
     # Unique identifier for this authentication method.
@@ -944,6 +1162,16 @@ class AuthMethodEnvVar(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", "link", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("vars", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class AuthMethodTerminal(BaseModel):
@@ -979,6 +1207,16 @@ class AuthMethodTerminal(BaseModel):
         ),
     ] = None
 
+    @field_validator("description", "env", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("args", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class AuthMethodAgent(BaseModel):
     # Unique identifier for this authentication method.
@@ -1002,6 +1240,11 @@ class AuthMethodAgent(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class Implementation(BaseModel):
@@ -1044,6 +1287,11 @@ class Implementation(BaseModel):
         ),
     ] = None
 
+    @field_validator("title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class AuthenticateResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1063,7 +1311,7 @@ class AuthenticateResponse(BaseModel):
 class ProviderCurrentConfig(BaseModel):
     # Protocol currently used by this provider.
     api_type: Annotated[
-        str,
+        Union[str, Dict[str, Any]],
         Field(alias="apiType", description="Protocol currently used by this provider."),
     ]
     # Base URL currently used by this provider.
@@ -1156,6 +1404,11 @@ class SessionMode(BaseModel):
         ),
     ] = None
 
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class SessionConfigSelectOption(BaseModel):
     # Unique identifier for this option value.
@@ -1176,6 +1429,11 @@ class SessionConfigSelectOption(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class SessionConfigBoolean(BaseModel):
@@ -1225,6 +1483,16 @@ class SessionInfo(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("title", "updated_at", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class DeleteSessionResponse(BaseModel):
@@ -1327,6 +1595,11 @@ class Usage(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("cached_read_tokens", "cached_write_tokens", "thought_tokens", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class StartNesResponse(BaseModel):
@@ -1466,7 +1739,7 @@ class CloseNesResponse(BaseModel):
 
 class PlanFile(BaseModel):
     # The plan ID to update.
-    id: Annotated[str, Field(description="The plan ID to update.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to update.")]
     # The URI of the file containing the plan.
     uri: Annotated[str, Field(description="The URI of the file containing the plan.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1485,7 +1758,7 @@ class PlanFile(BaseModel):
 
 class PlanMarkdown(BaseModel):
     # The plan ID to update.
-    id: Annotated[str, Field(description="The plan ID to update.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to update.")]
     # Markdown content for the plan.
     content: Annotated[str, Field(description="Markdown content for the plan.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1504,7 +1777,7 @@ class PlanMarkdown(BaseModel):
 
 class PlanRemoved(BaseModel):
     # The plan ID to remove.
-    id: Annotated[str, Field(description="The plan ID to remove.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to remove.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -1583,6 +1856,11 @@ class _SessionInfoUpdate(BaseModel):
         ),
     ] = None
 
+    @field_validator("title", "updated_at", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class Cost(BaseModel):
     # Total cumulative cost for session.
@@ -1622,6 +1900,11 @@ class _UsageUpdate(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("cost", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class CompleteElicitationNotification(BaseModel):
@@ -1680,6 +1963,11 @@ class MessageMcpNotification(BaseModel):
         ),
     ] = None
 
+    @field_validator("params", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class FileSystemCapabilities(BaseModel):
     # Whether the Client supports `fs/read_text_file` requests.
@@ -1710,6 +1998,11 @@ class FileSystemCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("read_text_file", "write_text_file", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
 
 
 class BooleanConfigOptionCapabilities(BaseModel):
@@ -1764,6 +2057,11 @@ class AuthCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("terminal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
 
 
 class ElicitationFormCapabilities(BaseModel):
@@ -1881,10 +2179,13 @@ class ListProvidersRequest(BaseModel):
 
 
 class SetProviderRequest(BaseModel):
-    # Provider id to configure.
-    id: Annotated[str, Field(description="Provider id to configure.")]
+    # Provider ID to configure.
+    provider_id: Annotated[str, Field(alias="providerId", description="Provider ID to configure.")]
     # Protocol type for this provider.
-    api_type: Annotated[str, Field(alias="apiType", description="Protocol type for this provider.")]
+    api_type: Annotated[
+        Union[str, Dict[str, Any]],
+        Field(alias="apiType", description="Protocol type for this provider."),
+    ]
     # Base URL for requests sent through this provider.
     base_url: Annotated[
         str,
@@ -1916,8 +2217,8 @@ class SetProviderRequest(BaseModel):
 
 
 class DisableProviderRequest(BaseModel):
-    # Provider id to disable.
-    id: Annotated[str, Field(description="Provider id to disable.")]
+    # Provider ID to disable.
+    provider_id: Annotated[str, Field(alias="providerId", description="Provider ID to disable.")]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -2021,10 +2322,11 @@ class McpServerAcp(BaseModel):
     #
     # Providers MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible
     # on the same ACP connection.
-    id: Annotated[
+    server_id: Annotated[
         str,
         Field(
-            description="Unique identifier for this MCP server, generated by the component providing it.\n\nProviders MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible\non the same ACP connection."
+            alias="serverId",
+            description="Unique identifier for this MCP server, generated by the component providing it.\n\nProviders MUST NOT reuse an ID for multiple ACP-transport MCP servers that are visible\non the same ACP connection.",
         ),
     ]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2044,8 +2346,8 @@ class McpServerAcp(BaseModel):
 class McpServerStdio(BaseModel):
     # Human-readable name identifying this MCP server.
     name: Annotated[str, Field(description="Human-readable name identifying this MCP server.")]
-    # Path to the MCP server executable.
-    command: Annotated[str, Field(description="Path to the MCP server executable.")]
+    # Absolute path to the MCP server executable.
+    command: Annotated[str, Field(description="Absolute path to the MCP server executable.")]
     # Command-line arguments to pass to the MCP server.
     args: Annotated[
         List[str],
@@ -2486,6 +2788,11 @@ class TerminalExitStatus(BaseModel):
         ),
     ] = None
 
+    @field_validator("exit_code", "signal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class ReleaseTerminalResponse(BaseModel):
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2529,6 +2836,11 @@ class WaitForTerminalExitResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("exit_code", "signal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class KillTerminalResponse(BaseModel):
@@ -2576,6 +2888,45 @@ class CancelElicitationResponse(BaseModel):
         ),
     ] = None
     action: Literal["cancel"]
+
+
+class OtherElicitationResponse(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    # Custom or future elicitation action.
+    #
+    # Values beginning with `_` are reserved for implementation-specific
+    # extensions. Unknown values that do not begin with `_` are reserved for
+    # future ACP variants.
+    action: Annotated[
+        str,
+        Field(
+            description="Custom or future elicitation action.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Unknown values that do not begin with `_` are reserved for\nfuture ACP variants."
+        ),
+    ]
+
+    @field_validator("action", mode="before")
+    @classmethod
+    def _reject_known_action(cls, value: Any) -> Any:
+        # Restore the schema's `not` clause dropped for codegen: reject the known
+        # variants' discriminator values so a malformed known variant fails instead
+        # of silently parsing as this catch-all.
+        if value in ("accept", "decline", "cancel"):
+            raise ValueError("action value is reserved by a known variant")
+        return value
 
 
 class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]):
@@ -2836,6 +3187,16 @@ class Annotations(BaseModel):
         ),
     ] = None
 
+    @field_validator("last_modified", "priority", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("audience", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class TextContent(BaseModel):
     # Optional annotations that help clients decide how to display or route this content.
@@ -2857,6 +3218,11 @@ class TextContent(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("annotations", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ImageContent(BaseModel):
@@ -2893,6 +3259,11 @@ class ImageContent(BaseModel):
         ),
     ] = None
 
+    @field_validator("annotations", "uri", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class AudioContent(BaseModel):
     # Optional annotations that help clients decide how to display or route this content.
@@ -2922,6 +3293,11 @@ class AudioContent(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("annotations", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ResourceLink(BaseModel):
@@ -2967,6 +3343,11 @@ class ResourceLink(BaseModel):
         ),
     ] = None
 
+    @field_validator("annotations", "description", "mime_type", "size", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class EmbeddedResource(BaseModel):
     # Optional annotations that help clients decide how to display or route this content.
@@ -2991,6 +3372,11 @@ class EmbeddedResource(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("annotations", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class PermissionOption(BaseModel):
@@ -3032,10 +3418,10 @@ class CreateTerminalRequest(BaseModel):
         Optional[List[EnvVariable]],
         Field(description="Environment variables for the command."),
     ] = None
-    # Working directory for the command (absolute path).
+    # Working directory for the command. Must be an absolute path.
     cwd: Annotated[
         Optional[str],
-        Field(description="Working directory for the command (absolute path)."),
+        Field(description="Working directory for the command. Must be an absolute path."),
     ] = None
     # Maximum number of output bytes to retain.
     #
@@ -3065,6 +3451,21 @@ class CreateTerminalRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("cwd", "output_byte_limit", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("args", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("env", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class CreateUrlSessionElicitationRequest(ElicitationSessionScope):
@@ -3145,11 +3546,32 @@ class ElicitationBooleanPropertySchema(BooleanPropertySchema):
     type: Literal["boolean"]
 
 
-class UntitledMultiSelectItems(BaseModel):
-    # Item type discriminator. Must be `"string"`.
-    type: Annotated[str, Field(description='Item type discriminator. Must be `"string"`.')]
-    # Allowed enum values.
-    enum: Annotated[List[str], Field(description="Allowed enum values.")]
+class StringMultiSelectItems(_StringMultiSelectItems):
+    type: Literal["string"]
+
+
+class MultiSelectPropertySchema(BaseModel):
+    # Optional title for the property.
+    title: Annotated[Optional[str], Field(description="Optional title for the property.")] = None
+    # Human-readable description.
+    description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
+    # Minimum number of items to select.
+    min_items: Annotated[
+        Optional[int],
+        Field(alias="minItems", description="Minimum number of items to select.", ge=0),
+    ] = None
+    # Maximum number of items to select.
+    max_items: Annotated[
+        Optional[int],
+        Field(alias="maxItems", description="Maximum number of items to select.", ge=0),
+    ] = None
+    # The items definition describing allowed values.
+    items: Annotated[
+        Union[StringMultiSelectItems, OtherMultiSelectItems, TitledMultiSelectItems],
+        Field(description="The items definition describing allowed values."),
+    ]
+    # Default selected values.
+    default: Annotated[Optional[List[str]], Field(description="Default selected values.")] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -3163,13 +3585,23 @@ class UntitledMultiSelectItems(BaseModel):
         ),
     ] = None
 
+    @field_validator("description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("default", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ConnectMcpRequest(BaseModel):
     # The ACP MCP server ID that was provided by the component declaring the MCP server.
-    acp_id: Annotated[
+    server_id: Annotated[
         str,
         Field(
-            alias="acpId",
+            alias="serverId",
             description="The ACP MCP server ID that was provided by the component declaring the MCP server.",
         ),
     ]
@@ -3223,9 +3655,14 @@ class MessageMcpRequest(BaseModel):
 
 class SessionCapabilities(BaseModel):
     # Whether the agent supports `session/list`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports listing sessions.
     list: Annotated[
         Optional[SessionListCapabilities],
-        Field(description="Whether the agent supports `session/list`."),
+        Field(
+            description="Whether the agent supports `session/list`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports listing sessions."
+        ),
     ] = None
     # Whether the agent supports `session/delete`.
     #
@@ -3239,6 +3676,10 @@ class SessionCapabilities(BaseModel):
     ] = None
     # Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
     #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports `additionalDirectories` on
+    # supported session lifecycle requests.
+    #
     # Agents that also support `session/list` may return
     # `SessionInfo.additionalDirectories` to report the complete ordered
     # additional-root list associated with a listed session.
@@ -3246,7 +3687,7 @@ class SessionCapabilities(BaseModel):
         Optional[SessionAdditionalDirectoriesCapabilities],
         Field(
             alias="additionalDirectories",
-            description="Whether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
+            description="Whether the agent supports `additionalDirectories` on supported session lifecycle requests.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports `additionalDirectories` on\nsupported session lifecycle requests.\n\nAgents that also support `session/list` may return\n`SessionInfo.additionalDirectories` to report the complete ordered\nadditional-root list associated with a listed session.",
         ),
     ] = None
     # **UNSTABLE**
@@ -3254,21 +3695,34 @@ class SessionCapabilities(BaseModel):
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
     # Whether the agent supports `session/fork`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports forking sessions.
     fork: Annotated[
         Optional[SessionForkCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/fork`."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the agent supports `session/fork`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports forking sessions."
         ),
     ] = None
     # Whether the agent supports `session/resume`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports resuming sessions.
     resume: Annotated[
         Optional[SessionResumeCapabilities],
-        Field(description="Whether the agent supports `session/resume`."),
+        Field(
+            description="Whether the agent supports `session/resume`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports resuming sessions."
+        ),
     ] = None
     # Whether the agent supports `session/close`.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports closing sessions.
     close: Annotated[
         Optional[SessionCloseCapabilities],
-        Field(description="Whether the agent supports `session/close`."),
+        Field(
+            description="Whether the agent supports `session/close`.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports closing sessions."
+        ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3282,16 +3736,22 @@ class SessionCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("additional_directories", "close", "delete", "fork", "list", "resume", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class AgentAuthCapabilities(BaseModel):
     # Whether the agent supports the logout method.
     #
-    # By supplying `{}` it means that the agent supports the logout method.
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports the logout method.
     logout: Annotated[
         Optional[LogoutCapabilities],
         Field(
-            description="Whether the agent supports the logout method.\n\nBy supplying `{}` it means that the agent supports the logout method."
+            description="Whether the agent supports the logout method.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports the logout method."
         ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -3306,6 +3766,11 @@ class AgentAuthCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("logout", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesDocumentDidChangeCapabilities(BaseModel):
@@ -3387,6 +3852,13 @@ class NesContextCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator(
+        "diagnostics", "edit_history", "open_files", "recent_files", "related_snippets", "user_actions", mode="wrap"
+    )
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class EnvVarAuthMethod(AuthMethodEnvVar):
     type: Literal["env_var"]
@@ -3398,15 +3870,24 @@ class TerminalAuthMethod(AuthMethodTerminal):
 
 class ProviderInfo(BaseModel):
     # Provider identifier, for example "main" or "openai".
-    id: Annotated[str, Field(description='Provider identifier, for example "main" or "openai".')]
+    provider_id: Annotated[
+        str,
+        Field(
+            alias="providerId",
+            description='Provider identifier, for example "main" or "openai".',
+        ),
+    ]
     # Supported protocol types for this provider.
-    supported: Annotated[List[str], Field(description="Supported protocol types for this provider.")]
+    supported: Annotated[
+        List[Union[str, Dict[str, Any]]],
+        Field(description="Supported protocol types for this provider."),
+    ]
     # Whether this provider is mandatory and cannot be disabled via `providers/disable`.
-    # If true, clients must not call `providers/disable` for this id.
+    # If true, clients must not call `providers/disable` for this provider ID.
     required: Annotated[
         bool,
         Field(
-            description="Whether this provider is mandatory and cannot be disabled via `providers/disable`.\nIf true, clients must not call `providers/disable` for this id."
+            description="Whether this provider is mandatory and cannot be disabled via `providers/disable`.\nIf true, clients must not call `providers/disable` for this provider ID."
         ),
     ]
     # Current effective non-secret routing config.
@@ -3427,6 +3908,11 @@ class ProviderInfo(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("supported", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class SessionModeState(BaseModel):
@@ -3456,6 +3942,11 @@ class SessionModeState(BaseModel):
         ),
     ] = None
 
+    @field_validator("available_modes", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class SessionConfigOptionBoolean(SessionConfigBoolean):
     # Unique identifier for the configuration option.
@@ -3469,7 +3960,7 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     ] = None
     # Optional semantic category for this option (UX only).
     category: Annotated[
-        Optional[str],
+        Optional[Union[str, Dict[str, Any]]],
         Field(description="Optional semantic category for this option (UX only)."),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -3485,6 +3976,11 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
         ),
     ] = None
     type: Literal["boolean"]
+
+    @field_validator("category", "description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class SessionConfigSelectGroup(BaseModel):
@@ -3509,6 +4005,11 @@ class SessionConfigSelectGroup(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ListSessionsResponse(BaseModel):
@@ -3535,6 +4036,16 @@ class ListSessionsResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("next_cursor", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("sessions", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class PromptResponse(BaseModel):
@@ -3569,6 +4080,11 @@ class PromptResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("usage", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesJumpSuggestionVariant(NesJumpSuggestion):
@@ -3627,6 +4143,11 @@ class Error(BaseModel):
             description="Optional primitive or structured value that contains additional information about the error.\nThis may include debugging information or context-specific details."
         ),
     ] = None
+
+    @field_validator("data", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class AgentPlanRemovedUpdate(PlanRemoved):
@@ -3699,6 +4220,11 @@ class Plan(BaseModel):
         ),
     ] = None
 
+    @field_validator("entries", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class PlanUpdateFile(PlanFile):
     type: Literal["file"]
@@ -3710,7 +4236,7 @@ class PlanUpdateMarkdown(PlanMarkdown):
 
 class PlanItems(BaseModel):
     # The plan ID to update.
-    id: Annotated[str, Field(description="The plan ID to update.")]
+    plan_id: Annotated[str, Field(alias="planId", description="The plan ID to update.")]
     # The list of tasks to be accomplished.
     #
     # When updating an item-based plan, the agent must send a complete list of all entries
@@ -3734,6 +4260,11 @@ class PlanItems(BaseModel):
         ),
     ] = None
 
+    @field_validator("entries", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
     # The input specification for a command.
@@ -3746,14 +4277,14 @@ class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
 class SessionConfigOptionsCapabilities(BaseModel):
     # Whether the client supports boolean session configuration options.
     #
-    # Omitted or `null` means the client does not advertise support.
+    # Optional. Omitted or `null` both mean the client does not advertise support.
     # Supplying `{}` means agents may include `type: "boolean"` entries in
     # `configOptions`, and the client may send `session/set_config_option`
     # requests with `type: "boolean"` and a boolean `value`.
     boolean: Annotated[
         Optional[BooleanConfigOptionCapabilities],
         Field(
-            description='Whether the client supports boolean session configuration options.\n\nOmitted or `null` means the client does not advertise support.\nSupplying `{}` means agents may include `type: "boolean"` entries in\n`configOptions`, and the client may send `session/set_config_option`\nrequests with `type: "boolean"` and a boolean `value`.'
+            description='Whether the client supports boolean session configuration options.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means agents may include `type: "boolean"` entries in\n`configOptions`, and the client may send `session/set_config_option`\nrequests with `type: "boolean"` and a boolean `value`.'
         ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -3768,18 +4299,33 @@ class SessionConfigOptionsCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("boolean", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ElicitationCapabilities(BaseModel):
     # Whether the client supports form-based elicitation.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise support.
+    # Supplying `{}` means the client supports form-based elicitation.
     form: Annotated[
         Optional[ElicitationFormCapabilities],
-        Field(description="Whether the client supports form-based elicitation."),
+        Field(
+            description="Whether the client supports form-based elicitation.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client supports form-based elicitation."
+        ),
     ] = None
     # Whether the client supports URL-based elicitation.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise support.
+    # Supplying `{}` means the client supports URL-based elicitation.
     url: Annotated[
         Optional[ElicitationUrlCapabilities],
-        Field(description="Whether the client supports URL-based elicitation."),
+        Field(
+            description="Whether the client supports URL-based elicitation.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client supports URL-based elicitation."
+        ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
@@ -3793,6 +4339,11 @@ class ElicitationCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("form", "url", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ClientNesCapabilities(BaseModel):
@@ -3827,6 +4378,11 @@ class ClientNesCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("jump", "rename", "search_and_replace", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class HttpMcpServer(McpServerHttp):
     type: Literal["http"]
@@ -3849,8 +4405,11 @@ class LoadSessionRequest(BaseModel):
             description="List of MCP servers to connect to for this session.",
         ),
     ]
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -3879,12 +4438,25 @@ class LoadSessionRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ForkSessionRequest(BaseModel):
     # The ID of the session to fork.
     session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to fork.")]
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -3918,12 +4490,25 @@ class ForkSessionRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ResumeSessionRequest(BaseModel):
     # The ID of the session to resume.
     session_id: Annotated[str, Field(alias="sessionId", description="The ID of the session to resume.")]
-    # The working directory for this session.
-    cwd: Annotated[str, Field(description="The working directory for this session.")]
+    # The working directory for this session. Must be an absolute path.
+    cwd: Annotated[
+        str,
+        Field(description="The working directory for this session. Must be an absolute path."),
+    ]
     # Additional workspace roots to activate for this session. Each path must be absolute.
     #
     # When omitted or empty, no additional roots are activated. When non-empty,
@@ -3958,6 +4543,16 @@ class ResumeSessionRequest(BaseModel):
         ),
     ] = None
 
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class StartNesRequest(BaseModel):
     # The root URI of the workspace.
@@ -3987,6 +4582,11 @@ class StartNesRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("repository", "workspace_uri", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesRelatedSnippet(BaseModel):
@@ -4039,6 +4639,11 @@ class NesOpenFile(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("last_focused_ms", "visible_range", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NesDiagnostic(BaseModel):
@@ -4100,6 +4705,11 @@ class TerminalOutputResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("exit_status", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class AcceptElicitationResponse(ElicitationAcceptAction):
@@ -4200,6 +4810,11 @@ class RejectNesNotification(BaseModel):
         ),
     ] = None
 
+    @field_validator("reason", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class TextContentBlock(TextContent):
     type: Literal["text"]
@@ -4243,40 +4858,8 @@ class Content(BaseModel):
     ] = None
 
 
-class MultiSelectPropertySchema(BaseModel):
-    # Optional title for the property.
-    title: Annotated[Optional[str], Field(description="Optional title for the property.")] = None
-    # Human-readable description.
-    description: Annotated[Optional[str], Field(description="Human-readable description.")] = None
-    # Minimum number of items to select.
-    min_items: Annotated[
-        Optional[int],
-        Field(alias="minItems", description="Minimum number of items to select.", ge=0),
-    ] = None
-    # Maximum number of items to select.
-    max_items: Annotated[
-        Optional[int],
-        Field(alias="maxItems", description="Maximum number of items to select.", ge=0),
-    ] = None
-    # The items definition describing allowed values.
-    items: Annotated[
-        Union[UntitledMultiSelectItems, TitledMultiSelectItems],
-        Field(description="The items definition describing allowed values."),
-    ]
-    # Default selected values.
-    default: Annotated[Optional[List[str]], Field(description="Default selected values.")] = None
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
+class ElicitationMultiSelectPropertySchema(MultiSelectPropertySchema):
+    type: Literal["array"]
 
 
 class AgentErrorMessage(BaseModel):
@@ -4342,6 +4925,11 @@ class NesDocumentEventCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("did_change", "did_close", "did_focus", "did_open", "did_save", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class ListProvidersResponse(BaseModel):
@@ -4421,6 +5009,11 @@ class NesEditSuggestion(BaseModel):
         ),
     ] = None
 
+    @field_validator("cursor_position", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class AgentPlanUpdate(Plan):
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")]
@@ -4457,6 +5050,11 @@ class ContentChunk(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("message_id", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class PlanUpdateItems(PlanItems):
@@ -4509,6 +5107,11 @@ class AvailableCommand(BaseModel):
         ),
     ] = None
 
+    @field_validator("input", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class _AvailableCommandsUpdate(BaseModel):
     # Commands the agent can execute
@@ -4529,17 +5132,22 @@ class _AvailableCommandsUpdate(BaseModel):
         ),
     ] = None
 
+    @field_validator("available_commands", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ClientSessionCapabilities(BaseModel):
     # Config option capabilities supported by the client.
     #
-    # Omitted or `null` means the client does not advertise support for any
+    # Omitted or `null` both mean the client does not advertise support for any
     # config option extensions.
     config_options: Annotated[
         Optional[SessionConfigOptionsCapabilities],
         Field(
             alias="configOptions",
-            description="Config option capabilities supported by the client.\n\nOmitted or `null` means the client does not advertise support for any\nconfig option extensions.",
+            description="Config option capabilities supported by the client.\n\nOmitted or `null` both mean the client does not advertise support for any\nconfig option extensions.",
         ),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4554,6 +5162,11 @@ class ClientSessionCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NewSessionRequest(BaseModel):
@@ -4594,6 +5207,16 @@ class NewSessionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("additional_directories", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("mcp_servers", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class PromptRequest(BaseModel):
@@ -4745,13 +5368,103 @@ class DidChangeDocumentNotification(BaseModel):
         ),
     ] = None
 
+    @field_validator("content_changes", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ContentToolCallContent(Content):
     type: Literal["content"]
 
 
-class ElicitationMultiSelectPropertySchema(MultiSelectPropertySchema):
-    type: Literal["array"]
+class ElicitationSchema(BaseModel):
+    # Type discriminator. Always `"object"`.
+    type: Annotated[Optional[str], Field(description='Type discriminator. Always `"object"`.')] = "object"
+    # Optional title for the schema.
+    title: Annotated[Optional[str], Field(description="Optional title for the schema.")] = None
+    # Property definitions (must be primitive types).
+    properties: Annotated[
+        Optional[
+            Dict[
+                str,
+                Union[
+                    ElicitationStringPropertySchema,
+                    ElicitationNumberPropertySchema,
+                    ElicitationIntegerPropertySchema,
+                    ElicitationBooleanPropertySchema,
+                    ElicitationMultiSelectPropertySchema,
+                    ElicitationOtherPropertySchema,
+                ],
+            ]
+        ],
+        Field(description="Property definitions (must be primitive types)."),
+    ] = {}
+    # List of required property names.
+    required: Annotated[Optional[List[str]], Field(description="List of required property names.")] = None
+    # Optional description of what this schema represents.
+    description: Annotated[
+        Optional[str],
+        Field(description="Optional description of what this schema represents."),
+    ] = None
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+
+    @field_validator("type", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: "object")
+
+    @field_validator("description", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+
+class ElicitationFormSessionMode(ElicitationSessionScope):
+    # A JSON Schema describing the form fields to present to the user.
+    requested_schema: Annotated[
+        ElicitationSchema,
+        Field(
+            alias="requestedSchema",
+            description="A JSON Schema describing the form fields to present to the user.",
+        ),
+    ]
+
+
+class ElicitationFormRequestMode(ElicitationRequestScope):
+    # A JSON Schema describing the form fields to present to the user.
+    requested_schema: Annotated[
+        ElicitationSchema,
+        Field(
+            alias="requestedSchema",
+            description="A JSON Schema describing the form fields to present to the user.",
+        ),
+    ]
+
+
+class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, ElicitationFormRequestMode]]):
+    # **UNSTABLE**
+    #
+    # This capability is not part of the spec yet, and may be removed or changed at any point.
+    #
+    # Form-based elicitation mode where the client renders a form from the provided schema.
+    root: Annotated[
+        Union[ElicitationFormSessionMode, ElicitationFormRequestMode],
+        Field(
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nForm-based elicitation mode where the client renders a form from the provided schema."
+        ),
+    ]
 
 
 class NesEventCapabilities(BaseModel):
@@ -4773,6 +5486,11 @@ class NesEventCapabilities(BaseModel):
         ),
     ] = None
 
+    @field_validator("document", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
 
 class SessionConfigOptionSelect(SessionConfigSelect):
     # Unique identifier for the configuration option.
@@ -4786,7 +5504,7 @@ class SessionConfigOptionSelect(SessionConfigSelect):
     ] = None
     # Optional semantic category for this option (UX only).
     category: Annotated[
-        Optional[str],
+        Optional[Union[str, Dict[str, Any]]],
         Field(description="Optional semantic category for this option (UX only)."),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4802,6 +5520,11 @@ class SessionConfigOptionSelect(SessionConfigSelect):
         ),
     ] = None
     type: Literal["select"]
+
+    @field_validator("category", "description", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class LoadSessionResponse(BaseModel):
@@ -4834,6 +5557,16 @@ class LoadSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class ForkSessionResponse(BaseModel):
@@ -4875,6 +5608,16 @@ class ForkSessionResponse(BaseModel):
         ),
     ] = None
 
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ResumeSessionResponse(BaseModel):
     # Initial mode state if supported by the Agent
@@ -4907,6 +5650,16 @@ class ResumeSessionResponse(BaseModel):
         ),
     ] = None
 
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class SetSessionConfigOptionResponse(BaseModel):
     # The full set of configuration options and their current values.
@@ -4929,6 +5682,11 @@ class SetSessionConfigOptionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class NesEditSuggestionVariant(NesEditSuggestion):
@@ -5013,6 +5771,21 @@ class ToolCall(BaseModel):
         ),
     ] = None
 
+    @field_validator("kind", "raw_input", "raw_output", "status", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("content", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("locations", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class _ConfigOptionUpdate(BaseModel):
     # The full set of configuration options and their current values.
@@ -5036,6 +5809,11 @@ class _ConfigOptionUpdate(BaseModel):
         ),
     ] = None
 
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
 
 class ClientCapabilities(BaseModel):
     # File system capabilities supported by the client.
@@ -5051,15 +5829,14 @@ class ClientCapabilities(BaseModel):
         Optional[bool],
         Field(description="Whether the Client support all `terminal/*` methods."),
     ] = False
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
     # Session-related capabilities supported by the client.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise any
+    # session-related extensions.
     session: Annotated[
         Optional[ClientSessionCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nSession-related capabilities supported by the client."
+            description="Session-related capabilities supported by the client.\n\nOptional. Omitted or `null` both mean the client does not advertise any\nsession-related extensions."
         ),
     ] = None
     # **UNSTABLE**
@@ -5068,12 +5845,12 @@ class ClientCapabilities(BaseModel):
     #
     # Whether the client supports `plan_update` and `plan_removed` session updates.
     #
-    # Optional. Omitted means the client does not advertise support.
+    # Optional. Omitted or `null` both mean the client does not advertise support.
     # Supplying `{}` means the client can receive both update types.
     plan: Annotated[
         Optional[PlanCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the client supports `plan_update` and `plan_removed` session updates.\n\nOptional. Omitted means the client does not advertise support.\nSupplying `{}` means the client can receive both update types."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nWhether the client supports `plan_update` and `plan_removed` session updates.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client can receive both update types."
         ),
     ] = None
     # **UNSTABLE**
@@ -5095,10 +5872,13 @@ class ClientCapabilities(BaseModel):
     #
     # Elicitation capabilities supported by the client.
     # Determines which elicitation modes the agent may use.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise
+    # elicitation support.
     elicitation: Annotated[
         Optional[ElicitationCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nElicitation capabilities supported by the client.\nDetermines which elicitation modes the agent may use."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nElicitation capabilities supported by the client.\nDetermines which elicitation modes the agent may use.\n\nOptional. Omitted or `null` both mean the client does not advertise\nelicitation support."
         ),
     ] = None
     # **UNSTABLE**
@@ -5106,10 +5886,13 @@ class ClientCapabilities(BaseModel):
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
     # NES (Next Edit Suggestions) capabilities supported by the client.
+    #
+    # Optional. Omitted or `null` both mean the client does not advertise any
+    # NES suggestion-kind extensions.
     nes: Annotated[
         Optional[ClientNesCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the client."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the client.\n\nOptional. Omitted or `null` both mean the client does not advertise any\nNES suggestion-kind extensions."
         ),
     ] = None
     # **UNSTABLE**
@@ -5136,6 +5919,31 @@ class ClientCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("terminal", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
+    @field_validator("elicitation", "nes", "plan", "session", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("fs", mode="wrap")
+    @classmethod
+    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"readTextFile": False, "writeTextFile": False})
+
+    @field_validator("auth", mode="wrap")
+    @classmethod
+    def _salvage_on_error_3(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"terminal": False})
+
+    @field_validator("position_encodings", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class SuggestNesRequest(BaseModel):
@@ -5196,6 +6004,7 @@ class ClientResponseMessage(BaseModel):
                 AcceptElicitationResponse,
                 DeclineElicitationResponse,
                 CancelElicitationResponse,
+                OtherElicitationResponse,
             ],
             Any,
         ],
@@ -5273,35 +6082,28 @@ class ToolCallUpdate(BaseModel):
         ),
     ] = None
 
+    @field_validator("kind", "raw_input", "raw_output", "status", "title", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
-class ElicitationSchema(BaseModel):
-    # Type discriminator. Always `"object"`.
-    type: Annotated[Optional[str], Field(description='Type discriminator. Always `"object"`.')] = "object"
-    # Optional title for the schema.
-    title: Annotated[Optional[str], Field(description="Optional title for the schema.")] = None
-    # Property definitions (must be primitive types).
-    properties: Annotated[
-        Optional[
-            Dict[
-                str,
-                Union[
-                    ElicitationStringPropertySchema,
-                    ElicitationNumberPropertySchema,
-                    ElicitationIntegerPropertySchema,
-                    ElicitationBooleanPropertySchema,
-                    ElicitationMultiSelectPropertySchema,
-                ],
-            ]
-        ],
-        Field(description="Property definitions (must be primitive types)."),
-    ] = {}
-    # List of required property names.
-    required: Annotated[Optional[List[str]], Field(description="List of required property names.")] = None
-    # Optional description of what this schema represents.
-    description: Annotated[
-        Optional[str],
-        Field(description="Optional description of what this schema represents."),
-    ] = None
+    @field_validator("content", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+    @field_validator("locations", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
+
+
+class CreateFormSessionElicitationRequest(ElicitationSessionScope):
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
     # metadata to their interactions. Implementations MUST NOT make assumptions about values at
     # these keys.
@@ -5314,9 +6116,7 @@ class ElicitationSchema(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-
-
-class ElicitationFormSessionMode(ElicitationSessionScope):
+    mode: Literal["form"]
     # A JSON Schema describing the form fields to present to the user.
     requested_schema: Annotated[
         ElicitationSchema,
@@ -5327,7 +6127,25 @@ class ElicitationFormSessionMode(ElicitationSessionScope):
     ]
 
 
-class ElicitationFormRequestMode(ElicitationRequestScope):
+class CreateFormRequestElicitationRequest(ElicitationRequestScope):
+    # A human-readable message describing what input is needed.
+    message: Annotated[
+        str,
+        Field(description="A human-readable message describing what input is needed."),
+    ]
+    # The _meta property is reserved by ACP to allow clients and agents to attach additional
+    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    # these keys.
+    #
+    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    field_meta: Annotated[
+        Optional[Dict[str, Any]],
+        Field(
+            alias="_meta",
+            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
+        ),
+    ] = None
+    mode: Literal["form"]
     # A JSON Schema describing the form fields to present to the user.
     requested_schema: Annotated[
         ElicitationSchema,
@@ -5338,18 +6156,31 @@ class ElicitationFormRequestMode(ElicitationRequestScope):
     ]
 
 
-class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, ElicitationFormRequestMode]]):
-    # **UNSTABLE**
-    #
-    # This capability is not part of the spec yet, and may be removed or changed at any point.
-    #
-    # Form-based elicitation mode where the client renders a form from the provided schema.
-    root: Annotated[
-        Union[ElicitationFormSessionMode, ElicitationFormRequestMode],
-        Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nForm-based elicitation mode where the client renders a form from the provided schema."
-        ),
-    ]
+ElicitationMode = Union[
+    ElicitationFormSessionMode,
+    ElicitationFormRequestMode,
+    ElicitationUrlSessionMode,
+    ElicitationUrlRequestMode,
+]
+CreateFormElicitationRequest = Union[
+    CreateFormSessionElicitationRequest,
+    CreateFormRequestElicitationRequest,
+]
+CreateUrlElicitationRequest = Union[
+    CreateUrlSessionElicitationRequest,
+    CreateUrlRequestElicitationRequest,
+]
+CreateElicitationRequest = Union[
+    CreateFormElicitationRequest,
+    CreateUrlElicitationRequest,
+    CreateOtherElicitationRequest,
+]
+CreateElicitationResponse = Union[
+    AcceptElicitationResponse,
+    DeclineElicitationResponse,
+    CancelElicitationResponse,
+    OtherElicitationResponse,
+]
 
 
 class NesCapabilities(BaseModel):
@@ -5375,6 +6206,11 @@ class NesCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("context", "events", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
 
 
 class NewSessionResponse(BaseModel):
@@ -5417,6 +6253,16 @@ class NewSessionResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class SuggestNesResponse(BaseModel):
@@ -5514,6 +6360,24 @@ class InitializeRequest(BaseModel):
         except (TypeError, ValueError):
             return 1
 
+    @field_validator("client_info", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("client_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(
+            value,
+            handler,
+            lambda: {
+                "fs": {"readTextFile": False, "writeTextFile": False},
+                "terminal": False,
+                "auth": {"terminal": False},
+            },
+        )
+
 
 class RequestPermissionRequest(BaseModel):
     # The session ID for this request.
@@ -5543,89 +6407,6 @@ class RequestPermissionRequest(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
-
-
-class CreateFormSessionElicitationRequest(ElicitationSessionScope):
-    # A human-readable message describing what input is needed.
-    message: Annotated[
-        str,
-        Field(description="A human-readable message describing what input is needed."),
-    ]
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    mode: Literal["form"]
-    # A JSON Schema describing the form fields to present to the user.
-    requested_schema: Annotated[
-        ElicitationSchema,
-        Field(
-            alias="requestedSchema",
-            description="A JSON Schema describing the form fields to present to the user.",
-        ),
-    ]
-
-
-class CreateFormRequestElicitationRequest(ElicitationRequestScope):
-    # A human-readable message describing what input is needed.
-    message: Annotated[
-        str,
-        Field(description="A human-readable message describing what input is needed."),
-    ]
-    # The _meta property is reserved by ACP to allow clients and agents to attach additional
-    # metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    # these keys.
-    #
-    # See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    field_meta: Annotated[
-        Optional[Dict[str, Any]],
-        Field(
-            alias="_meta",
-            description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
-        ),
-    ] = None
-    mode: Literal["form"]
-    # A JSON Schema describing the form fields to present to the user.
-    requested_schema: Annotated[
-        ElicitationSchema,
-        Field(
-            alias="requestedSchema",
-            description="A JSON Schema describing the form fields to present to the user.",
-        ),
-    ]
-
-
-ElicitationMode = Union[
-    ElicitationFormSessionMode,
-    ElicitationFormRequestMode,
-    ElicitationUrlSessionMode,
-    ElicitationUrlRequestMode,
-]
-CreateFormElicitationRequest = Union[
-    CreateFormSessionElicitationRequest,
-    CreateFormRequestElicitationRequest,
-]
-CreateUrlElicitationRequest = Union[
-    CreateUrlSessionElicitationRequest,
-    CreateUrlRequestElicitationRequest,
-]
-CreateElicitationRequest = Union[
-    CreateFormElicitationRequest,
-    CreateUrlElicitationRequest,
-]
-CreateElicitationResponse = Union[
-    AcceptElicitationResponse,
-    DeclineElicitationResponse,
-    CancelElicitationResponse,
-]
 
 
 class AgentCapabilities(BaseModel):
@@ -5672,11 +6453,12 @@ class AgentCapabilities(BaseModel):
     #
     # Provider configuration capabilities supported by the agent.
     #
-    # By supplying `{}` it means that the agent supports provider configuration methods.
+    # Optional. Omitted or `null` both mean the agent does not advertise support.
+    # Supplying `{}` means the agent supports provider configuration methods.
     providers: Annotated[
         Optional[ProvidersCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nProvider configuration capabilities supported by the agent.\n\nBy supplying `{}` it means that the agent supports provider configuration methods."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nProvider configuration capabilities supported by the agent.\n\nOptional. Omitted or `null` both mean the agent does not advertise support.\nSupplying `{}` means the agent supports provider configuration methods."
         ),
     ] = None
     # **UNSTABLE**
@@ -5684,10 +6466,13 @@ class AgentCapabilities(BaseModel):
     # This capability is not part of the spec yet, and may be removed or changed at any point.
     #
     # NES (Next Edit Suggestions) capabilities supported by the agent.
+    #
+    # Optional. Omitted or `null` both mean the agent does not advertise support
+    # for NES methods.
     nes: Annotated[
         Optional[NesCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the agent."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nNES (Next Edit Suggestions) capabilities supported by the agent.\n\nOptional. Omitted or `null` both mean the agent does not advertise support\nfor NES methods."
         ),
     ] = None
     # **UNSTABLE**
@@ -5714,6 +6499,31 @@ class AgentCapabilities(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("load_session", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: False)
+
+    @field_validator("nes", "position_encoding", "providers", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("mcp_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"http": False, "sse": False, "acp": False})
+
+    @field_validator("prompt_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_3(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {"image": False, "audio": False, "embeddedContext": False})
+
+    @field_validator("auth", "session_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_4(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: {})
 
 
 class SessionNotification(BaseModel):
@@ -5825,6 +6635,7 @@ class AgentRequest(BaseModel):
                     CreateFormRequestElicitationRequest,
                     CreateUrlSessionElicitationRequest,
                     CreateUrlRequestElicitationRequest,
+                    CreateOtherElicitationRequest,
                 ],
                 Any,
             ]
@@ -5885,6 +6696,31 @@ class InitializeResponse(BaseModel):
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
     ] = None
+
+    @field_validator("agent_info", mode="wrap")
+    @classmethod
+    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(value, handler, lambda: None)
+
+    @field_validator("agent_capabilities", mode="wrap")
+    @classmethod
+    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
+        return salvage_on_error(
+            value,
+            handler,
+            lambda: {
+                "loadSession": False,
+                "promptCapabilities": {"image": False, "audio": False, "embeddedContext": False},
+                "mcpCapabilities": {"http": False, "sse": False, "acp": False},
+                "sessionCapabilities": {},
+                "auth": {},
+            },
+        )
+
+    @field_validator("auth_methods", mode="wrap")
+    @classmethod
+    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
+        return skip_invalid_items(value, handler)
 
 
 class AgentNotification(BaseModel):
