@@ -8,10 +8,11 @@ import logging
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
-from typing import Any
+from typing import Any, cast
 
 from pydantic import BaseModel, ValidationError
 
+from ._transport import NdjsonTransport, Transport
 from .exceptions import RequestError
 from .task import (
     DefaultMessageDispatcher,
@@ -63,8 +64,8 @@ class Connection:
     def __init__(
         self,
         handler: MethodHandler,
-        writer: asyncio.StreamWriter,
-        reader: asyncio.StreamReader,
+        writer: asyncio.StreamWriter | Transport,
+        reader: asyncio.StreamReader | None = None,
         *,
         queue: MessageQueue | None = None,
         state_store: MessageStateStore | None = None,
@@ -75,8 +76,6 @@ class Connection:
         receive_timeout: float | None = None,
     ) -> None:
         self._handler = handler
-        self._writer = writer
-        self._reader = reader
         self._next_request_id = 0
         self._state = state_store or InMemoryMessageStateStore()
         self._tasks = TaskSupervisor(source="acp.Connection")
@@ -84,9 +83,18 @@ class Connection:
         self._queue = queue or InMemoryMessageQueue()
         self._closed = False
         self._disconnected = False
-        self._sender = (sender_factory or self._default_sender_factory)(self._writer, self._tasks)
+        # Two construction forms:
+        #   * message-level: ``Connection(handler, transport)`` (reader omitted)
+        #   * byte-level:    ``Connection(handler, writer, reader)`` (stdio path)
+        # We discriminate on ``reader`` rather than ``isinstance(writer, Transport)``
+        # because a runtime-checkable Protocol would spuriously match duck-typed
+        # test doubles (e.g. ``MagicMock``).
+        if reader is None:
+            self._transport: Transport = cast("Transport", writer)
+        else:
+            sender = (sender_factory or self._default_sender_factory)(cast("asyncio.StreamWriter", writer), self._tasks)
+            self._transport = NdjsonTransport(reader, sender, receive_timeout=receive_timeout)
         self._observers: list[StreamObserver] = list(observers or [])
-        self._receive_timeout = receive_timeout
         if listening:
             self._recv_task = self._tasks.create(
                 self._receive_loop(),
@@ -111,7 +119,7 @@ class Connection:
             return
         self._closed = True
         await self._dispatcher.stop()
-        await self._sender.close()
+        await self._transport.close()
         await self._tasks.shutdown()
         self._state.reject_all_outgoing(ConnectionError("Connection closed"))
 
@@ -139,30 +147,29 @@ class Connection:
         self._next_request_id += 1
         future = self._state.register_outgoing(request_id, method)
         payload = {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
-        await self._sender.send(payload)
+        try:
+            await self._transport.send(payload)
+        except Exception as exc:
+            # A synchronous send failure (e.g. HTTP POST rejected before any
+            # JSON-RPC response exists) must reject the correlated future so the
+            # caller gets a real, attributable error.
+            self._state.reject_outgoing(request_id, exc)
+            raise
         self._notify_observers(StreamDirection.OUTGOING, payload)
         return await future
 
     async def send_notification(self, method: str, params: JsonValue | None = None) -> None:
         self._raise_if_unavailable()
         payload = {"jsonrpc": "2.0", "method": method, "params": params}
-        await self._sender.send(payload)
+        await self._transport.send(payload)
         self._notify_observers(StreamDirection.OUTGOING, payload)
 
     async def _receive_loop(self) -> None:
         try:
             while True:
-                line = await self._read_line()
-                if not line:
+                message = await self._transport.receive()
+                if message is None:
                     break
-                line = line.strip()
-                if not line:
-                    continue
-                try:
-                    message: dict[str, Any] = json.loads(line)
-                except Exception:
-                    logging.exception("Error parsing JSON-RPC message")
-                    continue
                 self._notify_observers(StreamDirection.INCOMING, message)
                 await self._process_message(message)
         except asyncio.CancelledError:
@@ -170,24 +177,6 @@ class Connection:
         except asyncio.TimeoutError:
             raise RequestError.internal_error({"details": "Agent timeout"}) from None
         self._disconnect()
-
-    async def _read_line(self) -> bytes:
-        chunks: list[bytes] = []
-        try:
-            while True:
-                try:
-                    line = await self._wait_for_reader(self._reader.readuntil(b"\n"))
-                except asyncio.LimitOverrunError as exc:
-                    chunks.append(await self._wait_for_reader(self._reader.readexactly(exc.consumed)))
-                else:
-                    chunks.append(line)
-                    return b"".join(chunks)
-        except asyncio.IncompleteReadError as exc:
-            chunks.append(exc.partial)
-            return b"".join(chunks)
-
-    async def _wait_for_reader(self, awaitable: Awaitable[bytes]) -> bytes:
-        return await asyncio.wait_for(awaitable, timeout=self._receive_timeout)
 
     async def _process_message(self, message: dict[str, Any]) -> None:
         method = message.get("method")
@@ -239,18 +228,18 @@ class Connection:
                         exclude_unset=True,
                     )
                 payload["result"] = result if result is not None else None
-                await self._sender.send(payload)
+                await self._transport.send(payload)
                 self._notify_observers(StreamDirection.OUTGOING, payload)
                 return payload.get("result")
             except RequestError as exc:
                 payload["error"] = exc.to_error_obj()
-                await self._sender.send(payload)
+                await self._transport.send(payload)
                 self._notify_observers(StreamDirection.OUTGOING, payload)
                 raise
             except ValidationError as exc:
                 err = RequestError.invalid_params({"errors": exc.errors()})
                 payload["error"] = err.to_error_obj()
-                await self._sender.send(payload)
+                await self._transport.send(payload)
                 self._notify_observers(StreamDirection.OUTGOING, payload)
                 raise err from None
             except Exception as exc:
@@ -265,7 +254,7 @@ class Connection:
                     data = {"details": str(exc)}
                 err = RequestError.internal_error(data)
                 payload["error"] = err.to_error_obj()
-                await self._sender.send(payload)
+                await self._transport.send(payload)
                 self._notify_observers(StreamDirection.OUTGOING, payload)
                 raise err from None
 

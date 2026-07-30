@@ -11,6 +11,7 @@ nav:
   - Home: index.md
   - Quick Start: quickstart.md
   - Use Cases: use-cases.md
+  - Web Transport (HTTP/WS): web-transport.md
   - Experimental Contrib: contrib.md
   - Releasing: releasing.md
   - 0.11 Migration Guide: migration-guide-0.11.md
