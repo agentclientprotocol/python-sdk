@@ -12,13 +12,13 @@
         <meta name="author" content="Chojan Shang">
       
       
-        <link rel="canonical" href="https://agentclientprotocol.github.io/python-sdk/migration-guide-0.7/">
+        <link rel="canonical" href="https://agentclientprotocol.github.io/python-sdk/web-transport/">
       
       
-        <link rel="prev" href="../migration-guide-0.11/">
+        <link rel="prev" href="../use-cases/">
       
       
-        <link rel="next" href="../migration-guide-0.8/">
+        <link rel="next" href="../contrib/">
       
       
         
@@ -29,7 +29,7 @@
     
     
       
-        <title>0.7 Migration Guide - Agent Client Protocol - Python SDK</title>
+        <title>Web Transport (HTTP/WS) - Agent Client Protocol - Python SDK</title>
       
     
     
@@ -82,7 +82,7 @@
     <div data-md-component="skip">
       
         
-        <a href="#migrating-to-acp-python-sdk-07" class="md-skip">
+        <a href="#web-transport-streamable-http-websocket" class="md-skip">
           Skip to content
         </a>
       
@@ -118,7 +118,7 @@
         <div class="md-header__topic" data-md-component="header-topic">
           <span class="md-ellipsis">
             
-              0.7 Migration Guide
+              Web Transport (HTTP/WS)
             
           </span>
         </div>
@@ -342,10 +342,37 @@
       
   
   
+    
   
   
-    <li class="md-nav__item">
-      <a href="../web-transport/" class="md-nav__link">
+  
+    <li class="md-nav__item md-nav__item--active">
+      
+      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
+      
+      
+        
+      
+      
+        <label class="md-nav__link md-nav__link--active" for="__toc">
+          
+  
+  
+  <span class="md-ellipsis">
+    
+  
+    Web Transport (HTTP/WS)
+  
+
+    
+  </span>
+  
+  
+
+          <span class="md-nav__icon md-icon"></span>
+        </label>
+      
+      <a href="./" class="md-nav__link md-nav__link--active">
         
   
   
@@ -361,6 +388,109 @@
   
 
       </a>
+      
+        
+
+<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
+  
+  
+  
+    
+  
+  
+    <label class="md-nav__title" for="__toc">
+      <span class="md-nav__icon md-icon"></span>
+      Table of contents
+    </label>
+    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
+      
+        <li class="md-nav__item">
+  <a href="#installation" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Installation
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#client" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Client
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#server" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#http2-server-requirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP/2 server requirement
+      
+    </span>
+  </a>
+  
+</li>
+        
+      </ul>
+    </nav>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#examples" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Examples
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#identity-model" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Identity model
+      
+    </span>
+  </a>
+  
+</li>
+      
+        <li class="md-nav__item">
+  <a href="#not-yet-supported-deferred-to-a-future-revision" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        Not yet supported (deferred to a future revision)
+      
+    </span>
+  </a>
+  
+</li>
+      
+    </ul>
+  
+</nav>
+      
     </li>
   
 
@@ -450,37 +580,10 @@
       
   
   
-    
   
   
-  
-    <li class="md-nav__item md-nav__item--active">
-      
-      <input class="md-nav__toggle md-toggle" type="checkbox" id="__toc">
-      
-      
-        
-      
-      
-        <label class="md-nav__link md-nav__link--active" for="__toc">
-          
-  
-  
-  <span class="md-ellipsis">
-    
-  
-    0.7 Migration Guide
-  
-
-    
-  </span>
-  
-  
-
-          <span class="md-nav__icon md-icon"></span>
-        </label>
-      
-      <a href="./" class="md-nav__link md-nav__link--active">
+    <li class="md-nav__item">
+      <a href="../migration-guide-0.7/" class="md-nav__link">
         
   
   
@@ -496,137 +599,6 @@
   
 
       </a>
-      
-        
-
-<nav class="md-nav md-nav--secondary" aria-label="Table of contents">
-  
-  
-  
-    
-  
-  
-    <label class="md-nav__title" for="__toc">
-      <span class="md-nav__icon md-icon"></span>
-      Table of contents
-    </label>
-    <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
-      
-        <li class="md-nav__item">
-  <a href="#1-acpschema-models-now-expose-snake_case-fields" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        1. acp.schema models now expose snake_case fields
-      
-    </span>
-  </a>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#2-acprun_agent-and-acpconnect_to_agent-replace-manual-connection-wiring" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        2. acp.run_agent and acp.connect_to_agent replace manual connection wiring
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. acp.run_agent and acp.connect_to_agent replace manual connection wiring">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#updating-agents" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Updating agents
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#updating-clients-and-tests" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Updating clients and tests
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-        <li class="md-nav__item">
-  <a href="#3-agent-and-client-interface-methods-take-explicit-parameters" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        3. Agent and Client interface methods take explicit parameters
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Agent and Client interface methods take explicit parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-changed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What changed
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#how-to-update-your-implementations" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        How to update your implementations
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#additional-notes" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Additional notes
-      
-    </span>
-  </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#backward-compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Backward compatibility
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
-  
-</li>
-      
-    </ul>
-  
-</nav>
-      
     </li>
   
 
@@ -685,10 +657,10 @@
     <ul class="md-nav__list" data-md-component="toc" data-md-scrollfix>
       
         <li class="md-nav__item">
-  <a href="#1-acpschema-models-now-expose-snake_case-fields" class="md-nav__link">
+  <a href="#installation" class="md-nav__link">
     <span class="md-ellipsis">
       
-        1. acp.schema models now expose snake_case fields
+        Installation
       
     </span>
   </a>
@@ -696,33 +668,33 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#2-acprun_agent-and-acpconnect_to_agent-replace-manual-connection-wiring" class="md-nav__link">
+  <a href="#client" class="md-nav__link">
     <span class="md-ellipsis">
       
-        2. acp.run_agent and acp.connect_to_agent replace manual connection wiring
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="2. acp.run_agent and acp.connect_to_agent replace manual connection wiring">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#updating-agents" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Updating agents
+        Client
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#updating-clients-and-tests" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#server" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Updating clients and tests
+        Server
+      
+    </span>
+  </a>
+  
+    <nav class="md-nav" aria-label="Server">
+      <ul class="md-nav__list">
+        
+          <li class="md-nav__item">
+  <a href="#http2-server-requirement" class="md-nav__link">
+    <span class="md-ellipsis">
+      
+        HTTP/2 server requirement
       
     </span>
   </a>
@@ -735,63 +707,35 @@
 </li>
       
         <li class="md-nav__item">
-  <a href="#3-agent-and-client-interface-methods-take-explicit-parameters" class="md-nav__link">
+  <a href="#examples" class="md-nav__link">
     <span class="md-ellipsis">
       
-        3. Agent and Client interface methods take explicit parameters
-      
-    </span>
-  </a>
-  
-    <nav class="md-nav" aria-label="3. Agent and Client interface methods take explicit parameters">
-      <ul class="md-nav__list">
-        
-          <li class="md-nav__item">
-  <a href="#what-changed" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        What changed
+        Examples
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#how-to-update-your-implementations" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#identity-model" class="md-nav__link">
     <span class="md-ellipsis">
       
-        How to update your implementations
+        Identity model
       
     </span>
   </a>
   
 </li>
-        
-          <li class="md-nav__item">
-  <a href="#additional-notes" class="md-nav__link">
+      
+        <li class="md-nav__item">
+  <a href="#not-yet-supported-deferred-to-a-future-revision" class="md-nav__link">
     <span class="md-ellipsis">
       
-        Additional notes
+        Not yet supported (deferred to a future revision)
       
     </span>
   </a>
-  
-</li>
-        
-          <li class="md-nav__item">
-  <a href="#backward-compatibility" class="md-nav__link">
-    <span class="md-ellipsis">
-      
-        Backward compatibility
-      
-    </span>
-  </a>
-  
-</li>
-        
-      </ul>
-    </nav>
   
 </li>
       
@@ -815,98 +759,97 @@
   
 
 
-<h1 id="migrating-to-acp-python-sdk-07">Migrating to ACP Python SDK 0.7<a class="headerlink" href="#migrating-to-acp-python-sdk-07" title="Permanent link">&para;</a></h1>
-<p>ACP 0.7 reshapes the public surface so that Python-facing names, runtime helpers, and schema models line up with the evolving Agent Client Protocol schema. This guide covers the major changes in 0.7.0 and calls out the mechanical steps you need to apply in downstream agents, clients, and transports.</p>
-<h2 id="1-acpschema-models-now-expose-snake_case-fields">1. <code>acp.schema</code> models now expose <code>snake_case</code> fields<a class="headerlink" href="#1-acpschema-models-now-expose-snake_case-fields" title="Permanent link">&para;</a></h2>
+<h1 id="web-transport-streamable-http-websocket">Web Transport (Streamable HTTP &amp; WebSocket)<a class="headerlink" href="#web-transport-streamable-http-websocket" title="Permanent link">&para;</a></h1>
+<blockquote>
+<p><strong>Experimental.</strong> The remote web transports are experimental and may change.
+They ship as an optional extra and are import-guarded.</p>
+</blockquote>
+<p>The SDK can run ACP over two remote connectivity profiles in addition to stdio:</p>
 <ul>
-<li>Every generated model in <code>acp.schema</code> (see <code>src/acp/schema.py</code>) now uses Pythonic attribute names such as <code>session_id</code>, <code>stop_reason</code>, and <code>field_meta</code>. The JSON aliases (e.g., <code>alias="sessionId"</code>) stay intact so over-the-wire payloads remain camelCase.</li>
-<li>Instantiating a model or accessing response values must now use the <code>snake_case</code> form:</li>
+<li><strong>Streamable HTTP</strong> — <code>POST</code> for client→server messages, long-lived <code>GET</code> SSE
+  streams for server→client messages (one connection-scoped stream plus one per
+  session), and <code>DELETE</code> to terminate. <code>initialize</code> returns <code>200 OK</code> with a JSON
+  body; all other POSTs return <code>202 Accepted</code>. <strong>Requires HTTP/2.</strong></li>
+<li><strong>WebSocket</strong> — a <code>GET</code> upgrade on the same endpoint carrying full-duplex
+  JSON-RPC text frames.</li>
 </ul>
-<pre><code class="language-python"># Before (0.6 and earlier)
-PromptResponse(stopReason=&quot;end_turn&quot;)
-params.sessionId
+<p>Both reuse the existing JSON-RPC message format and ACP lifecycle
+(<code>initialize</code> → session methods → close).</p>
+<h2 id="installation">Installation<a class="headerlink" href="#installation" title="Permanent link">&para;</a></h2>
+<pre><code class="language-bash">pip install &quot;agent-client-protocol[http]&quot;
+</code></pre>
+<p>This pulls in <code>httpx[http2]</code> (HTTP/2 + SSE consumption) and <code>websockets</code>.</p>
+<h2 id="client">Client<a class="headerlink" href="#client" title="Permanent link">&para;</a></h2>
+<p>Both transports produce a message-level <code>Transport</code> that plugs into the existing
+<code>connect_to_agent</code>:</p>
+<pre><code class="language-python">from acp import connect_to_agent
+from acp.http import create_http_stream
+from acp.ws import create_websocket_stream
 
-# After (0.7 and later)
-PromptResponse(stop_reason=&quot;end_turn&quot;)
-params.session_id
-</code></pre>
-<ul>
-<li>If you relied on <code>model_dump()</code> to emit camelCase keys automatically, switch to <code>model_dump(by_alias=True)</code> (or use helpers such as <code>text_block</code>, <code>start_tool_call</code>, etc.) so responses continue to match the protocol.</li>
-<li><code>field_meta</code> stays available for extension data. Any extra keys that were nested under <code>_meta</code> should now be provided via keyword arguments when constructing the schema models (see section 3).</li>
-</ul>
-<h2 id="2-acprun_agent-and-acpconnect_to_agent-replace-manual-connection-wiring">2. <code>acp.run_agent</code> and <code>acp.connect_to_agent</code> replace manual connection wiring<a class="headerlink" href="#2-acprun_agent-and-acpconnect_to_agent-replace-manual-connection-wiring" title="Permanent link">&para;</a></h2>
-<p><code>AgentSideConnection</code> and <code>ClientSideConnection</code> still exist internally, but the top-level entry points now prefer the helper functions implemented in <code>src/acp/core.py</code>.</p>
-<h3 id="updating-agents">Updating agents<a class="headerlink" href="#updating-agents" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Old pattern:</li>
-</ul>
-<pre><code class="language-python">conn = AgentSideConnection(lambda conn: Agent(), writer, reader)
-await asyncio.Event().wait()  # keep running
-</code></pre>
-<ul>
-<li>New pattern:</li>
-</ul>
-<pre><code class="language-python">await run_agent(MyAgent(), input_stream=writer, output_stream=reader)
-</code></pre>
-<ul>
-<li>When your agent just runs over stdio, call <code>await run_agent(MyAgent())</code> and the helper will acquire asyncio streams via <code>stdio_streams()</code> for you.</li>
-</ul>
-<h3 id="updating-clients-and-tests">Updating clients and tests<a class="headerlink" href="#updating-clients-and-tests" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Old pattern:</li>
-</ul>
-<pre><code class="language-python">conn = ClientSideConnection(lambda conn: MyClient(), proc.stdin, proc.stdout)
-</code></pre>
-<ul>
-<li>New pattern:</li>
-</ul>
-<pre><code class="language-python">conn = connect_to_agent(MyClient(), proc.stdin, proc.stdout)
-</code></pre>
-<ul>
-<li><code>spawn_agent_process</code> / <code>spawn_client_process</code> now accept concrete <code>Agent</code>/<code>Client</code> instances instead of factories that received the connection. Instantiate your implementation first and pass it in.</li>
-<li>Importing the legacy connection classes via <code>acp.AgentSideConnection</code> / <code>acp.ClientSideConnection</code> issues a <code>DeprecationWarning</code> (see <code>src/acp/__init__.py:82-96</code>). Update your imports to <code>run_agent</code> and <code>connect_to_agent</code> to silence the warning.</li>
-</ul>
-<h2 id="3-agent-and-client-interface-methods-take-explicit-parameters">3. <code>Agent</code> and <code>Client</code> interface methods take explicit parameters<a class="headerlink" href="#3-agent-and-client-interface-methods-take-explicit-parameters" title="Permanent link">&para;</a></h2>
-<p>Both interfaces in <code>src/acp/interfaces.py</code> now look like idiomatic Python protocols: methods use <code>snake_case</code> names and receive the individual schema fields rather than a single request model.</p>
-<h3 id="what-changed">What changed<a class="headerlink" href="#what-changed" title="Permanent link">&para;</a></h3>
-<ul>
-<li>Method names follow <code>snake_case</code> (<code>request_permission</code>, <code>session_update</code>, <code>new_session</code>, <code>set_session_model</code>, etc.).</li>
-<li>Parameters represent the schema fields, so there is no need to unpack <code>params</code> manually.</li>
-<li>Each method is decorated with <code>@param_model(...)</code>. Combined with the <code>compatible_class</code> helper (see <code>src/acp/utils.py</code>), this keeps the camelCase wrappers alive for callers that still pass a full Pydantic request object—but those wrappers now emit <code>DeprecationWarning</code>s to encourage migration.</li>
-</ul>
-<h3 id="how-to-update-your-implementations">How to update your implementations<a class="headerlink" href="#how-to-update-your-implementations" title="Permanent link">&para;</a></h3>
-<ol>
-<li>Rename your method overrides to their <code>snake_case</code> equivalents.</li>
-<li>Replace <code>params: Model</code> arguments with the concrete fields plus <code>**kwargs</code> to collect future <code>_meta</code> keys.</li>
-<li>Access schema data directly via those parameters.</li>
-</ol>
-<p>Example migration for an agent:</p>
-<pre><code class="language-python"># Before
-class EchoAgent:
-    async def prompt(self, params: PromptRequest) -&gt; PromptResponse:
-        text = params.prompt[0].text
-        return PromptResponse(stopReason=&quot;end_turn&quot;)
+# Streamable HTTP
+transport = create_http_stream(&quot;http://localhost:8000/acp&quot;)
+conn = connect_to_agent(my_client, transport)
 
-# After
-class EchoAgent:
-    async def prompt(self, prompt, session_id, **kwargs) -&gt; PromptResponse:
-        text = prompt[0].text
-        return PromptResponse(stop_reason=&quot;end_turn&quot;)
+# ...or WebSocket
+transport = await create_websocket_stream(&quot;ws://localhost:8000/acp&quot;)
+conn = connect_to_agent(my_client, transport)
+
+init = await conn.initialize(protocol_version=1)
+session = await conn.new_session(cwd=&quot;/tmp&quot;, mcp_servers=[])
+await conn.prompt(session_id=session.session_id, prompt=[...])
+await conn.close()
+await transport.close()
 </code></pre>
-<p>Similarly, a client method such as <code>requestPermission</code> becomes:</p>
-<pre><code class="language-python">class RecordingClient(Client):
-    async def request_permission(self, options, session_id, tool_call, **kwargs):
-        ...
+<p>The client sends <code>initialize</code> first, reads the <code>Acp-Connection-Id</code> response
+header, then opens the connection-scoped SSE stream. When a new <code>sessionId</code>
+appears it opens that session-scoped stream too. A single SSE attempt is made per
+stream; reconnect/retry is the caller's responsibility (v1 of the RFD).</p>
+<h2 id="server">Server<a class="headerlink" href="#server" title="Permanent link">&para;</a></h2>
+<p>The server core is framework-agnostic; a thin ASGI adapter bridges it to your
+web framework:</p>
+<pre><code class="language-python">from acp.http.asgi import create_asgi_app
+
+# One agent instance is created per connection.
+app = create_asgi_app(lambda conn: MyAgent())
 </code></pre>
-<h3 id="additional-notes">Additional notes<a class="headerlink" href="#additional-notes" title="Permanent link">&para;</a></h3>
+<p><code>app</code> is a standard ASGI 3.0 application handling <code>POST</code>/<code>GET</code>/<code>DELETE</code> and
+WebSocket upgrades on the ACP endpoint.</p>
+<h3 id="http2-server-requirement">HTTP/2 server requirement<a class="headerlink" href="#http2-server-requirement" title="Permanent link">&para;</a></h3>
+<blockquote>
+<p>⚠️ <strong>Uvicorn does not serve HTTP/2.</strong> For a spec-compliant Streamable HTTP
+server, run an HTTP/2-capable ASGI server (<strong>Hypercorn</strong>, Daphne, Granian) or
+terminate HTTP/2 at a proxy. The WebSocket profile works on Uvicorn.</p>
+</blockquote>
+<pre><code class="language-python">import asyncio
+import hypercorn.asyncio
+from hypercorn.config import Config
+
+config = Config()
+config.bind = [&quot;localhost:8000&quot;]
+config.alpn_protocols = [&quot;h2&quot;, &quot;http/1.1&quot;]
+asyncio.run(hypercorn.asyncio.serve(app, config))
+</code></pre>
+<h2 id="examples">Examples<a class="headerlink" href="#examples" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The connection layers automatically assemble the right request/response models using the <code>param_model</code> metadata, so callers do not need to build Pydantic objects manually anymore.</li>
-<li>For extension points (<code>field_meta</code>), pass keyword arguments from the connection into your handler signature: they arrive inside <code>**kwargs</code>.</li>
+<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/http_server.py"><code>examples/http_server.py</code></a> — serve an agent over HTTP + WS (Hypercorn).</li>
+<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/http_client.py"><code>examples/http_client.py</code></a> — connect over Streamable HTTP.</li>
+<li><a href="https://github.com/agentclientprotocol/python-sdk/blob/main/examples/ws_client.py"><code>examples/ws_client.py</code></a> — connect over WebSocket.</li>
 </ul>
-<h3 id="backward-compatibility">Backward compatibility<a class="headerlink" href="#backward-compatibility" title="Permanent link">&para;</a></h3>
+<h2 id="identity-model">Identity model<a class="headerlink" href="#identity-model" title="Permanent link">&para;</a></h2>
 <ul>
-<li>The change should be 100% backward compatible as long as you update your method names and signatures. The <code>compatible_class</code> wrapper ensures that existing callers passing full request models continue to work. The old style API will remain functional before the next major release(1.0).</li>
-<li>Because camelCase wrappers remain for now, you can migrate file-by-file while still running against ACP 0.7. Just watch for the new deprecation warnings in your logs/tests.</li>
+<li><code>Acp-Connection-Id</code> (HTTP header) — returned by <code>initialize</code>; required on all
+  post-initialize HTTP requests and every GET stream.</li>
+<li><code>Acp-Session-Id</code> (HTTP header) — required on session-scoped POSTs and the
+  session-scoped GET stream.</li>
+<li><code>sessionId</code> (JSON-RPC field) — carried in params/results and used to route
+  messages to the correct stream.</li>
+</ul>
+<h2 id="not-yet-supported-deferred-to-a-future-revision">Not yet supported (deferred to a future revision)<a class="headerlink" href="#not-yet-supported-deferred-to-a-future-revision" title="Permanent link">&para;</a></h2>
+<ul>
+<li><code>Last-Event-ID</code> / SSE resumability and message sequencing.</li>
+<li>Client-side automatic reconnect/backoff.</li>
+<li>Batch JSON-RPC (the server returns <code>501</code>).</li>
+<li><code>Acp-Protocol-Version</code> header enforcement.</li>
 </ul>
 
 
