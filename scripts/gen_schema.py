@@ -20,13 +20,6 @@ SCHEMA_JSON = SCHEMA_DIR / "schema.json"
 VERSION_FILE = SCHEMA_DIR / "VERSION"
 SCHEMA_OUT = ROOT / "src" / "acp" / "schema.py"
 
-# Pattern caches used when post-processing generated schema.
-FIELD_DECLARATION_PATTERN = re.compile(r"[A-Za-z_][A-Za-z0-9_]*\s*:")
-DESCRIPTION_PATTERN = re.compile(
-    r"description\s*=\s*(?P<prefix>[rRbBuU]*)?(?P<quote>'''|\"\"\"|'|\")(?P<value>.*?)(?P=quote)",
-    re.DOTALL,
-)
-
 STDIO_TYPE_LITERAL = 'Literal["2#-datamodel-code-generator-#-object-#-special-#"]'
 MODELS_TO_REMOVE = [
     "AgentClientProtocol",
@@ -135,6 +128,31 @@ ENUM_LITERAL_MAP: dict[str, tuple[str, ...]] = {
     "StopReason": ("end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"),
     "ToolCallStatus": ("pending", "in_progress", "completed", "failed"),
     "ToolKind": ("read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"),
+}
+
+# datamodel-code-generator 0.64 promotes referenced string enums to Enum classes.
+# Keep the existing Python API, where these schema types are plain strings; the
+# selected public fields below are narrowed back to the named Literal aliases.
+STRING_ENUM_TYPES = (
+    *ENUM_LITERAL_MAP,
+    "ElicitationSchemaType",
+    "NesDiagnosticSeverity",
+    "NesRejectReason",
+    "NesTriggerKind",
+    "PositionEncodingKind",
+    "Role",
+    "StringFormat",
+    "TextDocumentSyncKind",
+)
+
+# Preserve RootModel classes that existed in the generated public surface before
+# 0.64; other unreferenced RootModels are intermediates left after collapsing.
+PUBLIC_ROOT_MODELS = {
+    "AgentResponse",
+    "ClientResponse",
+    "ElicitationContentValue",
+    "ElicitationFormMode",
+    "ElicitationUrlMode",
 }
 
 FIELD_TYPE_OVERRIDES: tuple[tuple[str, str, str, bool], ...] = (
@@ -259,7 +277,16 @@ def generate_schema() -> None:
             "--collapse-root-models",
             "--output-model-type",
             "pydantic_v2.BaseModel",
+            "--no-use-specialized-enum",
+            "--no-use-standard-collections",
+            "--no-use-union-operator",
+            "--type-overrides",
+            json.dumps(dict.fromkeys(STRING_ENUM_TYPES, "builtins.str")),
+            "--formatters",
+            "black",
+            "isort",
             "--use-annotated",
+            "--use-field-description",
             "--snake-case-field",
         ]
 
@@ -474,6 +501,9 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
     header_block = _build_header_block()
 
     content = _strip_existing_header(raw_content)
+    # Type overrides for builtins are rendered as imports in 0.64, but the
+    # annotations should continue to use Python's builtin `str` directly.
+    content = content.replace("from builtins import str\n", "")
     content = _remove_unused_models(content)
     content, leftover_classes = _rename_numbered_models(content)
 
@@ -481,8 +511,8 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
         _ProcessingStep("apply field overrides", _apply_field_overrides),
         _ProcessingStep("apply default overrides", _apply_default_overrides),
         _ProcessingStep("restore required nullable fields", _restore_required_nullable_fields),
-        _ProcessingStep("attach description comments", _add_description_comments),
         _ProcessingStep("ensure custom BaseModel", _ensure_custom_base_model),
+        _ProcessingStep("enable RootModel attribute docstrings", _enable_root_model_attribute_docstrings),
         _ProcessingStep("inject field validators", _inject_field_validators),
         _ProcessingStep("inject deserialize defaults", _inject_deserialize_defaults),
         _ProcessingStep("inject schema aliases", _inject_schema_aliases),
@@ -494,6 +524,7 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
     missing_targets = _find_missing_targets(content)
 
     content = _inject_enum_aliases(content)
+    content = _remove_unreferenced_root_models(content)
     final_content = header_block + content.rstrip() + "\n"
     if not final_content.endswith("\n"):
         final_content += "\n"
@@ -646,7 +677,7 @@ def _ensure_custom_base_model(content: str) -> str:
         lines[idx] = "from pydantic import " + ", ".join(new_imports)
         to_insert = textwrap.dedent("""\
             class BaseModel(_BaseModel):
-                model_config = ConfigDict(populate_by_name=True)
+                model_config = ConfigDict(populate_by_name=True, use_attribute_docstrings=True)
 
                 def __getattr__(self, item: str) -> Any:
                     if item.lower() != item:
@@ -660,6 +691,24 @@ def _ensure_custom_base_model(content: str) -> str:
             lines.insert(insert_idx + offset, line)
         break
     return "\n".join(lines) + "\n"
+
+
+def _enable_root_model_attribute_docstrings(content: str) -> str:
+    lines = content.splitlines(keepends=True)
+    tree = ast.parse(content)
+    insertion_points = [
+        node.body[0].lineno - 1
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        and node.body
+        and any(
+            isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name) and base.value.id == "RootModel"
+            for base in node.bases
+        )
+    ]
+    for line_index in reversed(insertion_points):
+        lines.insert(line_index, "    model_config = ConfigDict(use_attribute_docstrings=True)\n\n")
+    return "".join(lines)
 
 
 def _ensure_pydantic_import(content: str, name: str) -> str:
@@ -916,8 +965,14 @@ def _restore_required_nullable_fields(content: str, schema: dict[str, Any] | Non
         def restore_block(match: re.Match[str], _field_names: list[str] = field_names) -> str:
             header, block = match.group(1), match.group(2)
             for field_name in _field_names:
-                field_pattern = re.compile(rf"(\n\s+{re.escape(field_name)}:\s+Annotated\[[\s\S]*?\n\s+\]\s*)=\s*None")
-                block = field_pattern.sub(r"\1", block, count=1)
+                field_patterns = (
+                    re.compile(rf"(\n\s+{re.escape(field_name)}:[^\n]*?)\s*=\s*None(?=\n)"),
+                    re.compile(rf"(\n\s+{re.escape(field_name)}:[^\n]*\[\s*\n[\s\S]*?\n\s+\]\s*)=\s*None"),
+                )
+                for field_pattern in field_patterns:
+                    block, count = field_pattern.subn(r"\1", block, count=1)
+                    if count:
+                        break
             return header + block
 
         content = class_pattern.sub(restore_block, content, count=1)
@@ -926,18 +981,14 @@ def _restore_required_nullable_fields(content: str, schema: dict[str, Any] | Non
 
 def _apply_field_overrides(content: str) -> str:
     for class_name, field_name, new_type, optional in FIELD_TYPE_OVERRIDES:
-        if optional:
-            pattern = re.compile(
-                rf"(class {class_name}\(BaseModel\):.*?\n\s+{field_name}:\s+Annotated\[\s*)Optional\[str],",
-                re.DOTALL,
-            )
-            content, count = pattern.subn(rf"\1Optional[{new_type}],", content)
-        else:
-            pattern = re.compile(
-                rf"(class {class_name}\(BaseModel\):.*?\n\s+{field_name}:\s+Annotated\[\s*)str,",
-                re.DOTALL,
-            )
-            content, count = pattern.subn(rf"\1{new_type},", content)
+        old_type = "Optional[str]" if optional else "str"
+        replacement_type = f"Optional[{new_type}]" if optional else new_type
+        pattern = re.compile(
+            rf"(class {re.escape(class_name)}\(BaseModel\):.*?\n\s+{re.escape(field_name)}:\s+"
+            rf"(?:Annotated\[\s*)?){re.escape(old_type)}(?=\s*(?:,|=|\n))",
+            re.DOTALL,
+        )
+        content, count = pattern.subn(rf"\g<1>{replacement_type}", content, count=1)
         if count == 0:
             print(
                 f"Warning: failed to apply type override for {class_name}.{field_name} -> {new_type}",
@@ -963,7 +1014,8 @@ def _apply_default_overrides(content: str) -> str:
             field_patterns: tuple[tuple[re.Pattern[str], Callable[[re.Match[str]], str]], ...] = (
                 (
                     re.compile(
-                        rf"(\n\s+{_field_name}:.*?\]\s*=\s*)([\s\S]*?)(?=\n\s{{4}}[A-Za-z_]|$)",
+                        rf"(\n\s+{_field_name}:.*?\]\s*=\s*)([\s\S]*?)"
+                        rf"(?=\n\s{{4}}(?:[A-Za-z_][A-Za-z0-9_]*\s*:|[rRuUbBfF]*(?:'''|\"\"\"))|$)",
                         re.DOTALL,
                     ),
                     lambda m, _rep=_replacement: m.group(1) + _rep,
@@ -995,77 +1047,6 @@ def _apply_default_overrides(content: str) -> str:
     return content
 
 
-def _add_description_comments(content: str) -> str:
-    lines = content.splitlines()
-    new_lines: list[str] = []
-    index = 0
-
-    while index < len(lines):
-        line = lines[index]
-        stripped = line.lstrip()
-        indent = len(line) - len(stripped)
-
-        if indent == 4 and FIELD_DECLARATION_PATTERN.match(stripped or ""):
-            block_lines, next_index = _collect_field_block(lines, index, indent)
-            block_text = "\n".join(block_lines)
-            description = _extract_description(block_text)
-
-            if description:
-                indent_str = " " * indent
-                comment_lines = [
-                    f"{indent_str}# {comment_line}" if comment_line else f"{indent_str}#"
-                    for comment_line in description.splitlines()
-                ]
-                if comment_lines:
-                    new_lines.extend(comment_lines)
-
-            new_lines.extend(block_lines)
-            index = next_index
-            continue
-
-        new_lines.append(line)
-        index += 1
-
-    return "\n".join(new_lines)
-
-
-def _collect_field_block(lines: list[str], start: int, indent: int) -> tuple[list[str], int]:
-    block: list[str] = []
-    index = start
-
-    while index < len(lines):
-        current_line = lines[index]
-        current_indent = len(current_line) - len(current_line.lstrip())
-        if index != start and current_line.strip() and current_indent <= indent:
-            break
-
-        block.append(current_line)
-        index += 1
-
-    return block, index
-
-
-def _extract_description(block_text: str) -> str | None:
-    match = DESCRIPTION_PATTERN.search(block_text)
-    if not match:
-        return None
-
-    prefix = match.group("prefix") or ""
-    quote = match.group("quote")
-    value = match.group("value")
-    literal = f"{prefix}{quote}{value}{quote}"
-
-    # datamodel-code-generator emits standard string literals, but fall back to raw text on parse errors.
-    try:
-        parsed = ast.literal_eval(literal)
-    except (SyntaxError, ValueError):
-        return value.replace("\\n", "\n")
-
-    if isinstance(parsed, str):
-        return parsed
-    return str(parsed)
-
-
 def _inject_enum_aliases(content: str) -> str:
     enum_lines = [
         f"{name} = Literal[{', '.join(repr(value) for value in values)}]" for name, values in ENUM_LITERAL_MAP.items()
@@ -1078,6 +1059,45 @@ def _inject_enum_aliases(content: str) -> str:
         return content
     insertion_point = class_index + 1  # include leading newline
     return content[:insertion_point] + block + content[insertion_point:]
+
+
+def _remove_unreferenced_root_models(content: str) -> str:
+    tree = ast.parse(content)
+    root_models = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        and any(
+            isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name) and base.value.id == "RootModel"
+            for base in node.bases
+        )
+    }
+
+    referenced_roots = set(PUBLIC_ROOT_MODELS)
+    root_dependencies: dict[str, set[str]] = {}
+    for statement in tree.body:
+        loaded_names = {
+            node.id
+            for node in ast.walk(statement)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id in root_models
+        }
+        if isinstance(statement, ast.ClassDef) and statement.name in root_models:
+            root_dependencies[statement.name] = loaded_names
+        else:
+            referenced_roots.update(loaded_names)
+
+    pending = list(referenced_roots)
+    while pending:
+        root_name = pending.pop()
+        for dependency in root_dependencies.get(root_name, set()) - referenced_roots:
+            referenced_roots.add(dependency)
+            pending.append(dependency)
+
+    unused_models = [model for name, model in root_models.items() if name not in referenced_roots]
+    lines = content.splitlines(keepends=True)
+    for model in sorted(unused_models, key=lambda item: item.lineno, reverse=True):
+        del lines[model.lineno - 1 : model.end_lineno]
+    return re.sub(r"\n{4,}", "\n\n\n", "".join(lines))
 
 
 def _remove_unused_models(content: str) -> str:

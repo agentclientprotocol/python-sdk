@@ -1,3 +1,4 @@
+from acp.schema import AvailableCommandInput, ReadTextFileRequest
 from scripts.gen_all import resolve_ref, schema_source_paths
 from scripts.gen_schema import (
     _deserialize_field_specs,
@@ -7,6 +8,16 @@ from scripts.gen_schema import (
     _preprocess_schema_for_codegen,
     _restore_required_nullable_fields,
 )
+
+
+def test_generated_field_descriptions_are_introspectable() -> None:
+    path_description = "Absolute path to the file to read."
+    assert ReadTextFileRequest.model_fields["path"].description == path_description
+    assert ReadTextFileRequest.model_json_schema()["properties"]["path"]["description"] == path_description
+
+    root_description = "The input specification for a command."
+    assert AvailableCommandInput.model_fields["root"].description == root_description
+    assert AvailableCommandInput.model_json_schema()["description"] == root_description
 
 
 def test_resolve_ref_accepts_schema_release_tags() -> None:
