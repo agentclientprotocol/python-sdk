@@ -137,6 +137,31 @@ ENUM_LITERAL_MAP: dict[str, tuple[str, ...]] = {
     "ToolKind": ("read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"),
 }
 
+# datamodel-code-generator 0.64 promotes referenced string enums to Enum classes.
+# Keep the existing Python API, where these schema types are plain strings; the
+# selected public fields below are narrowed back to the named Literal aliases.
+STRING_ENUM_TYPES = (
+    *ENUM_LITERAL_MAP,
+    "ElicitationSchemaType",
+    "NesDiagnosticSeverity",
+    "NesRejectReason",
+    "NesTriggerKind",
+    "PositionEncodingKind",
+    "Role",
+    "StringFormat",
+    "TextDocumentSyncKind",
+)
+
+# Preserve RootModel classes that existed in the generated public surface before
+# 0.64; other unreferenced RootModels are intermediates left after collapsing.
+PUBLIC_ROOT_MODELS = {
+    "AgentResponse",
+    "ClientResponse",
+    "ElicitationContentValue",
+    "ElicitationFormMode",
+    "ElicitationUrlMode",
+}
+
 FIELD_TYPE_OVERRIDES: tuple[tuple[str, str, str, bool], ...] = (
     ("PermissionOption", "kind", "PermissionOptionKind", False),
     ("PlanEntry", "priority", "PlanEntryPriority", False),
@@ -259,6 +284,14 @@ def generate_schema() -> None:
             "--collapse-root-models",
             "--output-model-type",
             "pydantic_v2.BaseModel",
+            "--no-use-specialized-enum",
+            "--no-use-standard-collections",
+            "--no-use-union-operator",
+            "--type-overrides",
+            json.dumps(dict.fromkeys(STRING_ENUM_TYPES, "builtins.str")),
+            "--formatters",
+            "black",
+            "isort",
             "--use-annotated",
             "--snake-case-field",
         ]
@@ -474,6 +507,9 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
     header_block = _build_header_block()
 
     content = _strip_existing_header(raw_content)
+    # Type overrides for builtins are rendered as imports in 0.64, but the
+    # annotations should continue to use Python's builtin `str` directly.
+    content = content.replace("from builtins import str\n", "")
     content = _remove_unused_models(content)
     content, leftover_classes = _rename_numbered_models(content)
 
@@ -494,6 +530,7 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
     missing_targets = _find_missing_targets(content)
 
     content = _inject_enum_aliases(content)
+    content = _remove_unreferenced_root_models(content)
     final_content = header_block + content.rstrip() + "\n"
     if not final_content.endswith("\n"):
         final_content += "\n"
@@ -1078,6 +1115,45 @@ def _inject_enum_aliases(content: str) -> str:
         return content
     insertion_point = class_index + 1  # include leading newline
     return content[:insertion_point] + block + content[insertion_point:]
+
+
+def _remove_unreferenced_root_models(content: str) -> str:
+    tree = ast.parse(content)
+    root_models = {
+        node.name: node
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        and any(
+            isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name) and base.value.id == "RootModel"
+            for base in node.bases
+        )
+    }
+
+    referenced_roots = set(PUBLIC_ROOT_MODELS)
+    root_dependencies: dict[str, set[str]] = {}
+    for statement in tree.body:
+        loaded_names = {
+            node.id
+            for node in ast.walk(statement)
+            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id in root_models
+        }
+        if isinstance(statement, ast.ClassDef) and statement.name in root_models:
+            root_dependencies[statement.name] = loaded_names
+        else:
+            referenced_roots.update(loaded_names)
+
+    pending = list(referenced_roots)
+    while pending:
+        root_name = pending.pop()
+        for dependency in root_dependencies.get(root_name, set()) - referenced_roots:
+            referenced_roots.add(dependency)
+            pending.append(dependency)
+
+    unused_models = [model for name, model in root_models.items() if name not in referenced_roots]
+    lines = content.splitlines(keepends=True)
+    for model in sorted(unused_models, key=lambda item: item.lineno, reverse=True):
+        del lines[model.lineno - 1 : model.end_lineno]
+    return re.sub(r"\n{4,}", "\n\n\n", "".join(lines))
 
 
 def _remove_unused_models(content: str) -> str:

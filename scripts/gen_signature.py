@@ -127,7 +127,10 @@ class NodeTransformer(ast.NodeTransformer):
         return arg, default
 
     def _format_annotation(self, annotation: t.Any) -> ast.expr:
-        if t.get_origin(annotation) is t.Literal and annotation in self._literals.values():
+        origin = t.get_origin(annotation)
+        if origin is t.Annotated:
+            return self._format_annotation(t.get_args(annotation)[0])
+        if origin is t.Literal and annotation in self._literals.values():
             name = next(name for name, value in self._literals.items() if value is annotation)
             self._add_schema_import(name)
             return ast.Name(id=name)
@@ -139,7 +142,6 @@ class NodeTransformer(ast.NodeTransformer):
             self._add_schema_import(annotation.__name__)
             return ast.Name(id=annotation.__name__)
         elif args := t.get_args(annotation):
-            origin = t.get_origin(annotation)
             return ast.Subscript(
                 value=self._format_annotation(origin),
                 slice=ast.Tuple(elts=[self._format_annotation(arg) for arg in args], ctx=ast.Load())

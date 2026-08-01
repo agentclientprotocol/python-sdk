@@ -1311,7 +1311,14 @@ class AuthenticateResponse(BaseModel):
 class ProviderCurrentConfig(BaseModel):
     # Protocol currently used by this provider.
     api_type: Annotated[
-        Union[str, Dict[str, Any]],
+        Union[
+            Literal["anthropic"],
+            Literal["openai"],
+            Literal["azure"],
+            Literal["vertex"],
+            Literal["bedrock"],
+            Dict[str, Any],
+        ],
         Field(alias="apiType", description="Protocol currently used by this provider."),
     ]
     # Base URL currently used by this provider.
@@ -2183,7 +2190,14 @@ class SetProviderRequest(BaseModel):
     provider_id: Annotated[str, Field(alias="providerId", description="Provider ID to configure.")]
     # Protocol type for this provider.
     api_type: Annotated[
-        Union[str, Dict[str, Any]],
+        Union[
+            Literal["anthropic"],
+            Literal["openai"],
+            Literal["azure"],
+            Literal["vertex"],
+            Literal["bedrock"],
+            Dict[str, Any],
+        ],
         Field(alias="apiType", description="Protocol type for this provider."),
     ]
     # Base URL for requests sent through this provider.
@@ -3123,7 +3137,7 @@ class CancelRequestNotification(BaseModel):
             alias="_meta",
             description="The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
         ),
-    ] = None
+    ]
 
 
 class WriteTextFileRequest(BaseModel):
@@ -3879,7 +3893,16 @@ class ProviderInfo(BaseModel):
     ]
     # Supported protocol types for this provider.
     supported: Annotated[
-        List[Union[str, Dict[str, Any]]],
+        List[
+            Union[
+                Literal["anthropic"],
+                Literal["openai"],
+                Literal["azure"],
+                Literal["vertex"],
+                Literal["bedrock"],
+                Dict[str, Any],
+            ]
+        ],
         Field(description="Supported protocol types for this provider."),
     ]
     # Whether this provider is mandatory and cannot be disabled via `providers/disable`.
@@ -3960,7 +3983,15 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     ] = None
     # Optional semantic category for this option (UX only).
     category: Annotated[
-        Optional[Union[str, Dict[str, Any]]],
+        Optional[
+            Union[
+                Literal["mode"],
+                Literal["model"],
+                Literal["model_config"],
+                Literal["thought_level"],
+                Dict[str, Any],
+            ]
+        ],
         Field(description="Optional semantic category for this option (UX only)."),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4122,7 +4153,17 @@ class Error(BaseModel):
     # A number indicating the error type that occurred.
     # This must be an integer as defined in the JSON-RPC specification.
     code: Annotated[
-        int,
+        Union[
+            Literal[-32700],
+            Literal[-32600],
+            Literal[-32601],
+            Literal[-32602],
+            Literal[-32603],
+            Literal[-32800],
+            Literal[-32000],
+            Literal[-32002],
+            int,
+        ],
         Field(
             description="A number indicating the error type that occurred.\nThis must be an integer as defined in the JSON-RPC specification."
         ),
@@ -4674,7 +4715,7 @@ class ClientErrorMessage(BaseModel):
     id: Annotated[
         Optional[Union[int, str]],
         Field(description="The id of the request this response answers."),
-    ] = None
+    ]
     # Method-specific error data.
     error: Annotated[Error, Field(description="Method-specific error data.")]
 
@@ -4867,7 +4908,7 @@ class AgentErrorMessage(BaseModel):
     id: Annotated[
         Optional[Union[int, str]],
         Field(description="The id of the request this response answers."),
-    ] = None
+    ]
     # Method-specific error data.
     error: Annotated[Error, Field(description="Method-specific error data.")]
 
@@ -5243,12 +5284,15 @@ class PromptRequest(BaseModel):
     # pieces of context from sources the agent may not have access to.
     prompt: Annotated[
         List[
-            Union[
-                TextContentBlock,
-                ImageContentBlock,
-                AudioContentBlock,
-                ResourceContentBlock,
-                EmbeddedResourceContentBlock,
+            Annotated[
+                Union[
+                    TextContentBlock,
+                    ImageContentBlock,
+                    AudioContentBlock,
+                    ResourceContentBlock,
+                    EmbeddedResourceContentBlock,
+                ],
+                Field(discriminator="type"),
             ]
         ],
         Field(
@@ -5398,7 +5442,10 @@ class ElicitationSchema(BaseModel):
                 ],
             ]
         ],
-        Field(description="Property definitions (must be primitive types)."),
+        Field(
+            description="Property definitions (must be primitive types).",
+            validate_default=True,
+        ),
     ] = {}
     # List of required property names.
     required: Annotated[Optional[List[str]], Field(description="List of required property names.")] = None
@@ -5504,7 +5551,15 @@ class SessionConfigOptionSelect(SessionConfigSelect):
     ] = None
     # Optional semantic category for this option (UX only).
     category: Annotated[
-        Optional[Union[str, Dict[str, Any]]],
+        Optional[
+            Union[
+                Literal["mode"],
+                Literal["model"],
+                Literal["model_config"],
+                Literal["thought_level"],
+                Dict[str, Any],
+            ]
+        ],
         Field(description="Optional semantic category for this option (UX only)."),
     ] = None
     # The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -5539,7 +5594,14 @@ class LoadSessionResponse(BaseModel):
     ] = None
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
-        Optional[List[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean]]],
+        Optional[
+            List[
+                Annotated[
+                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
+                    Field(discriminator="type"),
+                ]
+            ]
+        ],
         Field(
             alias="configOptions",
             description="Initial session configuration options if supported by the Agent.",
@@ -5589,7 +5651,14 @@ class ForkSessionResponse(BaseModel):
     ] = None
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
-        Optional[List[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean]]],
+        Optional[
+            List[
+                Annotated[
+                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
+                    Field(discriminator="type"),
+                ]
+            ]
+        ],
         Field(
             alias="configOptions",
             description="Initial session configuration options if supported by the Agent.",
@@ -5631,7 +5700,14 @@ class ResumeSessionResponse(BaseModel):
     ] = None
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
-        Optional[List[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean]]],
+        Optional[
+            List[
+                Annotated[
+                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
+                    Field(discriminator="type"),
+                ]
+            ]
+        ],
         Field(
             alias="configOptions",
             description="Initial session configuration options if supported by the Agent.",
@@ -5664,7 +5740,12 @@ class ResumeSessionResponse(BaseModel):
 class SetSessionConfigOptionResponse(BaseModel):
     # The full set of configuration options and their current values.
     config_options: Annotated[
-        List[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean]],
+        List[
+            Annotated[
+                Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
+                Field(discriminator="type"),
+            ]
+        ],
         Field(
             alias="configOptions",
             description="The full set of configuration options and their current values.",
@@ -5739,7 +5820,14 @@ class ToolCall(BaseModel):
     status: Annotated[Optional[ToolCallStatus], Field(description="Current execution status of the tool call.")] = None
     # Content produced by the tool call.
     content: Annotated[
-        Optional[List[Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent]]],
+        Optional[
+            List[
+                Annotated[
+                    Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
+                    Field(discriminator="type"),
+                ]
+            ]
+        ],
         Field(description="Content produced by the tool call."),
     ] = None
     # File locations affected by this tool call.
@@ -5790,7 +5878,12 @@ class ToolCall(BaseModel):
 class _ConfigOptionUpdate(BaseModel):
     # The full set of configuration options and their current values.
     config_options: Annotated[
-        List[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean]],
+        List[
+            Annotated[
+                Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
+                Field(discriminator="type"),
+            ]
+        ],
         Field(
             alias="configOptions",
             description="The full set of configuration options and their current values.",
@@ -5821,7 +5914,8 @@ class ClientCapabilities(BaseModel):
     fs: Annotated[
         Optional[FileSystemCapabilities],
         Field(
-            description="File system capabilities supported by the client.\nDetermines which file operations the agent can request."
+            description="File system capabilities supported by the client.\nDetermines which file operations the agent can request.",
+            validate_default=True,
         ),
     ] = FileSystemCapabilities()
     # Whether the Client support all `terminal/*` methods.
@@ -5863,7 +5957,8 @@ class ClientCapabilities(BaseModel):
     auth: Annotated[
         Optional[AuthCapabilities],
         Field(
-            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthentication capabilities supported by the client.\nDetermines which authentication method types the agent may include\nin its `InitializeResponse`."
+            description="**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAuthentication capabilities supported by the client.\nDetermines which authentication method types the agent may include\nin its `InitializeResponse`.",
+            validate_default=True,
         ),
     ] = {"terminal": False}
     # **UNSTABLE**
@@ -5986,7 +6081,7 @@ class ClientResponseMessage(BaseModel):
     id: Annotated[
         Optional[Union[int, str]],
         Field(description="The id of the request this response answers."),
-    ] = None
+    ]
     # Method-specific response data.
     result: Annotated[
         Union[
@@ -6057,7 +6152,14 @@ class ToolCallUpdate(BaseModel):
     title: Annotated[Optional[str], Field(description="Update the human-readable title.")] = None
     # Replace the content collection.
     content: Annotated[
-        Optional[List[Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent]]],
+        Optional[
+            List[
+                Annotated[
+                    Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
+                    Field(discriminator="type"),
+                ]
+            ]
+        ],
         Field(description="Replace the content collection."),
     ] = None
     # Replace the locations collection.
@@ -6235,7 +6337,14 @@ class NewSessionResponse(BaseModel):
     ] = None
     # Initial session configuration options if supported by the Agent.
     config_options: Annotated[
-        Optional[List[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean]]],
+        Optional[
+            List[
+                Annotated[
+                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
+                    Field(discriminator="type"),
+                ]
+            ]
+        ],
         Field(
             alias="configOptions",
             description="Initial session configuration options if supported by the Agent.",
@@ -6269,11 +6378,14 @@ class SuggestNesResponse(BaseModel):
     # The list of suggestions.
     suggestions: Annotated[
         List[
-            Union[
-                NesEditSuggestionVariant,
-                NesJumpSuggestionVariant,
-                NesRenameSuggestionVariant,
-                NesSearchAndReplaceSuggestionVariant,
+            Annotated[
+                Union[
+                    NesEditSuggestionVariant,
+                    NesJumpSuggestionVariant,
+                    NesRenameSuggestionVariant,
+                    NesSearchAndReplaceSuggestionVariant,
+                ],
+                Field(discriminator="kind"),
             ]
         ],
         Field(description="The list of suggestions."),
@@ -6321,6 +6433,7 @@ class InitializeRequest(BaseModel):
         Field(
             alias="clientCapabilities",
             description="Capabilities supported by the client.",
+            validate_default=True,
         ),
     ] = ClientCapabilities()
     # Information about the Client name and version sent to the Agent.
@@ -6424,6 +6537,7 @@ class AgentCapabilities(BaseModel):
         Field(
             alias="promptCapabilities",
             description="Prompt capabilities supported by the agent.",
+            validate_default=True,
         ),
     ] = PromptCapabilities()
     # MCP capabilities supported by the agent.
@@ -6432,6 +6546,7 @@ class AgentCapabilities(BaseModel):
         Field(
             alias="mcpCapabilities",
             description="MCP capabilities supported by the agent.",
+            validate_default=True,
         ),
     ] = McpCapabilities()
     # Session lifecycle and prompt capabilities advertised by the agent.
@@ -6440,12 +6555,16 @@ class AgentCapabilities(BaseModel):
         Field(
             alias="sessionCapabilities",
             description="Session lifecycle and prompt capabilities advertised by the agent.",
+            validate_default=True,
         ),
     ] = SessionCapabilities()
     # Authentication-related capabilities supported by the agent.
     auth: Annotated[
         Optional[AgentAuthCapabilities],
-        Field(description="Authentication-related capabilities supported by the agent."),
+        Field(
+            description="Authentication-related capabilities supported by the agent.",
+            validate_default=True,
+        ),
     ] = {}
     # **UNSTABLE**
     #
@@ -6604,7 +6723,7 @@ class ClientRequest(BaseModel):
             ]
         ],
         Field(description="Method-specific request parameters."),
-    ] = None
+    ]
 
 
 class AgentRequest(BaseModel):
@@ -6641,7 +6760,7 @@ class AgentRequest(BaseModel):
             ]
         ],
         Field(description="Method-specific request parameters."),
-    ] = None
+    ]
 
 
 class InitializeResponse(BaseModel):
@@ -6664,6 +6783,7 @@ class InitializeResponse(BaseModel):
         Field(
             alias="agentCapabilities",
             description="Capabilities supported by the agent.",
+            validate_default=True,
         ),
     ] = AgentCapabilities()
     # Authentication methods supported by the agent.
@@ -6672,6 +6792,7 @@ class InitializeResponse(BaseModel):
         Field(
             alias="authMethods",
             description="Authentication methods supported by the agent.",
+            validate_default=True,
         ),
     ] = []
     # Information about the Agent name and version sent to the Client.
@@ -6745,7 +6866,7 @@ class AgentResponseMessage(BaseModel):
     id: Annotated[
         Optional[Union[int, str]],
         Field(description="The id of the request this response answers."),
-    ] = None
+    ]
     # Method-specific response data.
     result: Annotated[
         Union[
