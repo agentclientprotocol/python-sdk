@@ -286,6 +286,7 @@ def generate_schema() -> None:
             "black",
             "isort",
             "--use-annotated",
+            "--use-field-description",
             "--snake-case-field",
         ]
 
@@ -511,6 +512,7 @@ def postprocess_generated_schema(output_path: Path) -> list[str]:
         _ProcessingStep("apply default overrides", _apply_default_overrides),
         _ProcessingStep("restore required nullable fields", _restore_required_nullable_fields),
         _ProcessingStep("ensure custom BaseModel", _ensure_custom_base_model),
+        _ProcessingStep("enable RootModel attribute docstrings", _enable_root_model_attribute_docstrings),
         _ProcessingStep("inject field validators", _inject_field_validators),
         _ProcessingStep("inject deserialize defaults", _inject_deserialize_defaults),
         _ProcessingStep("inject schema aliases", _inject_schema_aliases),
@@ -675,7 +677,7 @@ def _ensure_custom_base_model(content: str) -> str:
         lines[idx] = "from pydantic import " + ", ".join(new_imports)
         to_insert = textwrap.dedent("""\
             class BaseModel(_BaseModel):
-                model_config = ConfigDict(populate_by_name=True)
+                model_config = ConfigDict(populate_by_name=True, use_attribute_docstrings=True)
 
                 def __getattr__(self, item: str) -> Any:
                     if item.lower() != item:
@@ -689,6 +691,24 @@ def _ensure_custom_base_model(content: str) -> str:
             lines.insert(insert_idx + offset, line)
         break
     return "\n".join(lines) + "\n"
+
+
+def _enable_root_model_attribute_docstrings(content: str) -> str:
+    lines = content.splitlines(keepends=True)
+    tree = ast.parse(content)
+    insertion_points = [
+        node.body[0].lineno - 1
+        for node in tree.body
+        if isinstance(node, ast.ClassDef)
+        and node.body
+        and any(
+            isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name) and base.value.id == "RootModel"
+            for base in node.bases
+        )
+    ]
+    for line_index in reversed(insertion_points):
+        lines.insert(line_index, "    model_config = ConfigDict(use_attribute_docstrings=True)\n\n")
+    return "".join(lines)
 
 
 def _ensure_pydantic_import(content: str, name: str) -> str:
@@ -945,8 +965,14 @@ def _restore_required_nullable_fields(content: str, schema: dict[str, Any] | Non
         def restore_block(match: re.Match[str], _field_names: list[str] = field_names) -> str:
             header, block = match.group(1), match.group(2)
             for field_name in _field_names:
-                field_pattern = re.compile(rf"(\n\s+{re.escape(field_name)}:\s+Annotated\[[\s\S]*?\n\s+\]\s*)=\s*None")
-                block = field_pattern.sub(r"\1", block, count=1)
+                field_patterns = (
+                    re.compile(rf"(\n\s+{re.escape(field_name)}:[^\n]*?)\s*=\s*None(?=\n)"),
+                    re.compile(rf"(\n\s+{re.escape(field_name)}:[^\n]*\[\s*\n[\s\S]*?\n\s+\]\s*)=\s*None"),
+                )
+                for field_pattern in field_patterns:
+                    block, count = field_pattern.subn(r"\1", block, count=1)
+                    if count:
+                        break
             return header + block
 
         content = class_pattern.sub(restore_block, content, count=1)
@@ -955,18 +981,14 @@ def _restore_required_nullable_fields(content: str, schema: dict[str, Any] | Non
 
 def _apply_field_overrides(content: str) -> str:
     for class_name, field_name, new_type, optional in FIELD_TYPE_OVERRIDES:
-        if optional:
-            pattern = re.compile(
-                rf"(class {class_name}\(BaseModel\):.*?\n\s+{field_name}:\s+Annotated\[\s*)Optional\[str],",
-                re.DOTALL,
-            )
-            content, count = pattern.subn(rf"\1Optional[{new_type}],", content)
-        else:
-            pattern = re.compile(
-                rf"(class {class_name}\(BaseModel\):.*?\n\s+{field_name}:\s+Annotated\[\s*)str,",
-                re.DOTALL,
-            )
-            content, count = pattern.subn(rf"\1{new_type},", content)
+        old_type = "Optional[str]" if optional else "str"
+        replacement_type = f"Optional[{new_type}]" if optional else new_type
+        pattern = re.compile(
+            rf"(class {re.escape(class_name)}\(BaseModel\):.*?\n\s+{re.escape(field_name)}:\s+"
+            rf"(?:Annotated\[\s*)?){re.escape(old_type)}(?=\s*(?:,|=|\n))",
+            re.DOTALL,
+        )
+        content, count = pattern.subn(rf"\g<1>{replacement_type}", content, count=1)
         if count == 0:
             print(
                 f"Warning: failed to apply type override for {class_name}.{field_name} -> {new_type}",
@@ -992,7 +1014,8 @@ def _apply_default_overrides(content: str) -> str:
             field_patterns: tuple[tuple[re.Pattern[str], Callable[[re.Match[str]], str]], ...] = (
                 (
                     re.compile(
-                        rf"(\n\s+{_field_name}:.*?\]\s*=\s*)([\s\S]*?)(?=\n\s{{4}}[A-Za-z_]|$)",
+                        rf"(\n\s+{_field_name}:.*?\]\s*=\s*)([\s\S]*?)"
+                        rf"(?=\n\s{{4}}(?:[A-Za-z_][A-Za-z0-9_]*\s*:|[rRuUbBfF]*(?:'''|\"\"\"))|$)",
                         re.DOTALL,
                     ),
                     lambda m, _rep=_replacement: m.group(1) + _rep,
