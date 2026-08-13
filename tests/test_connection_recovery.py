@@ -34,7 +34,7 @@ async def test_receive_loop_handles_oversized_frame(caplog: pytest.LogCaptureFix
     conn, reader = _make_connection(limit=128)
     processed: list[str] = []
 
-    async def tracking_process(message: dict[str, Any]) -> None:
+    def tracking_process(message: dict[str, Any]) -> None:
         processed.append(message["method"])
 
     conn._process_message = tracking_process  # type: ignore[method-assign]
@@ -56,7 +56,7 @@ async def test_receive_loop_handles_consecutive_oversized_frames() -> None:
     conn, reader = _make_connection(limit=128)
     processed: list[str] = []
 
-    async def tracking_process(message: dict[str, Any]) -> None:
+    def tracking_process(message: dict[str, Any]) -> None:
         processed.append(message["method"])
 
     conn._process_message = tracking_process  # type: ignore[method-assign]

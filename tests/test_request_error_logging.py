@@ -8,39 +8,35 @@ can see server-side handler crashes.
 
 from __future__ import annotations
 
-import asyncio
 import logging
 from typing import Any
-from unittest.mock import MagicMock
 
 import pytest
 
+from acp._transport import Transport
 from acp.connection import Connection, MethodHandler
-from acp.exceptions import RequestError
 
 
-class _RecordingSender:
-    """Duck-typed MessageSender that records outgoing frames instead of writing them."""
+class _RecordingTransport:
+    """Message transport that records outgoing frames."""
 
-    def __init__(self, writer: asyncio.StreamWriter, supervisor: Any) -> None:
+    def __init__(self) -> None:
         self.sent: list[dict[str, Any]] = []
 
-    async def send(self, payload: dict[str, Any]) -> None:
-        self.sent.append(payload)
+    async def send(self, message: dict[str, Any]) -> None:
+        self.sent.append(message)
+
+    async def receive(self) -> dict[str, Any] | None:
+        return None
 
     async def close(self) -> None:
         pass
 
 
-def _make_connection(handler: MethodHandler) -> tuple[Connection, _RecordingSender]:
-    captured: dict[str, _RecordingSender] = {}
-
-    def sender_factory(writer: asyncio.StreamWriter, supervisor: Any) -> _RecordingSender:
-        captured["sender"] = _RecordingSender(writer, supervisor)
-        return captured["sender"]
-
-    conn = Connection(handler, MagicMock(), MagicMock(), sender_factory=sender_factory, listening=False)
-    return conn, captured["sender"]
+def _make_connection(handler: MethodHandler) -> tuple[Connection, _RecordingTransport]:
+    transport = _RecordingTransport()
+    conn = Connection(handler, transport, listening=False)
+    return conn, transport
 
 
 async def _raising_handler(method: str, params: Any, is_notification: bool) -> Any:
@@ -62,25 +58,19 @@ def _assert_logged_runtime_error(caplog: pytest.LogCaptureFixture, method: str) 
 
 
 @pytest.mark.asyncio
-async def test_run_request_unhandled_exception_is_logged_and_returned_as_internal_error(caplog):
-    conn, sender = _make_connection(_raising_handler)
+async def test_run_request_unhandled_exception_is_logged_and_sent_as_internal_error(caplog):
+    conn, transport = _make_connection(_raising_handler)
     request = {"jsonrpc": "2.0", "id": 7, "method": "explode", "params": None}
 
     try:
-        with caplog.at_level(logging.ERROR), pytest.raises(RequestError) as exc_info:
+        with caplog.at_level(logging.ERROR):
             await conn._run_request(request)
     finally:
         await conn.close()
 
-    # The handler exception is re-raised as a JSON-RPC internal error...
-    raised = exc_info.value
-    assert isinstance(raised, RequestError)
-    assert raised.code == -32603
-    assert raised.data == {"details": "kaboom"}
-
-    # ...and exactly one error frame carrying the handler's message is written to the peer.
-    assert len(sender.sent) == 1
-    response = sender.sent[0]
+    # A handled application exception becomes exactly one JSON-RPC error frame.
+    assert len(transport.sent) == 1
+    response = transport.sent[0]
     assert response["id"] == 7
     assert "result" not in response
     assert response["error"] == {"code": -32603, "message": "Internal error", "data": {"details": "kaboom"}}
@@ -91,7 +81,7 @@ async def test_run_request_unhandled_exception_is_logged_and_returned_as_interna
 
 @pytest.mark.asyncio
 async def test_run_notification_unhandled_exception_is_logged_and_not_answered(caplog):
-    conn, sender = _make_connection(_raising_handler)
+    conn, transport = _make_connection(_raising_handler)
     notification = {"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": "s1"}}
 
     try:
@@ -102,7 +92,29 @@ async def test_run_notification_unhandled_exception_is_logged_and_not_answered(c
 
     # A notification has no response: the error is neither raised nor written to the wire.
     assert result is None
-    assert sender.sent == []
+    assert transport.sent == []
 
     # It must still be logged — previously contextlib.suppress dropped it silently.
     _assert_logged_runtime_error(caplog, "session/cancel")
+
+
+@pytest.mark.asyncio
+async def test_response_send_failure_is_not_mapped_to_a_handler_error(caplog):
+    class _FailingTransport(_RecordingTransport):
+        async def send(self, message: dict[str, Any]) -> None:
+            raise ConnectionError("send failed")
+
+    async def successful_handler(method: str, params: Any, is_notification: bool) -> Any:
+        return {"ok": True}
+
+    transport: Transport = _FailingTransport()
+    conn = Connection(successful_handler, transport, listening=False)
+    request = {"jsonrpc": "2.0", "id": 8, "method": "succeed", "params": None}
+
+    try:
+        with caplog.at_level(logging.ERROR), pytest.raises(ConnectionError, match="send failed"):
+            await conn._run_request(request)
+    finally:
+        await conn.close()
+
+    assert "Unhandled error while handling request method=succeed" not in caplog.text

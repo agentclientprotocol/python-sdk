@@ -10,46 +10,34 @@ from acp.core import run_agent
 
 
 @pytest.mark.asyncio
-async def test_run_agent_closes_connection_when_cancelled(server, agent) -> None:
-    sender_created = asyncio.Event()
-    sender_closed = asyncio.Event()
-    dispatcher_started = asyncio.Event()
-    dispatcher_stopped = asyncio.Event()
+async def test_run_agent_closes_connection_when_cancelled(agent) -> None:
+    receive_started = asyncio.Event()
+    transport_closed = asyncio.Event()
 
-    class TrackingSender:
-        def __init__(self, writer: asyncio.StreamWriter, supervisor: Any) -> None:
-            sender_created.set()
+    class TrackingTransport:
+        async def receive(self) -> dict[str, Any] | None:
+            receive_started.set()
+            await asyncio.Event().wait()
+            return None
 
-        async def send(self, payload: dict[str, Any]) -> None:
+        async def send(self, message: dict[str, Any]) -> None:
             msg = "test does not send messages"
             raise AssertionError(msg)
 
         async def close(self) -> None:
-            sender_closed.set()
-
-    class TrackingDispatcher:
-        def start(self) -> None:
-            dispatcher_started.set()
-
-        async def stop(self) -> None:
-            dispatcher_stopped.set()
+            transport_closed.set()
 
     task = asyncio.create_task(
         run_agent(
             agent,
-            server.server_writer,
-            server.server_reader,
-            sender_factory=TrackingSender,
-            dispatcher_factory=lambda *args: TrackingDispatcher(),
+            TrackingTransport(),
         )
     )
 
-    await asyncio.wait_for(sender_created.wait(), timeout=1)
-    await asyncio.wait_for(dispatcher_started.wait(), timeout=1)
+    await asyncio.wait_for(receive_started.wait(), timeout=1)
 
     task.cancel()
     with contextlib.suppress(asyncio.CancelledError):
         await asyncio.wait_for(task, timeout=1)
 
-    await asyncio.wait_for(dispatcher_stopped.wait(), timeout=1)
-    await asyncio.wait_for(sender_closed.wait(), timeout=1)
+    await asyncio.wait_for(transport_closed.wait(), timeout=1)

@@ -4,16 +4,12 @@ import asyncio
 import contextlib
 import json
 import logging
-from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any
 
 from .supervisor import TaskSupervisor
 
-__all__ = ["MessageSender", "SenderFactory"]
-
-
-SenderFactory = Callable[[asyncio.StreamWriter, TaskSupervisor], "MessageSender"]
+__all__ = ["MessageSender"]
 
 
 @dataclass(slots=True)
