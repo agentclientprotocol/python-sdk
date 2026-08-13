@@ -300,6 +300,37 @@ async def test_new_requests_fail_fast_after_remote_eof(server):
 
 
 @pytest.mark.asyncio
+async def test_cancelled_request_is_removed_from_pending_map() -> None:
+    sent = asyncio.Event()
+
+    class _NeverRespondTransport:
+        async def send(self, message: dict[str, Any]) -> None:
+            sent.set()
+
+        async def receive(self) -> dict[str, Any] | None:
+            await asyncio.Event().wait()
+            return None
+
+        async def close(self) -> None:
+            pass
+
+    conn = Connection(
+        lambda method, params, is_notification: None,
+        _NeverRespondTransport(),
+        listening=False,
+    )
+    request = asyncio.create_task(conn.send_request("ping"))
+
+    await sent.wait()
+    request.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await request
+
+    assert conn._pending == {}
+    await conn.close()
+
+
+@pytest.mark.asyncio
 async def test_invalid_params_results_in_error_response(connect, server):
     # Only start agent-side (server) so we can inject raw request from client socket
     connect(connect_agent=True, connect_client=False)

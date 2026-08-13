@@ -14,21 +14,7 @@ from pydantic import BaseModel, ValidationError
 
 from ._transport import NdjsonTransport, Transport
 from .exceptions import RequestError
-from .task import (
-    DefaultMessageDispatcher,
-    InMemoryMessageQueue,
-    InMemoryMessageStateStore,
-    MessageDispatcher,
-    MessageQueue,
-    MessageSender,
-    MessageStateStore,
-    NotificationRunner,
-    RequestRunner,
-    RpcTask,
-    RpcTaskKind,
-    SenderFactory,
-    TaskSupervisor,
-)
+from .task import MessageSender, TaskSupervisor
 from .telemetry import span_context
 
 JsonValue = Any
@@ -36,12 +22,6 @@ MethodHandler = Callable[[str, JsonValue | None, bool], Awaitable[JsonValue | No
 
 
 __all__ = ["Connection", "JsonValue", "MethodHandler", "StreamDirection", "StreamEvent"]
-
-
-DispatcherFactory = Callable[
-    [MessageQueue, TaskSupervisor, MessageStateStore, RequestRunner, NotificationRunner],
-    MessageDispatcher,
-]
 
 
 class StreamDirection(str, Enum):
@@ -67,20 +47,15 @@ class Connection:
         writer: asyncio.StreamWriter | Transport,
         reader: asyncio.StreamReader | None = None,
         *,
-        queue: MessageQueue | None = None,
-        state_store: MessageStateStore | None = None,
-        dispatcher_factory: DispatcherFactory | None = None,
-        sender_factory: SenderFactory | None = None,
         observers: list[StreamObserver] | None = None,
         listening: bool = True,
         receive_timeout: float | None = None,
     ) -> None:
         self._handler = handler
         self._next_request_id = 0
-        self._state = state_store or InMemoryMessageStateStore()
+        self._pending: dict[int, asyncio.Future[Any]] = {}
         self._tasks = TaskSupervisor(source="acp.Connection")
         self._tasks.add_error_handler(self._on_task_error)
-        self._queue = queue or InMemoryMessageQueue()
         self._closed = False
         self._disconnected = False
         # Two construction forms:
@@ -92,7 +67,7 @@ class Connection:
         if reader is None:
             self._transport: Transport = cast("Transport", writer)
         else:
-            sender = (sender_factory or self._default_sender_factory)(cast("asyncio.StreamWriter", writer), self._tasks)
+            sender = MessageSender(cast("asyncio.StreamWriter", writer), self._tasks)
             self._transport = NdjsonTransport(reader, sender, receive_timeout=receive_timeout)
         self._observers: list[StreamObserver] = list(observers or [])
         if listening:
@@ -103,25 +78,17 @@ class Connection:
             )
         else:
             self._recv_task = None
-        dispatcher_factory = dispatcher_factory or self._default_dispatcher_factory
-        self._dispatcher = dispatcher_factory(
-            self._queue,
-            self._tasks,
-            self._state,
-            self._run_request,
-            self._run_notification,
-        )
-        self._dispatcher.start()
 
     async def close(self) -> None:
         """Stop the receive loop and cancel any in-flight handler tasks."""
         if self._closed:
             return
         self._closed = True
-        await self._dispatcher.stop()
-        await self._transport.close()
-        await self._tasks.shutdown()
-        self._state.reject_all_outgoing(ConnectionError("Connection closed"))
+        self._reject_all_outgoing(ConnectionError("Connection closed"))
+        try:
+            await self._transport.close()
+        finally:
+            await self._tasks.shutdown()
 
     async def main_loop(self) -> None:
         try:
@@ -145,18 +112,22 @@ class Connection:
         self._raise_if_unavailable()
         request_id = self._next_request_id
         self._next_request_id += 1
-        future = self._state.register_outgoing(request_id, method)
+        future: asyncio.Future[Any] = asyncio.get_running_loop().create_future()
+        self._pending[request_id] = future
         payload = {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
         try:
             await self._transport.send(payload)
-        except Exception as exc:
-            # A synchronous send failure (e.g. HTTP POST rejected before any
-            # JSON-RPC response exists) must reject the correlated future so the
-            # caller gets a real, attributable error.
-            self._state.reject_outgoing(request_id, exc)
+        except BaseException:
+            self._pending.pop(request_id, None)
+            future.cancel()
             raise
         self._notify_observers(StreamDirection.OUTGOING, payload)
-        return await future
+        try:
+            return await future
+        except asyncio.CancelledError:
+            self._pending.pop(request_id, None)
+            future.cancel()
+            raise
 
     async def send_notification(self, method: str, params: JsonValue | None = None) -> None:
         self._raise_if_unavailable()
@@ -171,24 +142,26 @@ class Connection:
                 if message is None:
                     break
                 self._notify_observers(StreamDirection.INCOMING, message)
-                await self._process_message(message)
+                self._process_message(message)
         except asyncio.CancelledError:
             return
         except asyncio.TimeoutError:
             raise RequestError.internal_error({"details": "Agent timeout"}) from None
         self._disconnect()
 
-    async def _process_message(self, message: dict[str, Any]) -> None:
+    def _process_message(self, message: dict[str, Any]) -> None:
         method = message.get("method")
         has_id = "id" in message
-        if method is not None and has_id:
-            await self._queue.publish(RpcTask(RpcTaskKind.REQUEST, message))
+        if method is not None:  # this is a request or notification
+            # {"jsonrpc": "2.0", "id": 1, "method": "foo", "params": {...}}  # request
+            # {"jsonrpc": "2.0", "method": "foo", "params: {...}}  # notification
+            self._tasks.create(
+                self._run_request(message) if has_id else self._run_notification(message),
+                name="acp.Connection.request" if has_id else "acp.Connection.notification",
+            )
             return
-        if method is not None and not has_id:
-            await self._queue.publish(RpcTask(RpcTaskKind.NOTIFICATION, message))
-            return
-        if has_id:
-            await self._handle_response(message)
+        if has_id:  # this is a response, {"id", "result" | "error"}
+            self._handle_response(message)
 
     def _notify_observers(self, direction: StreamDirection, message: dict[str, Any]) -> None:
         if not self._observers:
@@ -211,7 +184,12 @@ class Connection:
     def _on_observer_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.exception("Stream observer coroutine failed", exc_info=exc)
 
-    async def _run_request(self, message: dict[str, Any]) -> Any:
+    async def _run_request(self, message: dict[str, Any]) -> None:
+        payload = await self._execute_request(message)
+        await self._transport.send(payload)
+        self._notify_observers(StreamDirection.OUTGOING, payload)
+
+    async def _execute_request(self, message: dict[str, Any]) -> dict[str, Any]:
         payload: dict[str, Any] = {"jsonrpc": "2.0", "id": message["id"]}
         method = message["method"]
         with span_context(
@@ -228,20 +206,10 @@ class Connection:
                         exclude_unset=True,
                     )
                 payload["result"] = result if result is not None else None
-                await self._transport.send(payload)
-                self._notify_observers(StreamDirection.OUTGOING, payload)
-                return payload.get("result")
             except RequestError as exc:
                 payload["error"] = exc.to_error_obj()
-                await self._transport.send(payload)
-                self._notify_observers(StreamDirection.OUTGOING, payload)
-                raise
             except ValidationError as exc:
-                err = RequestError.invalid_params({"errors": exc.errors()})
-                payload["error"] = err.to_error_obj()
-                await self._transport.send(payload)
-                self._notify_observers(StreamDirection.OUTGOING, payload)
-                raise err from None
+                payload["error"] = RequestError.invalid_params({"errors": exc.errors()}).to_error_obj()
             except Exception as exc:
                 logging.exception(
                     "Unhandled error while handling request method=%s",
@@ -252,11 +220,8 @@ class Connection:
                     data = json.loads(str(exc))
                 except Exception:
                     data = {"details": str(exc)}
-                err = RequestError.internal_error(data)
-                payload["error"] = err.to_error_obj()
-                await self._transport.send(payload)
-                self._notify_observers(StreamDirection.OUTGOING, payload)
-                raise err from None
+                payload["error"] = RequestError.internal_error(data).to_error_obj()
+        return payload
 
     async def _run_notification(self, message: dict[str, Any]) -> None:
         method = message["method"]
@@ -270,24 +235,21 @@ class Connection:
                     exc_info=exc,
                 )
 
-    async def _handle_response(self, message: dict[str, Any]) -> None:
+    def _handle_response(self, message: dict[str, Any]) -> None:
         request_id = message["id"]
-        result = message.get("result")
+        future = self._pending.pop(request_id, None)
+        if future is None or future.done():
+            return
         if "result" in message:
-            self._state.resolve_outgoing(request_id, result)
+            future.set_result(message.get("result"))
             return
         if "error" in message:
             error_obj = message.get("error") or {}
-            self._state.reject_outgoing(
-                request_id,
-                RequestError(
-                    error_obj.get("code", -32603),
-                    error_obj.get("message", "Error"),
-                    error_obj.get("data"),
-                ),
+            future.set_exception(
+                RequestError(error_obj.get("code", -32603), error_obj.get("message", "Error"), error_obj.get("data"))
             )
             return
-        self._state.resolve_outgoing(request_id, None)
+        future.set_result(None)
 
     def _on_receive_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.exception("Receive loop failed", exc_info=exc)
@@ -296,30 +258,18 @@ class Connection:
     def _on_task_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.exception("Background task failed", exc_info=exc)
 
-    def _default_dispatcher_factory(
-        self,
-        queue: MessageQueue,
-        supervisor: TaskSupervisor,
-        state: MessageStateStore,
-        request_runner: RequestRunner,
-        notification_runner: NotificationRunner,
-    ) -> MessageDispatcher:
-        return DefaultMessageDispatcher(
-            queue=queue,
-            supervisor=supervisor,
-            store=state,
-            request_runner=request_runner,
-            notification_runner=notification_runner,
-        )
-
-    def _default_sender_factory(self, writer: asyncio.StreamWriter, supervisor: TaskSupervisor) -> MessageSender:
-        return MessageSender(writer, supervisor)
-
     def _disconnect(self) -> None:
         if self._disconnected:
             return
         self._disconnected = True
-        self._state.reject_all_outgoing(ConnectionError("Connection closed"))
+        self._reject_all_outgoing(ConnectionError("Connection closed"))
+
+    def _reject_all_outgoing(self, error: BaseException) -> None:
+        pending = list(self._pending.values())
+        self._pending.clear()
+        for future in pending:
+            if not future.done():
+                future.set_exception(error)
 
     def _raise_if_unavailable(self) -> None:
         if self._disconnected or self._closed:
