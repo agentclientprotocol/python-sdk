@@ -2,12 +2,15 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
+from contextvars import ContextVar
 from typing import Any, cast, final
 
 from .._transport import Transport
 from ..connection import Connection
+from ..exceptions import RequestError
 from ..interfaces import Agent, Client
-from ..meta import AGENT_METHODS
+from ..meta import AGENT_METHODS, CLIENT_METHODS
+from ..router import _resolve_handler, _warn_legacy_handler
 from ..schema import (
     AcpMcpServer,
     AudioContentBlock,
@@ -37,6 +40,7 @@ from ..schema import (
     ResourceContentBlock,
     ResumeSessionRequest,
     ResumeSessionResponse,
+    SessionNotification,
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
@@ -50,6 +54,56 @@ from .router import build_client_router
 
 __all__ = ["ClientSideConnection"]
 _CLIENT_CONNECTION_ERROR = "ClientSideConnection requires asyncio StreamWriter/StreamReader"
+
+
+class _SessionUpdateTracker:
+    """Client proxy that tracks in-flight session updates."""
+
+    def __init__(self, client: Client) -> None:
+        self._client = client
+        self._session_update, self._session_update_attr, self._legacy_session_update = _resolve_handler(
+            client, "session_update"
+        )
+        self._pending: dict[str, set[asyncio.Future[None]]] = {}
+        self._current_update: ContextVar[asyncio.Future[None] | None] = ContextVar(
+            "acp_current_session_update", default=None
+        )
+
+    async def session_update(self, session_id: str, update: Any, **kwargs: Any) -> None:
+        completed: asyncio.Future[None] = asyncio.get_running_loop().create_future()
+        pending = self._pending.setdefault(session_id, set())
+        pending.add(completed)
+        token = self._current_update.set(completed)
+
+        try:
+            if self._session_update is None:
+                raise RequestError.method_not_found(CLIENT_METHODS["session_update"])
+            if self._legacy_session_update:
+                _warn_legacy_handler(self._client, self._session_update_attr)
+                notification = SessionNotification(session_id=session_id, update=update, field_meta=kwargs or None)
+                await self._session_update(notification)
+            else:
+                await self._session_update(session_id=session_id, update=update, **kwargs)
+        finally:
+            self._current_update.reset(token)
+            if not completed.done():
+                completed.set_result(None)
+            pending.discard(completed)
+            if not pending:
+                self._pending.pop(session_id, None)
+
+    async def wait(self, session_id: str) -> None:
+        # Snapshot before yielding so updates received after the response are
+        # not associated with this prompt.
+        current = self._current_update.get()
+        notifications = tuple(
+            completed for completed in self._pending.get(session_id, set()) if completed is not current
+        )
+        if notifications:
+            await asyncio.gather(*(asyncio.shield(completed) for completed in notifications))
+
+    def __getattr__(self, name: str) -> Any:
+        return getattr(self._client, name)
 
 
 @final
@@ -69,7 +123,9 @@ class ClientSideConnection:
         **connection_kwargs: Any,
     ) -> None:
         client = to_client(self) if callable(to_client) else to_client
-        handler = build_client_router(cast(Client, client), use_unstable_protocol=use_unstable_protocol)
+        self._session_updates = _SessionUpdateTracker(cast(Client, client))
+        handler = build_client_router(cast(Client, self._session_updates), use_unstable_protocol=use_unstable_protocol)
+
         if isinstance(input_stream, Transport):
             if output_stream is not None:
                 raise TypeError(_CLIENT_CONNECTION_ERROR)
@@ -206,12 +262,18 @@ class ClientSideConnection:
         ],
         **kwargs: Any,
     ) -> PromptResponse:
-        return await request_model(
-            self._conn,
-            AGENT_METHODS["session_prompt"],
-            PromptRequest(prompt=prompt, session_id=session_id, field_meta=kwargs or None),
-            PromptResponse,
-        )
+        try:
+            response = await request_model(
+                self._conn,
+                AGENT_METHODS["session_prompt"],
+                PromptRequest(prompt=prompt, session_id=session_id, field_meta=kwargs or None),
+                PromptResponse,
+            )
+        except Exception:
+            await self._session_updates.wait(session_id)
+            raise
+        await self._session_updates.wait(session_id)
+        return response
 
     @param_model(ForkSessionRequest)
     async def fork_session(

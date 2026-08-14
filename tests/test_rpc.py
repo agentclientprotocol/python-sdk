@@ -34,6 +34,7 @@ from acp import (
 )
 from acp.connection import Connection
 from acp.core import AgentSideConnection, ClientSideConnection
+from acp.exceptions import RequestError
 from acp.schema import (
     AgentMessageChunk,
     AllowedOutcome,
@@ -142,6 +143,154 @@ async def test_session_notifications_flow(connect, client):
         await asyncio.sleep(0.01)
     assert len(client.notifications) >= 2
     assert client.notifications[0].session_id == "sess"
+
+
+@pytest.mark.asyncio
+async def test_response_waits_for_preceding_notification(server):
+    notification_started = asyncio.Event()
+    release_notification = asyncio.Event()
+
+    class _BlockingClient(TestClient):
+        async def session_update(self, session_id: str, update: Any, **kwargs: Any) -> None:
+            notification_started.set()
+            await release_notification.wait()
+            await super().session_update(session_id, update, **kwargs)
+
+    client = _BlockingClient()
+    conn = ClientSideConnection(client, server.client_writer, server.client_reader)
+    request = asyncio.create_task(
+        conn.prompt(session_id="sess", prompt=[TextContentBlock(type="text", text="question")])
+    )
+
+    request_message = json.loads(await server.server_reader.readline())
+    notification = {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+            "sessionId": "sess",
+            "update": {
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": "answer"},
+            },
+        },
+    }
+    response = {"jsonrpc": "2.0", "id": request_message["id"], "result": {"stopReason": "end_turn"}}
+    server.server_writer.write((json.dumps(notification) + "\n" + json.dumps(response) + "\n").encode())
+    await server.server_writer.drain()
+
+    await asyncio.wait_for(notification_started.wait(), timeout=1)
+    await asyncio.sleep(0)
+    assert not request.done()
+
+    release_notification.set()
+    prompt_response = await asyncio.wait_for(request, timeout=1)
+    assert prompt_response.stop_reason == "end_turn"
+    assert len(client.notifications) == 1
+    assert client.notifications[0].session_id == "sess"
+    await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_error_response_waits_for_preceding_notification(server):
+    notification_started = asyncio.Event()
+    release_notification = asyncio.Event()
+
+    class _BlockingClient(TestClient):
+        async def session_update(self, session_id: str, update: Any, **kwargs: Any) -> None:
+            notification_started.set()
+            await release_notification.wait()
+
+    conn = ClientSideConnection(_BlockingClient(), server.client_writer, server.client_reader)
+    request = asyncio.create_task(
+        conn.prompt(session_id="sess", prompt=[TextContentBlock(type="text", text="question")])
+    )
+
+    request_message = json.loads(await server.server_reader.readline())
+    notification = {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+            "sessionId": "sess",
+            "update": {
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": "partial answer"},
+            },
+        },
+    }
+    response = {
+        "jsonrpc": "2.0",
+        "id": request_message["id"],
+        "error": {"code": -32603, "message": "prompt failed"},
+    }
+    server.server_writer.write((json.dumps(notification) + "\n" + json.dumps(response) + "\n").encode())
+    await server.server_writer.drain()
+
+    await asyncio.wait_for(notification_started.wait(), timeout=1)
+    await asyncio.sleep(0)
+    assert not request.done()
+
+    release_notification.set()
+    with pytest.raises(RequestError, match="prompt failed"):
+        await asyncio.wait_for(request, timeout=1)
+    await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_notification_can_await_nested_request(server):
+    notification_finished = asyncio.Event()
+
+    class _NestedPromptClient(TestClient):
+        def __init__(self) -> None:
+            super().__init__()
+            self.conn: Agent | None = None
+            self.nested_result: PromptResponse | None = None
+
+        def on_connect(self, conn: Agent) -> None:
+            self.conn = conn
+
+        async def session_update(self, session_id: str, update: Any, **kwargs: Any) -> None:
+            assert self.conn is not None
+            self.nested_result = await self.conn.prompt(
+                session_id=session_id,
+                prompt=[TextContentBlock(type="text", text="nested question")],
+            )
+            notification_finished.set()
+
+    client = _NestedPromptClient()
+    conn = ClientSideConnection(client, server.client_writer, server.client_reader)
+    outer_request = asyncio.create_task(
+        conn.prompt(session_id="sess", prompt=[TextContentBlock(type="text", text="outer question")])
+    )
+    outer_message = json.loads(await server.server_reader.readline())
+
+    notification = {
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+            "sessionId": "sess",
+            "update": {
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": "answer"},
+            },
+        },
+    }
+    server.server_writer.write((json.dumps(notification) + "\n").encode())
+    await server.server_writer.drain()
+
+    nested_message = json.loads(await asyncio.wait_for(server.server_reader.readline(), timeout=1))
+    nested_response = {"jsonrpc": "2.0", "id": nested_message["id"], "result": {"stopReason": "end_turn"}}
+    server.server_writer.write((json.dumps(nested_response) + "\n").encode())
+    await server.server_writer.drain()
+
+    await asyncio.wait_for(notification_finished.wait(), timeout=1)
+    assert client.nested_result is not None
+    assert client.nested_result.stop_reason == "end_turn"
+
+    outer_response = {"jsonrpc": "2.0", "id": outer_message["id"], "result": {"stopReason": "end_turn"}}
+    server.server_writer.write((json.dumps(outer_response) + "\n").encode())
+    await server.server_writer.drain()
+    assert (await asyncio.wait_for(outer_request, timeout=1)).stop_reason == "end_turn"
+    await conn.close()
 
 
 @pytest.mark.asyncio
