@@ -852,7 +852,7 @@ class MyClient(Client):
         mode: ElicitationMode,
         **kwargs: Any,
     ) -&gt; CreateElicitationResponse:
-        return AcceptElicitationResponse(content={})
+        return AcceptElicitationResponse(action=&quot;accept&quot;, content={})
 
     async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -&gt; None:
         ...

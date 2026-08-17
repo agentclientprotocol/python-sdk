@@ -992,8 +992,7 @@ finish_update = update_tool_call(
     content=[tool_content(text_block(&quot;File opened.&quot;))],
 )
 </code></pre>
-<p>Each helper wraps the generated Pydantic models in <code>acp.schema</code>. Single-value discriminator fields (<code>type</code>, <code>sessionUpdate</code>, and friends) have schema-derived defaults, so direct construction is concise too—for example, <code>TextContentBlock(text="Hello")</code>. ACP's serializers preserve those required tags on the wire while continuing to omit unrelated defaults. Golden fixtures in <code>tests/test_golden.py</code> ensure the helpers stay in sync with future schema revisions.</p>
-<p>High-level connections serialize models this way automatically. If you are implementing a custom transport, use <code>acp.utils.serialize_params(model)</code> for outbound payloads; calling <code>model_dump(exclude_defaults=True)</code> directly would omit the defaulted discriminator fields.</p>
+<p>Each helper wraps the generated Pydantic models in <code>acp.schema</code>, so the right discriminator fields (<code>type</code>, <code>sessionUpdate</code>, and friends) are always populated. That keeps examples readable while maintaining the same validation guarantees as constructing the models directly. Golden fixtures in <code>tests/test_golden.py</code> ensure the helpers stay in sync with future schema revisions.</p>
 <h2 id="optional-talk-to-the-gemini-cli">Optional — Talk to the Gemini CLI<a class="headerlink" href="#optional-talk-to-the-gemini-cli" title="Permanent link">&para;</a></h2>
 <p><em>Have the Gemini CLI installed? Run the bridge to exercise permission flows.</em></p>
 <p>If you have the Gemini CLI installed and authenticated:</p>
