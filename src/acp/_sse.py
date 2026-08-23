@@ -7,6 +7,7 @@ the ``data:`` field (JSON-RPC payloads) plus keepalive comments; ``event:``,
 
 from __future__ import annotations
 
+import codecs
 import json
 from typing import TYPE_CHECKING, Any
 
@@ -62,11 +63,12 @@ async def parse_sse_stream(chunks: AsyncIterator[bytes]) -> AsyncIterator[dict[s
     Multi-line ``data:`` fields are concatenated with newlines per the spec. A
     blank line dispatches the buffered event.
     """
+    decoder = codecs.getincrementaldecoder("utf-8")()
     buffer = ""
     data_lines: list[str] = []
 
     async for chunk in chunks:
-        buffer += chunk.decode("utf-8")
+        buffer += decoder.decode(chunk)
         while "\n" in buffer:
             line, buffer = buffer.split("\n", 1)
             line = line.rstrip("\r")
@@ -77,6 +79,8 @@ async def parse_sse_stream(chunks: AsyncIterator[bytes]) -> AsyncIterator[dict[s
                     yield event
             elif not line.startswith(":"):
                 _append_field(line, data_lines)
+
+    decoder.decode(b"", final=True)
 
     # Flush a trailing event with no terminating blank line.
     event = _decode_event(data_lines)

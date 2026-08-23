@@ -36,6 +36,17 @@ async def test_parse_multiple_events_split_across_chunks() -> None:
 
 
 @pytest.mark.asyncio
+async def test_parse_multibyte_utf8_split_across_chunks() -> None:
+    frame = 'data: {"text":"你好"}\n\n'.encode()
+    split_at = frame.index("你".encode()) + 1
+    stream = _aiter([frame[:split_at], frame[split_at:]])
+
+    events = [event async for event in parse_sse_stream(stream)]
+
+    assert events == [{"text": "你好"}]
+
+
+@pytest.mark.asyncio
 async def test_parse_ignores_comments_and_other_fields() -> None:
     stream = _aiter([b': keepalive\n\nevent: message\ndata: {"id":7}\n\n'])
     events = [event async for event in parse_sse_stream(stream)]
