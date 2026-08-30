@@ -34,6 +34,15 @@ def test_serialize_params_omits_meta_when_absent() -> None:
     assert "_meta" not in payload["content"]
 
 
+def test_serialize_params_includes_defaulted_discriminators() -> None:
+    chunk = AgentMessageChunk(content=TextContentBlock(text="demo"))
+
+    assert serialize_params(chunk) == {
+        "sessionUpdate": "agent_message_chunk",
+        "content": {"type": "text", "text": "demo"},
+    }
+
+
 def test_field_meta_can_be_set_by_name_on_models() -> None:
     chunk = AgentMessageChunk(
         session_update="agent_message_chunk",

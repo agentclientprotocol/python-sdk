@@ -6,37 +6,16 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from pydantic import AnyUrl, BaseModel as _BaseModel, ConfigDict, Field, RootModel, field_validator
-from acp._deserialize import salvage_on_error, skip_invalid_items
-
-PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
-PlanEntryPriority = Literal["high", "medium", "low"]
-PlanEntryStatus = Literal["pending", "in_progress", "completed"]
-StopReason = Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]
-ToolCallStatus = Literal["pending", "in_progress", "completed", "failed"]
-ToolKind = Literal["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"]
-
-
-class BaseModel(_BaseModel):
-    model_config = ConfigDict(populate_by_name=True, use_attribute_docstrings=True)
-
-    def __getattr__(self, item: str) -> Any:
-        if item.lower() != item:
-            snake_cased = "".join("_" + c.lower() if c.isupper() and i > 0 else c.lower() for i, c in enumerate(item))
-            return getattr(self, snake_cased)
-        raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
-
-    @field_validator("field_meta", mode="wrap", check_fields=False)
-    @classmethod
-    def _salvage_meta_on_error(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
-
-class Jsonrpc(Enum):
-    field_2_0 = "2.0"
+from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
+from acp._schema_base import BaseModel
+from acp._schema_types import OpenString
+from pydantic import AnyUrl, ConfigDict, Field, RootModel, ValidationInfo, ValidatorFunctionWrapHandler, field_validator
 
 
 class ReadTextFileRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -64,11 +43,14 @@ class ReadTextFileRequest(BaseModel):
 
     @field_validator("limit", "line", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class TextResourceContents(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     mime_type: Annotated[Optional[str], Field(alias="mimeType")] = None
     """
     MIME type describing the encoded media payload.
@@ -92,11 +74,14 @@ class TextResourceContents(BaseModel):
 
     @field_validator("mime_type", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class BlobResourceContents(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     blob: str
     """
     Base64-encoded bytes for a binary resource payload.
@@ -120,11 +105,14 @@ class BlobResourceContents(BaseModel):
 
     @field_validator("mime_type", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class Diff(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     path: str
     """
     The absolute file path being modified.
@@ -148,11 +136,14 @@ class Diff(BaseModel):
 
     @field_validator("old_text", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class Terminal(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     terminal_id: Annotated[str, Field(alias="terminalId")]
     """
     Identifier of the terminal instance to embed in the content stream.
@@ -168,6 +159,9 @@ class Terminal(BaseModel):
 
 
 class ToolCallLocation(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     path: str
     """
     The absolute file path being accessed or modified.
@@ -187,11 +181,14 @@ class ToolCallLocation(BaseModel):
 
     @field_validator("line", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class EnvVariable(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     The name of the environment variable.
@@ -211,6 +208,9 @@ class EnvVariable(BaseModel):
 
 
 class TerminalOutputRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -230,6 +230,9 @@ class TerminalOutputRequest(BaseModel):
 
 
 class ReleaseTerminalRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -249,6 +252,9 @@ class ReleaseTerminalRequest(BaseModel):
 
 
 class WaitForTerminalExitRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -268,6 +274,9 @@ class WaitForTerminalExitRequest(BaseModel):
 
 
 class KillTerminalRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -286,9 +295,9 @@ class KillTerminalRequest(BaseModel):
     """
 
 
-class CreateOtherElicitationRequest(BaseModel):
+class CreateElicitationRequest13(BaseModel):
     model_config = ConfigDict(
-        extra="allow",
+        use_attribute_docstrings=True,
     )
     message: str
     """
@@ -302,27 +311,32 @@ class CreateOtherElicitationRequest(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: str
-    """
-    Custom or future elicitation mode.
+    mode: Literal["form"] = "form"
 
-    Values beginning with `_` are reserved for implementation-specific
-    extensions. Unknown values that do not begin with `_` are reserved for
-    future ACP variants.
-    """
 
-    @field_validator("mode", mode="before")
-    @classmethod
-    def _reject_known_mode(cls, value: Any) -> Any:
-        # Restore the schema's `not` clause dropped for codegen: reject the known
-        # variants' discriminator values so a malformed known variant fails instead
-        # of silently parsing as this catch-all.
-        if value in ("form", "url"):
-            raise ValueError("mode value is reserved by a known variant")
-        return value
+class CreateElicitationRequest23(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    message: str
+    """
+    A human-readable message describing what input is needed.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+    mode: Literal["url"] = "url"
 
 
 class ElicitationSessionScope(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session this elicitation is tied to.
@@ -334,22 +348,26 @@ class ElicitationSessionScope(BaseModel):
 
     @field_validator("tool_call_id", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ElicitationRequestScope(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     request_id: Annotated[Optional[Union[int, str]], Field(alias="requestId")]
     """
     The request this elicitation is tied to.
     """
 
 
-class ElicitationOtherPropertySchema(BaseModel):
+class ElicitationPropertySchema6(BaseModel):
     model_config = ConfigDict(
         extra="allow",
+        use_attribute_docstrings=True,
     )
-    type: str
+    type: OpenString
     """
     Custom or future elicitation property schema type.
 
@@ -358,18 +376,11 @@ class ElicitationOtherPropertySchema(BaseModel):
     future ACP variants.
     """
 
-    @field_validator("type", mode="before")
-    @classmethod
-    def _reject_known_type(cls, value: Any) -> Any:
-        # Restore the schema's `not` clause dropped for codegen: reject the known
-        # variants' discriminator values so a malformed known variant fails instead
-        # of silently parsing as this catch-all.
-        if value in ("string", "number", "integer", "boolean", "array"):
-            raise ValueError("type value is reserved by a known variant")
-        return value
-
 
 class EnumOption(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     const: str
     """
     The constant value for this option.
@@ -393,11 +404,14 @@ class EnumOption(BaseModel):
 
     @field_validator("description", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class StringPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -418,7 +432,7 @@ class StringPropertySchema(BaseModel):
     """
     Pattern the string must match.
     """
-    format: Optional[str] = None
+    format: Optional[Literal["email", "uri", "date", "date-time"]] = None
     """
     String format.
     """
@@ -445,11 +459,14 @@ class StringPropertySchema(BaseModel):
 
     @field_validator("default", "description", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NumberPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -481,11 +498,14 @@ class NumberPropertySchema(BaseModel):
 
     @field_validator("default", "description", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class IntegerPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -517,11 +537,14 @@ class IntegerPropertySchema(BaseModel):
 
     @field_validator("default", "description", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class BooleanPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -545,15 +568,16 @@ class BooleanPropertySchema(BaseModel):
 
     @field_validator("default", "description", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class OtherMultiSelectItems(BaseModel):
+class MultiSelectItems2(BaseModel):
     model_config = ConfigDict(
         extra="allow",
+        use_attribute_docstrings=True,
     )
-    type: str
+    type: OpenString
     """
     Custom or future multi-select item type.
 
@@ -562,18 +586,11 @@ class OtherMultiSelectItems(BaseModel):
     future ACP variants.
     """
 
-    @field_validator("type", mode="before")
-    @classmethod
-    def _reject_known_type(cls, value: Any) -> Any:
-        # Restore the schema's `not` clause dropped for codegen: reject the known
-        # variants' discriminator values so a malformed known variant fails instead
-        # of silently parsing as this catch-all.
-        if value in ("string",):
-            raise ValueError("type value is reserved by a known variant")
-        return value
 
-
-class _StringMultiSelectItems(BaseModel):
+class StringMultiSelectItemsBase(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     enum: List[str]
     """
     Allowed enum values.
@@ -589,6 +606,9 @@ class _StringMultiSelectItems(BaseModel):
 
 
 class TitledMultiSelectItems(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     any_of: Annotated[List[EnumOption], Field(alias="anyOf")]
     """
     Titled enum options.
@@ -603,7 +623,10 @@ class TitledMultiSelectItems(BaseModel):
     """
 
 
-class ElicitationUrlSessionMode(ElicitationSessionScope):
+class ElicitationUrlMode1(ElicitationSessionScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -614,7 +637,10 @@ class ElicitationUrlSessionMode(ElicitationSessionScope):
     """
 
 
-class ElicitationUrlRequestMode(ElicitationRequestScope):
+class ElicitationUrlMode2(ElicitationRequestScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -625,10 +651,8 @@ class ElicitationUrlRequestMode(ElicitationRequestScope):
     """
 
 
-class ElicitationUrlMode(RootModel[Union[ElicitationUrlSessionMode, ElicitationUrlRequestMode]]):
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
-    root: Union[ElicitationUrlSessionMode, ElicitationUrlRequestMode]
+class ElicitationUrlMode(RootModel[Union[ElicitationUrlMode1, ElicitationUrlMode2]]):
+    root: Union[ElicitationUrlMode1, ElicitationUrlMode2]
     """
     **UNSTABLE**
 
@@ -639,6 +663,9 @@ class ElicitationUrlMode(RootModel[Union[ElicitationUrlSessionMode, ElicitationU
 
 
 class DisconnectMcpRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The MCP-over-ACP connection to close.
@@ -654,6 +681,9 @@ class DisconnectMcpRequest(BaseModel):
 
 
 class PromptCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     image: Optional[bool] = False
     """
     Agent supports [`ContentBlock::Image`].
@@ -680,11 +710,14 @@ class PromptCapabilities(BaseModel):
 
     @field_validator("audio", "embedded_context", "image", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class McpCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     http: Optional[bool] = False
     """
     Agent supports [`McpServer::Http`].
@@ -712,11 +745,14 @@ class McpCapabilities(BaseModel):
 
     @field_validator("acp", "http", "sse", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionListCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -728,6 +764,9 @@ class SessionListCapabilities(BaseModel):
 
 
 class SessionDeleteCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -739,6 +778,9 @@ class SessionDeleteCapabilities(BaseModel):
 
 
 class SessionAdditionalDirectoriesCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -750,6 +792,9 @@ class SessionAdditionalDirectoriesCapabilities(BaseModel):
 
 
 class SessionForkCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -761,6 +806,9 @@ class SessionForkCapabilities(BaseModel):
 
 
 class SessionResumeCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -772,6 +820,9 @@ class SessionResumeCapabilities(BaseModel):
 
 
 class SessionCloseCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -783,6 +834,9 @@ class SessionCloseCapabilities(BaseModel):
 
 
 class LogoutCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -794,6 +848,9 @@ class LogoutCapabilities(BaseModel):
 
 
 class ProvidersCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -805,6 +862,9 @@ class ProvidersCapabilities(BaseModel):
 
 
 class NesDocumentDidOpenCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -816,6 +876,9 @@ class NesDocumentDidOpenCapabilities(BaseModel):
 
 
 class NesDocumentDidCloseCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -827,6 +890,9 @@ class NesDocumentDidCloseCapabilities(BaseModel):
 
 
 class NesDocumentDidSaveCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -838,6 +904,9 @@ class NesDocumentDidSaveCapabilities(BaseModel):
 
 
 class NesDocumentDidFocusCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -849,6 +918,9 @@ class NesDocumentDidFocusCapabilities(BaseModel):
 
 
 class NesRecentFilesCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
     """
     Maximum number of recent files the agent can use.
@@ -864,11 +936,14 @@ class NesRecentFilesCapabilities(BaseModel):
 
     @field_validator("max_count", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NesRelatedSnippetsCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -880,6 +955,9 @@ class NesRelatedSnippetsCapabilities(BaseModel):
 
 
 class NesEditHistoryCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
     """
     Maximum number of edit history entries the agent can use.
@@ -895,11 +973,14 @@ class NesEditHistoryCapabilities(BaseModel):
 
     @field_validator("max_count", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NesUserActionsCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
     """
     Maximum number of user actions the agent can use.
@@ -915,11 +996,14 @@ class NesUserActionsCapabilities(BaseModel):
 
     @field_validator("max_count", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NesOpenFilesCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -931,6 +1015,9 @@ class NesOpenFilesCapabilities(BaseModel):
 
 
 class NesDiagnosticsCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -942,6 +1029,9 @@ class NesDiagnosticsCapabilities(BaseModel):
 
 
 class AuthEnvVar(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     The environment variable name (e.g. `"OPENAI_API_KEY"`).
@@ -972,23 +1062,16 @@ class AuthEnvVar(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("optional", mode="wrap")
+    @field_validator("label", "optional", "secret", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
-
-    @field_validator("label", mode="wrap")
-    @classmethod
-    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
-    @field_validator("secret", mode="wrap")
-    @classmethod
-    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: True)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class AuthMethodEnvVar(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for this authentication method.
@@ -1020,16 +1103,19 @@ class AuthMethodEnvVar(BaseModel):
 
     @field_validator("description", "link", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("vars", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class AuthMethodTerminal(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for this authentication method.
@@ -1061,16 +1147,19 @@ class AuthMethodTerminal(BaseModel):
 
     @field_validator("description", "env", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("args", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class AuthMethodAgent(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for this authentication method.
@@ -1094,11 +1183,14 @@ class AuthMethodAgent(BaseModel):
 
     @field_validator("description", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class Implementation(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     Intended for programmatic or logical use, but can be used as a display
@@ -1127,11 +1219,14 @@ class Implementation(BaseModel):
 
     @field_validator("title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class AuthenticateResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1143,15 +1238,11 @@ class AuthenticateResponse(BaseModel):
 
 
 class ProviderCurrentConfig(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     api_type: Annotated[
-        Union[
-            Literal["anthropic"],
-            Literal["openai"],
-            Literal["azure"],
-            Literal["vertex"],
-            Literal["bedrock"],
-            Dict[str, Any],
-        ],
+        Union[Literal["anthropic"], Literal["openai"], Literal["azure"], Literal["vertex"], Literal["bedrock"], str],
         Field(alias="apiType"),
     ]
     """
@@ -1172,6 +1263,9 @@ class ProviderCurrentConfig(BaseModel):
 
 
 class SetProviderResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1183,6 +1277,9 @@ class SetProviderResponse(BaseModel):
 
 
 class DisableProviderResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1194,6 +1291,9 @@ class DisableProviderResponse(BaseModel):
 
 
 class LogoutResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1205,6 +1305,9 @@ class LogoutResponse(BaseModel):
 
 
 class SessionMode(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Stable identifier used to refer to this protocol object in later messages.
@@ -1228,11 +1331,14 @@ class SessionMode(BaseModel):
 
     @field_validator("description", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionConfigSelectOption(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     value: str
     """
     Unique identifier for this option value.
@@ -1256,11 +1362,14 @@ class SessionConfigSelectOption(BaseModel):
 
     @field_validator("description", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionConfigBoolean(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     current_value: Annotated[bool, Field(alias="currentValue")]
     """
     The current value of the boolean option.
@@ -1268,6 +1377,9 @@ class SessionConfigBoolean(BaseModel):
 
 
 class SessionInfo(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     Unique identifier for the session
@@ -1303,16 +1415,19 @@ class SessionInfo(BaseModel):
 
     @field_validator("title", "updated_at", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("additional_directories", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class DeleteSessionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1324,6 +1439,9 @@ class DeleteSessionResponse(BaseModel):
 
 
 class CloseSessionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1335,6 +1453,9 @@ class CloseSessionResponse(BaseModel):
 
 
 class SetSessionModeResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1346,6 +1467,9 @@ class SetSessionModeResponse(BaseModel):
 
 
 class Usage(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     total_tokens: Annotated[int, Field(alias="totalTokens", ge=0)]
     """
     Sum of all token types across session.
@@ -1381,11 +1505,14 @@ class Usage(BaseModel):
 
     @field_validator("cached_read_tokens", "cached_write_tokens", "thought_tokens", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class StartNesResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for the newly started NES session.
@@ -1401,6 +1528,9 @@ class StartNesResponse(BaseModel):
 
 
 class Position(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     line: Annotated[int, Field(ge=0)]
     """
     Zero-based line number.
@@ -1420,6 +1550,9 @@ class Position(BaseModel):
 
 
 class NesJumpSuggestion(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -1443,6 +1576,9 @@ class NesJumpSuggestion(BaseModel):
 
 
 class NesRenameSuggestion(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -1470,6 +1606,9 @@ class NesRenameSuggestion(BaseModel):
 
 
 class NesSearchAndReplaceSuggestion(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -1501,6 +1640,9 @@ class NesSearchAndReplaceSuggestion(BaseModel):
 
 
 class CloseNesResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1512,6 +1654,9 @@ class CloseNesResponse(BaseModel):
 
 
 class PlanFile(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to update.
@@ -1531,6 +1676,9 @@ class PlanFile(BaseModel):
 
 
 class PlanMarkdown(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to update.
@@ -1550,6 +1698,9 @@ class PlanMarkdown(BaseModel):
 
 
 class PlanRemoved(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to remove.
@@ -1565,6 +1716,9 @@ class PlanRemoved(BaseModel):
 
 
 class UnstructuredCommandInput(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     hint: str
     """
     A hint to display when the input hasn't been provided yet
@@ -1579,7 +1733,10 @@ class UnstructuredCommandInput(BaseModel):
     """
 
 
-class _CurrentModeUpdate(BaseModel):
+class CurrentModeUpdateBase(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     current_mode_id: Annotated[str, Field(alias="currentModeId")]
     """
     The ID of the current mode
@@ -1594,7 +1751,10 @@ class _CurrentModeUpdate(BaseModel):
     """
 
 
-class _SessionInfoUpdate(BaseModel):
+class SessionInfoUpdateBase(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     title: Optional[str] = None
     """
     Human-readable title for the session. Set to null to clear.
@@ -1612,13 +1772,11 @@ class _SessionInfoUpdate(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("title", "updated_at", mode="wrap")
-    @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
 
 class Cost(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     amount: float
     """
     Total cumulative cost for session.
@@ -1637,7 +1795,10 @@ class Cost(BaseModel):
     """
 
 
-class _UsageUpdate(BaseModel):
+class UsageUpdateBase(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     used: Annotated[int, Field(ge=0)]
     """
     Tokens currently in context.
@@ -1659,13 +1820,11 @@ class _UsageUpdate(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("cost", mode="wrap")
-    @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
 
 class CompleteElicitationNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The ID of the elicitation that completed.
@@ -1681,6 +1840,9 @@ class CompleteElicitationNotification(BaseModel):
 
 
 class MessageMcpNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The MCP-over-ACP connection this message is sent on.
@@ -1706,11 +1868,14 @@ class MessageMcpNotification(BaseModel):
 
     @field_validator("params", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class FileSystemCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     read_text_file: Annotated[Optional[bool], Field(alias="readTextFile")] = False
     """
     Whether the Client supports `fs/read_text_file` requests.
@@ -1730,11 +1895,14 @@ class FileSystemCapabilities(BaseModel):
 
     @field_validator("read_text_file", "write_text_file", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class BooleanConfigOptionCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1746,6 +1914,9 @@ class BooleanConfigOptionCapabilities(BaseModel):
 
 
 class PlanCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1757,6 +1928,9 @@ class PlanCapabilities(BaseModel):
 
 
 class AuthCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     terminal: Optional[bool] = False
     """
     Whether the client supports `terminal` authentication methods.
@@ -1774,11 +1948,14 @@ class AuthCapabilities(BaseModel):
 
     @field_validator("terminal", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ElicitationFormCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1790,6 +1967,9 @@ class ElicitationFormCapabilities(BaseModel):
 
 
 class ElicitationUrlCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1801,6 +1981,9 @@ class ElicitationUrlCapabilities(BaseModel):
 
 
 class NesJumpCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1812,6 +1995,9 @@ class NesJumpCapabilities(BaseModel):
 
 
 class NesRenameCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1823,6 +2009,9 @@ class NesRenameCapabilities(BaseModel):
 
 
 class NesSearchAndReplaceCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1834,6 +2023,9 @@ class NesSearchAndReplaceCapabilities(BaseModel):
 
 
 class AuthenticateRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     method_id: Annotated[str, Field(alias="methodId")]
     """
     The ID of the authentication method to use.
@@ -1850,6 +2042,9 @@ class AuthenticateRequest(BaseModel):
 
 
 class ListProvidersRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1861,19 +2056,15 @@ class ListProvidersRequest(BaseModel):
 
 
 class SetProviderRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     provider_id: Annotated[str, Field(alias="providerId")]
     """
     Provider ID to configure.
     """
     api_type: Annotated[
-        Union[
-            Literal["anthropic"],
-            Literal["openai"],
-            Literal["azure"],
-            Literal["vertex"],
-            Literal["bedrock"],
-            Dict[str, Any],
-        ],
+        Union[Literal["anthropic"], Literal["openai"], Literal["azure"], Literal["vertex"], Literal["bedrock"], str],
         Field(alias="apiType"),
     ]
     """
@@ -1899,6 +2090,9 @@ class SetProviderRequest(BaseModel):
 
 
 class DisableProviderRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     provider_id: Annotated[str, Field(alias="providerId")]
     """
     Provider ID to disable.
@@ -1914,6 +2108,9 @@ class DisableProviderRequest(BaseModel):
 
 
 class LogoutRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1925,6 +2122,9 @@ class LogoutRequest(BaseModel):
 
 
 class HttpHeader(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     The name of the HTTP header.
@@ -1944,6 +2144,9 @@ class HttpHeader(BaseModel):
 
 
 class McpServerHttp(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -1967,6 +2170,9 @@ class McpServerHttp(BaseModel):
 
 
 class McpServerSse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -1990,6 +2196,9 @@ class McpServerSse(BaseModel):
 
 
 class McpServerAcp(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -2012,6 +2221,9 @@ class McpServerAcp(BaseModel):
 
 
 class McpServerStdio(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -2039,6 +2251,9 @@ class McpServerStdio(BaseModel):
 
 
 class ListSessionsRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     cwd: Optional[str] = None
     """
     Filter sessions by working directory. Must be an absolute path.
@@ -2058,6 +2273,9 @@ class ListSessionsRequest(BaseModel):
 
 
 class DeleteSessionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to delete.
@@ -2073,6 +2291,9 @@ class DeleteSessionRequest(BaseModel):
 
 
 class CloseSessionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to close.
@@ -2088,6 +2309,9 @@ class CloseSessionRequest(BaseModel):
 
 
 class SetSessionModeRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the mode for.
@@ -2106,7 +2330,10 @@ class SetSessionModeRequest(BaseModel):
     """
 
 
-class SetSessionConfigOptionBooleanRequest(BaseModel):
+class SetSessionConfigOptionRequest1(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the configuration option for.
@@ -2127,10 +2354,13 @@ class SetSessionConfigOptionBooleanRequest(BaseModel):
     """
     The boolean value.
     """
-    type: Literal["boolean"]
+    type: Literal["boolean"] = "boolean"
 
 
-class SetSessionConfigOptionSelectRequest(BaseModel):
+class SetSessionConfigOptionRequest2(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the configuration option for.
@@ -2154,6 +2384,9 @@ class SetSessionConfigOptionSelectRequest(BaseModel):
 
 
 class WorkspaceFolder(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     uri: str
     """
     The URI of the folder.
@@ -2173,6 +2406,9 @@ class WorkspaceFolder(BaseModel):
 
 
 class NesRepository(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     The repository name.
@@ -2196,6 +2432,9 @@ class NesRepository(BaseModel):
 
 
 class NesRecentFile(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     uri: str
     """
     The URI of the file.
@@ -2219,6 +2458,9 @@ class NesRecentFile(BaseModel):
 
 
 class NesExcerpt(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     start_line: Annotated[int, Field(alias="startLine", ge=0)]
     """
     The start line of the excerpt (zero-based).
@@ -2242,6 +2484,9 @@ class NesExcerpt(BaseModel):
 
 
 class NesEditHistoryEntry(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     uri: str
     """
     The URI of the edited file.
@@ -2261,6 +2506,9 @@ class NesEditHistoryEntry(BaseModel):
 
 
 class NesUserAction(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     action: str
     """
     The kind of action (e.g., "insertChar", "cursorMovement").
@@ -2288,6 +2536,9 @@ class NesUserAction(BaseModel):
 
 
 class CloseNesRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the NES session to close.
@@ -2303,6 +2554,9 @@ class CloseNesRequest(BaseModel):
 
 
 class WriteTextFileResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2314,6 +2568,9 @@ class WriteTextFileResponse(BaseModel):
 
 
 class ReadTextFileResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     content: str
     """
     Content payload returned by this response.
@@ -2328,11 +2585,17 @@ class ReadTextFileResponse(BaseModel):
     """
 
 
-class DeniedOutcome(BaseModel):
-    outcome: Literal["cancelled"]
+class RequestPermissionOutcomeCancelled(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    outcome: Literal["cancelled"] = "cancelled"
 
 
 class SelectedPermissionOutcome(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     option_id: Annotated[str, Field(alias="optionId")]
     """
     The ID of the option the user selected.
@@ -2348,6 +2611,9 @@ class SelectedPermissionOutcome(BaseModel):
 
 
 class CreateTerminalResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     terminal_id: Annotated[str, Field(alias="terminalId")]
     """
     The unique identifier for the created terminal.
@@ -2363,6 +2629,9 @@ class CreateTerminalResponse(BaseModel):
 
 
 class TerminalExitStatus(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     exit_code: Annotated[Optional[int], Field(alias="exitCode", ge=0)] = None
     """
     The process exit code (may be null if terminated by signal).
@@ -2382,11 +2651,14 @@ class TerminalExitStatus(BaseModel):
 
     @field_validator("exit_code", "signal", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ReleaseTerminalResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2398,6 +2670,9 @@ class ReleaseTerminalResponse(BaseModel):
 
 
 class WaitForTerminalExitResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     exit_code: Annotated[Optional[int], Field(alias="exitCode", ge=0)] = None
     """
     The process exit code (may be null if terminated by signal).
@@ -2417,48 +2692,13 @@ class WaitForTerminalExitResponse(BaseModel):
 
     @field_validator("exit_code", "signal", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class KillTerminalResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class DeclineElicitationResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-    action: Literal["decline"]
-
-
-class CancelElicitationResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-    action: Literal["cancel"]
-
-
-class OtherElicitationResponse(BaseModel):
     model_config = ConfigDict(
-        extra="allow",
+        use_attribute_docstrings=True,
     )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -2468,7 +2708,52 @@ class OtherElicitationResponse(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    action: str
+
+
+class CreateElicitationResponse2(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+    action: Literal["decline"] = "decline"
+
+
+class CreateElicitationResponse3(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+    action: Literal["cancel"] = "cancel"
+
+
+class CreateElicitationResponse4(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+        use_attribute_docstrings=True,
+    )
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+    action: OpenString
     """
     Custom or future elicitation action.
 
@@ -2477,20 +2762,8 @@ class OtherElicitationResponse(BaseModel):
     future ACP variants.
     """
 
-    @field_validator("action", mode="before")
-    @classmethod
-    def _reject_known_action(cls, value: Any) -> Any:
-        # Restore the schema's `not` clause dropped for codegen: reject the known
-        # variants' discriminator values so a malformed known variant fails instead
-        # of silently parsing as this catch-all.
-        if value in ("accept", "decline", "cancel"):
-            raise ValueError("action value is reserved by a known variant")
-        return value
-
 
 class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]):
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
     root: Union[str, int, float, bool, List[str]]
     """
     Allowed wire representations for [`ElicitationContentValue`].
@@ -2498,6 +2771,9 @@ class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]
 
 
 class ElicitationAcceptAction(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     content: Optional[Dict[str, Any]] = None
     """
     The user-provided content, if any, as an object matching the requested schema.
@@ -2505,6 +2781,9 @@ class ElicitationAcceptAction(BaseModel):
 
 
 class ConnectMcpResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The unique identifier for this MCP-over-ACP connection.
@@ -2520,6 +2799,9 @@ class ConnectMcpResponse(BaseModel):
 
 
 class DisconnectMcpResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2531,6 +2813,9 @@ class DisconnectMcpResponse(BaseModel):
 
 
 class CancelNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to cancel operations for.
@@ -2546,6 +2831,9 @@ class CancelNotification(BaseModel):
 
 
 class DidOpenDocumentNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2577,6 +2865,9 @@ class DidOpenDocumentNotification(BaseModel):
 
 
 class DidCloseDocumentNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2596,6 +2887,9 @@ class DidCloseDocumentNotification(BaseModel):
 
 
 class DidSaveDocumentNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2615,6 +2909,9 @@ class DidSaveDocumentNotification(BaseModel):
 
 
 class AcceptNesNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2634,6 +2931,9 @@ class AcceptNesNotification(BaseModel):
 
 
 class CancelRequestNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     request_id: Annotated[Optional[Union[int, str]], Field(alias="requestId")]
     """
     The ID of the request to cancel.
@@ -2649,6 +2949,9 @@ class CancelRequestNotification(BaseModel):
 
 
 class WriteTextFileRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -2671,16 +2974,25 @@ class WriteTextFileRequest(BaseModel):
     """
 
 
-class FileEditToolCallContent(Diff):
-    type: Literal["diff"]
+class ToolCallContentDiff(Diff):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["diff"] = "diff"
 
 
-class TerminalToolCallContent(Terminal):
-    type: Literal["terminal"]
+class ToolCallContentTerminal(Terminal):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["terminal"] = "terminal"
 
 
 class Annotations(BaseModel):
-    audience: Optional[List[str]] = None
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    audience: Optional[List[Literal["assistant", "user"]]] = None
     """
     Intended recipients for this content, such as the user or assistant.
     """
@@ -2703,16 +3015,19 @@ class Annotations(BaseModel):
 
     @field_validator("last_modified", "priority", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("audience", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class TextContent(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -2732,11 +3047,14 @@ class TextContent(BaseModel):
 
     @field_validator("annotations", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ImageContent(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -2764,11 +3082,14 @@ class ImageContent(BaseModel):
 
     @field_validator("annotations", "uri", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class AudioContent(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -2792,11 +3113,14 @@ class AudioContent(BaseModel):
 
     @field_validator("annotations", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ResourceLink(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -2836,11 +3160,14 @@ class ResourceLink(BaseModel):
 
     @field_validator("annotations", "description", "mime_type", "size", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class EmbeddedResource(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -2860,11 +3187,14 @@ class EmbeddedResource(BaseModel):
 
     @field_validator("annotations", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class PermissionOption(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     option_id: Annotated[str, Field(alias="optionId")]
     """
     Unique identifier for this permission option.
@@ -2873,7 +3203,7 @@ class PermissionOption(BaseModel):
     """
     Human-readable label to display to the user.
     """
-    kind: PermissionOptionKind
+    kind: Literal["allow_once", "allow_always", "reject_once", "reject_always"]
     """
     Hint about the nature of this permission option.
     """
@@ -2888,6 +3218,9 @@ class PermissionOption(BaseModel):
 
 
 class CreateTerminalRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -2930,21 +3263,47 @@ class CreateTerminalRequest(BaseModel):
 
     @field_validator("cwd", "output_byte_limit", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
-    @field_validator("args", mode="wrap")
+    @field_validator("args", "env", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("env", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class CreateUrlSessionElicitationRequest(ElicitationSessionScope):
+class CreateElicitationRequest21(ElicitationSessionScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    elicitation_id: Annotated[str, Field(alias="elicitationId")]
+    """
+    The unique identifier for this elicitation.
+    """
+    url: AnyUrl
+    """
+    The URL to direct the user to.
+    """
+
+
+class CreateElicitationRequest22(ElicitationRequestScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    elicitation_id: Annotated[str, Field(alias="elicitationId")]
+    """
+    The unique identifier for this elicitation.
+    """
+    url: AnyUrl
+    """
+    The URL to direct the user to.
+    """
+
+
+class CreateElicitationRequest24(CreateElicitationRequest21, CreateElicitationRequest23):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -2957,18 +3316,13 @@ class CreateUrlSessionElicitationRequest(ElicitationSessionScope):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: Literal["url"]
-    elicitation_id: Annotated[str, Field(alias="elicitationId")]
-    """
-    The unique identifier for this elicitation.
-    """
-    url: AnyUrl
-    """
-    The URL to direct the user to.
-    """
+    mode: Literal["url"] = "url"
 
 
-class CreateUrlRequestElicitationRequest(ElicitationRequestScope):
+class CreateElicitationRequest25(CreateElicitationRequest22, CreateElicitationRequest23):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -2981,38 +3335,102 @@ class CreateUrlRequestElicitationRequest(ElicitationRequestScope):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: Literal["url"]
-    elicitation_id: Annotated[str, Field(alias="elicitationId")]
+    mode: Literal["url"] = "url"
+
+
+class CreateElicitationRequest3(ElicitationSessionScope):
+    model_config = ConfigDict(
+        extra="allow",
+        use_attribute_docstrings=True,
+    )
+    message: str
     """
-    The unique identifier for this elicitation.
+    A human-readable message describing what input is needed.
     """
-    url: AnyUrl
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
-    The URL to direct the user to.
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+    mode: OpenString
+    """
+    Custom or future elicitation mode.
+
+    Values beginning with `_` are reserved for implementation-specific
+    extensions. Unknown values that do not begin with `_` are reserved for
+    future ACP variants.
     """
 
 
-class ElicitationStringPropertySchema(StringPropertySchema):
-    type: Literal["string"]
+class CreateElicitationRequest4(ElicitationRequestScope):
+    model_config = ConfigDict(
+        extra="allow",
+        use_attribute_docstrings=True,
+    )
+    message: str
+    """
+    A human-readable message describing what input is needed.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+    mode: OpenString
+    """
+    Custom or future elicitation mode.
+
+    Values beginning with `_` are reserved for implementation-specific
+    extensions. Unknown values that do not begin with `_` are reserved for
+    future ACP variants.
+    """
 
 
-class ElicitationNumberPropertySchema(NumberPropertySchema):
-    type: Literal["number"]
+class ElicitationPropertySchema1(StringPropertySchema):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["string"] = "string"
 
 
-class ElicitationIntegerPropertySchema(IntegerPropertySchema):
-    type: Literal["integer"]
+class ElicitationPropertySchema2(NumberPropertySchema):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["number"] = "number"
 
 
-class ElicitationBooleanPropertySchema(BooleanPropertySchema):
-    type: Literal["boolean"]
+class ElicitationPropertySchema3(IntegerPropertySchema):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["integer"] = "integer"
 
 
-class StringMultiSelectItems(_StringMultiSelectItems):
-    type: Literal["string"]
+class ElicitationPropertySchema4(BooleanPropertySchema):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["boolean"] = "boolean"
+
+
+class MultiSelectItems1(StringMultiSelectItemsBase):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["string"] = "string"
 
 
 class MultiSelectPropertySchema(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -3029,7 +3447,7 @@ class MultiSelectPropertySchema(BaseModel):
     """
     Maximum number of items to select.
     """
-    items: Union[StringMultiSelectItems, OtherMultiSelectItems, TitledMultiSelectItems]
+    items: Union[MultiSelectItems1, MultiSelectItems2, TitledMultiSelectItems]
     """
     The items definition describing allowed values.
     """
@@ -3048,16 +3466,19 @@ class MultiSelectPropertySchema(BaseModel):
 
     @field_validator("description", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("default", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ConnectMcpRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     server_id: Annotated[str, Field(alias="serverId")]
     """
     The ACP MCP server ID that was provided by the component declaring the MCP server.
@@ -3073,6 +3494,9 @@ class ConnectMcpRequest(BaseModel):
 
 
 class MessageMcpRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The MCP-over-ACP connection this message is sent on.
@@ -3098,6 +3522,9 @@ class MessageMcpRequest(BaseModel):
 
 
 class SessionCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     list: Optional[SessionListCapabilities] = None
     """
     Whether the agent supports `session/list`.
@@ -3113,8 +3540,7 @@ class SessionCapabilities(BaseModel):
     Supplying `{}` means the agent supports deleting sessions from `session/list`.
     """
     additional_directories: Annotated[
-        Optional[SessionAdditionalDirectoriesCapabilities],
-        Field(alias="additionalDirectories"),
+        Optional[SessionAdditionalDirectoriesCapabilities], Field(alias="additionalDirectories")
     ] = None
     """
     Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
@@ -3163,11 +3589,14 @@ class SessionCapabilities(BaseModel):
 
     @field_validator("additional_directories", "close", "delete", "fork", "list", "resume", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class AgentAuthCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     logout: Optional[LogoutCapabilities] = None
     """
     Whether the agent supports the logout method.
@@ -3186,12 +3615,15 @@ class AgentAuthCapabilities(BaseModel):
 
     @field_validator("logout", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NesDocumentDidChangeCapabilities(BaseModel):
-    sync_kind: Annotated[str, Field(alias="syncKind")]
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    sync_kind: Annotated[Literal["full", "incremental"], Field(alias="syncKind")]
     """
     The sync kind the agent wants: `"full"` or `"incremental"`.
     """
@@ -3206,6 +3638,9 @@ class NesDocumentDidChangeCapabilities(BaseModel):
 
 
 class NesContextCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     recent_files: Annotated[Optional[NesRecentFilesCapabilities], Field(alias="recentFiles")] = None
     """
     Whether the agent wants recent files context.
@@ -3243,32 +3678,54 @@ class NesContextCapabilities(BaseModel):
         "diagnostics", "edit_history", "open_files", "recent_files", "related_snippets", "user_actions", mode="wrap"
     )
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class EnvVarAuthMethod(AuthMethodEnvVar):
-    type: Literal["env_var"]
+class AuthMethodEnvVarModel(AuthMethodEnvVar):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["env_var"] = "env_var"
+
+    @field_validator("description", "link", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+    @field_validator("vars", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class TerminalAuthMethod(AuthMethodTerminal):
-    type: Literal["terminal"]
+class AuthMethodTerminalModel(AuthMethodTerminal):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["terminal"] = "terminal"
+
+    @field_validator("description", "env", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+    @field_validator("args", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ProviderInfo(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     provider_id: Annotated[str, Field(alias="providerId")]
     """
     Provider identifier, for example "main" or "openai".
     """
     supported: List[
-        Union[
-            Literal["anthropic"],
-            Literal["openai"],
-            Literal["azure"],
-            Literal["vertex"],
-            Literal["bedrock"],
-            Dict[str, Any],
-        ]
+        Union[Literal["anthropic"], Literal["openai"], Literal["azure"], Literal["vertex"], Literal["bedrock"], str]
     ]
     """
     Supported protocol types for this provider.
@@ -3294,11 +3751,14 @@ class ProviderInfo(BaseModel):
 
     @field_validator("supported", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class SessionModeState(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     current_mode_id: Annotated[str, Field(alias="currentModeId")]
     """
     The current mode the Agent is in.
@@ -3318,11 +3778,14 @@ class SessionModeState(BaseModel):
 
     @field_validator("available_modes", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class SessionConfigOptionBoolean(SessionConfigBoolean):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for the configuration option.
@@ -3336,13 +3799,7 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     Optional description for the Client to display to the user.
     """
     category: Optional[
-        Union[
-            Literal["mode"],
-            Literal["model"],
-            Literal["model_config"],
-            Literal["thought_level"],
-            Dict[str, Any],
-        ]
+        Union[Literal["mode"], Literal["model"], Literal["model_config"], Literal["thought_level"], str]
     ] = None
     """
     Optional semantic category for this option (UX only).
@@ -3355,15 +3812,13 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    type: Literal["boolean"]
-
-    @field_validator("category", "description", mode="wrap")
-    @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    type: Literal["boolean"] = "boolean"
 
 
 class SessionConfigSelectGroup(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     group: str
     """
     Unique identifier for this group.
@@ -3387,11 +3842,14 @@ class SessionConfigSelectGroup(BaseModel):
 
     @field_validator("options", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ListSessionsResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     sessions: List[SessionInfo]
     """
     Array of session information objects
@@ -3412,17 +3870,22 @@ class ListSessionsResponse(BaseModel):
 
     @field_validator("next_cursor", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("sessions", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class PromptResponse(BaseModel):
-    stop_reason: Annotated[StopReason, Field(alias="stopReason")]
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    stop_reason: Annotated[
+        Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"], Field(alias="stopReason")
+    ]
     """
     Indicates why the agent stopped processing the turn.
     """
@@ -3445,23 +3908,35 @@ class PromptResponse(BaseModel):
 
     @field_validator("usage", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class NesJumpSuggestionVariant(NesJumpSuggestion):
-    kind: Literal["jump"]
+class NesSuggestionJump(NesJumpSuggestion):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    kind: Literal["jump"] = "jump"
 
 
-class NesRenameSuggestionVariant(NesRenameSuggestion):
-    kind: Literal["rename"]
+class NesSuggestionRename(NesRenameSuggestion):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    kind: Literal["rename"] = "rename"
 
 
-class NesSearchAndReplaceSuggestionVariant(NesSearchAndReplaceSuggestion):
-    kind: Literal["searchAndReplace"]
+class NesSuggestionSearchAndReplace(NesSearchAndReplaceSuggestion):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    kind: Literal["searchAndReplace"] = "searchAndReplace"
 
 
 class Range(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     start: Position
     """
     The start position (inclusive).
@@ -3481,6 +3956,9 @@ class Range(BaseModel):
 
 
 class Error(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     code: Union[
         Literal[-32700],
         Literal[-32600],
@@ -3509,37 +3987,52 @@ class Error(BaseModel):
 
     @field_validator("data", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class AgentPlanRemovedUpdate(PlanRemoved):
-    session_update: Annotated[Literal["plan_removed"], Field(alias="sessionUpdate")]
+class SessionUpdatePlanRemoved(PlanRemoved):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["plan_removed"], Field(alias="sessionUpdate")] = "plan_removed"
 
 
-class CurrentModeUpdate(_CurrentModeUpdate):
-    session_update: Annotated[Literal["current_mode_update"], Field(alias="sessionUpdate")]
+class SessionUpdateCurrentModeUpdate(CurrentModeUpdateBase):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["current_mode_update"], Field(alias="sessionUpdate")] = "current_mode_update"
 
 
-class SessionInfoUpdate(_SessionInfoUpdate):
-    session_update: Annotated[Literal["session_info_update"], Field(alias="sessionUpdate")]
+class SessionUpdateSessionInfoUpdate(SessionInfoUpdateBase):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["session_info_update"], Field(alias="sessionUpdate")] = "session_info_update"
 
 
-class UsageUpdate(_UsageUpdate):
-    session_update: Annotated[Literal["usage_update"], Field(alias="sessionUpdate")]
+class SessionUpdateUsageUpdate(UsageUpdateBase):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["usage_update"], Field(alias="sessionUpdate")] = "usage_update"
 
 
 class PlanEntry(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     content: str
     """
     Human-readable description of what this task aims to accomplish.
     """
-    priority: PlanEntryPriority
+    priority: Literal["high", "medium", "low"]
     """
     The relative importance of this task.
     Used to indicate which tasks are most critical to the overall goal.
     """
-    status: PlanEntryStatus
+    status: Literal["pending", "in_progress", "completed"]
     """
     Current execution status of this task.
     """
@@ -3554,6 +4047,9 @@ class PlanEntry(BaseModel):
 
 
 class Plan(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     entries: List[PlanEntry]
     """
     The list of tasks to be accomplished.
@@ -3572,19 +4068,28 @@ class Plan(BaseModel):
 
     @field_validator("entries", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class PlanUpdateFile(PlanFile):
-    type: Literal["file"]
+class PlanUpdateContentFile(PlanFile):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["file"] = "file"
 
 
-class PlanUpdateMarkdown(PlanMarkdown):
-    type: Literal["markdown"]
+class PlanUpdateContentMarkdown(PlanMarkdown):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["markdown"] = "markdown"
 
 
 class PlanItems(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to update.
@@ -3607,13 +4112,11 @@ class PlanItems(BaseModel):
 
     @field_validator("entries", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
     root: UnstructuredCommandInput
     """
     The input specification for a command.
@@ -3621,6 +4124,9 @@ class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
 
 
 class SessionConfigOptionsCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     boolean: Optional[BooleanConfigOptionCapabilities] = None
     """
     Whether the client supports boolean session configuration options.
@@ -3641,11 +4147,14 @@ class SessionConfigOptionsCapabilities(BaseModel):
 
     @field_validator("boolean", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ElicitationCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     form: Optional[ElicitationFormCapabilities] = None
     """
     Whether the client supports form-based elicitation.
@@ -3671,11 +4180,14 @@ class ElicitationCapabilities(BaseModel):
 
     @field_validator("form", "url", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ClientNesCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     jump: Optional[NesJumpCapabilities] = None
     """
     Whether the client supports the `jump` suggestion kind.
@@ -3699,26 +4211,37 @@ class ClientNesCapabilities(BaseModel):
 
     @field_validator("jump", "rename", "search_and_replace", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class HttpMcpServer(McpServerHttp):
-    type: Literal["http"]
+class McpServerHttpModel(McpServerHttp):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["http"] = "http"
 
 
-class SseMcpServer(McpServerSse):
-    type: Literal["sse"]
+class McpServerSseModel(McpServerSse):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["sse"] = "sse"
 
 
-class AcpMcpServer(McpServerAcp):
-    type: Literal["acp"]
+class McpServerAcpModel(McpServerAcp):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["acp"] = "acp"
 
 
 class LoadSessionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     mcp_servers: Annotated[
-        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]],
-        Field(alias="mcpServers"),
+        List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]], Field(alias="mcpServers")
     ]
     """
     List of MCP servers to connect to for this session.
@@ -3749,18 +4272,16 @@ class LoadSessionRequest(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("additional_directories", mode="wrap")
+    @field_validator("additional_directories", "mcp_servers", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("mcp_servers", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ForkSessionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to fork.
@@ -3778,7 +4299,7 @@ class ForkSessionRequest(BaseModel):
     session.
     """
     mcp_servers: Annotated[
-        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]],
+        Optional[List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]]],
         Field(alias="mcpServers"),
     ] = None
     """
@@ -3793,18 +4314,16 @@ class ForkSessionRequest(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("additional_directories", mode="wrap")
+    @field_validator("additional_directories", "mcp_servers", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("mcp_servers", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ResumeSessionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to resume.
@@ -3823,7 +4342,7 @@ class ResumeSessionRequest(BaseModel):
     the request `cwd` matches the session's `cwd`.
     """
     mcp_servers: Annotated[
-        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]],
+        Optional[List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]]],
         Field(alias="mcpServers"),
     ] = None
     """
@@ -3838,18 +4357,16 @@ class ResumeSessionRequest(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("additional_directories", mode="wrap")
+    @field_validator("additional_directories", "mcp_servers", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("mcp_servers", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class StartNesRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     workspace_uri: Annotated[Optional[str], Field(alias="workspaceUri")] = None
     """
     The root URI of the workspace.
@@ -3873,11 +4390,14 @@ class StartNesRequest(BaseModel):
 
     @field_validator("repository", "workspace_uri", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NesRelatedSnippet(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     uri: str
     """
     The URI of the file containing the snippets.
@@ -3897,6 +4417,9 @@ class NesRelatedSnippet(BaseModel):
 
 
 class NesOpenFile(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     uri: str
     """
     The URI of the file.
@@ -3924,11 +4447,14 @@ class NesOpenFile(BaseModel):
 
     @field_validator("last_focused_ms", "visible_range", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NesDiagnostic(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     uri: str
     """
     The URI of the file containing the diagnostic.
@@ -3937,7 +4463,7 @@ class NesDiagnostic(BaseModel):
     """
     The range of the diagnostic.
     """
-    severity: str
+    severity: Literal["error", "warning", "information", "hint"]
     """
     The severity of the diagnostic.
     """
@@ -3955,7 +4481,10 @@ class NesDiagnostic(BaseModel):
     """
 
 
-class ClientErrorMessage(BaseModel):
+class ClientResponse2(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -3966,11 +4495,17 @@ class ClientErrorMessage(BaseModel):
     """
 
 
-class AllowedOutcome(SelectedPermissionOutcome):
-    outcome: Literal["selected"]
+class RequestPermissionOutcomeSelected(SelectedPermissionOutcome):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    outcome: Literal["selected"] = "selected"
 
 
 class TerminalOutputResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     output: str
     """
     The terminal output captured so far.
@@ -3994,11 +4529,14 @@ class TerminalOutputResponse(BaseModel):
 
     @field_validator("exit_status", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class AcceptElicitationResponse(ElicitationAcceptAction):
+class CreateElicitationResponse1(ElicitationAcceptAction):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4007,10 +4545,13 @@ class AcceptElicitationResponse(ElicitationAcceptAction):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    action: Literal["accept"]
+    action: Literal["accept"] = "accept"
 
 
 class TextDocumentContentChangeEvent(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     range: Optional[Range] = None
     """
     The range of the document that changed. If `None`, the entire content is replaced.
@@ -4030,6 +4571,9 @@ class TextDocumentContentChangeEvent(BaseModel):
 
 
 class DidFocusDocumentNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -4061,6 +4605,9 @@ class DidFocusDocumentNotification(BaseModel):
 
 
 class RejectNesNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -4069,7 +4616,7 @@ class RejectNesNotification(BaseModel):
     """
     The ID of the rejected suggestion.
     """
-    reason: Optional[str] = None
+    reason: Optional[Literal["rejected", "ignored", "replaced", "cancelled"]] = None
     """
     The reason for rejection.
     """
@@ -4084,35 +4631,51 @@ class RejectNesNotification(BaseModel):
 
     @field_validator("reason", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class TextContentBlock(TextContent):
-    type: Literal["text"]
+class ContentBlockText(TextContent):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["text"] = "text"
 
 
-class ImageContentBlock(ImageContent):
-    type: Literal["image"]
+class ContentBlockImage(ImageContent):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["image"] = "image"
 
 
-class AudioContentBlock(AudioContent):
-    type: Literal["audio"]
+class ContentBlockAudio(AudioContent):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["audio"] = "audio"
 
 
-class ResourceContentBlock(ResourceLink):
-    type: Literal["resource_link"]
+class ContentBlockResourceLink(ResourceLink):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["resource_link"] = "resource_link"
 
 
-class EmbeddedResourceContentBlock(EmbeddedResource):
-    type: Literal["resource"]
+class ContentBlockResource(EmbeddedResource):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["resource"] = "resource"
 
 
 class Content(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     content: Annotated[
-        Union[
-            TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock
-        ],
+        Union[ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource],
         Field(discriminator="type"),
     ]
     """
@@ -4128,11 +4691,17 @@ class Content(BaseModel):
     """
 
 
-class ElicitationMultiSelectPropertySchema(MultiSelectPropertySchema):
-    type: Literal["array"]
+class ElicitationPropertySchema5(MultiSelectPropertySchema):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["array"] = "array"
 
 
-class AgentErrorMessage(BaseModel):
+class AgentResponse2(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -4144,6 +4713,9 @@ class AgentErrorMessage(BaseModel):
 
 
 class NesDocumentEventCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     did_open: Annotated[Optional[NesDocumentDidOpenCapabilities], Field(alias="didOpen")] = None
     """
     Whether the agent wants `document/didOpen` events.
@@ -4175,11 +4747,14 @@ class NesDocumentEventCapabilities(BaseModel):
 
     @field_validator("did_change", "did_close", "did_focus", "did_open", "did_save", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ListProvidersResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     providers: List[ProviderInfo]
     """
     Configurable providers with current routing info suitable for UI display.
@@ -4195,6 +4770,9 @@ class ListProvidersResponse(BaseModel):
 
 
 class SessionConfigSelect(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     current_value: Annotated[str, Field(alias="currentValue")]
     """
     The currently selected value.
@@ -4206,6 +4784,9 @@ class SessionConfigSelect(BaseModel):
 
 
 class NesTextEdit(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     range: Range
     """
     The range to replace.
@@ -4225,6 +4806,9 @@ class NesTextEdit(BaseModel):
 
 
 class NesEditSuggestion(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -4252,19 +4836,23 @@ class NesEditSuggestion(BaseModel):
 
     @field_validator("cursor_position", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class AgentPlanUpdate(Plan):
-    session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")]
+class SessionUpdatePlan(Plan):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")] = "plan"
 
 
 class ContentChunk(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     content: Annotated[
-        Union[
-            TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock
-        ],
+        Union[ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource],
         Field(discriminator="type"),
     ]
     """
@@ -4288,18 +4876,23 @@ class ContentChunk(BaseModel):
 
     @field_validator("message_id", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class PlanUpdateItems(PlanItems):
-    type: Literal["items"]
+class PlanUpdateContentItems(PlanItems):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["items"] = "items"
 
 
 class PlanUpdate(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     plan: Annotated[
-        Union[PlanUpdateItems, PlanUpdateFile, PlanUpdateMarkdown],
-        Field(discriminator="type"),
+        Union[PlanUpdateContentItems, PlanUpdateContentFile, PlanUpdateContentMarkdown], Field(discriminator="type")
     ]
     """
     The updated plan content.
@@ -4315,6 +4908,9 @@ class PlanUpdate(BaseModel):
 
 
 class AvailableCommand(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     name: str
     """
     Command name (e.g., `create_plan`, `research_codebase`).
@@ -4338,11 +4934,14 @@ class AvailableCommand(BaseModel):
 
     @field_validator("input", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class _AvailableCommandsUpdate(BaseModel):
+class AvailableCommandsUpdateBase(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     available_commands: Annotated[List[AvailableCommand], Field(alias="availableCommands")]
     """
     Commands the agent can execute
@@ -4356,13 +4955,11 @@ class _AvailableCommandsUpdate(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("available_commands", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
 
 class ClientSessionCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     config_options: Annotated[Optional[SessionConfigOptionsCapabilities], Field(alias="configOptions")] = None
     """
     Config option capabilities supported by the client.
@@ -4381,11 +4978,14 @@ class ClientSessionCapabilities(BaseModel):
 
     @field_validator("config_options", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NewSessionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     cwd: str
     """
     The working directory for this session. Must be an absolute path.
@@ -4399,8 +4999,7 @@ class NewSessionRequest(BaseModel):
     additional roots are activated for the new session.
     """
     mcp_servers: Annotated[
-        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]],
-        Field(alias="mcpServers"),
+        List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]], Field(alias="mcpServers")
     ]
     """
     List of MCP (Model Context Protocol) servers the agent should connect to.
@@ -4414,18 +5013,16 @@ class NewSessionRequest(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("additional_directories", mode="wrap")
+    @field_validator("additional_directories", "mcp_servers", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("mcp_servers", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class PromptRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to send this user message to
@@ -4433,11 +5030,7 @@ class PromptRequest(BaseModel):
     prompt: List[
         Annotated[
             Union[
-                TextContentBlock,
-                ImageContentBlock,
-                AudioContentBlock,
-                ResourceContentBlock,
-                EmbeddedResourceContentBlock,
+                ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource
             ],
             Field(discriminator="type"),
         ]
@@ -4468,6 +5061,9 @@ class PromptRequest(BaseModel):
 
 
 class NesSuggestContext(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     recent_files: Annotated[Optional[List[NesRecentFile]], Field(alias="recentFiles")] = None
     """
     Recently accessed files.
@@ -4503,9 +5099,11 @@ class NesSuggestContext(BaseModel):
 
 
 class RequestPermissionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     outcome: Annotated[
-        Union[DeniedOutcome, AllowedOutcome],
-        Field(discriminator="outcome"),
+        Union[RequestPermissionOutcomeCancelled, RequestPermissionOutcomeSelected], Field(discriminator="outcome")
     ]
     """
     The user's decision on the permission request.
@@ -4521,6 +5119,9 @@ class RequestPermissionResponse(BaseModel):
 
 
 class DidChangeDocumentNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -4548,16 +5149,22 @@ class DidChangeDocumentNotification(BaseModel):
 
     @field_validator("content_changes", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class ContentToolCallContent(Content):
-    type: Literal["content"]
+class ToolCallContentContent(Content):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Literal["content"] = "content"
 
 
 class ElicitationSchema(BaseModel):
-    type: Optional[str] = "object"
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    type: Optional[Literal["object"]] = "object"
     """
     Type discriminator. Always `"object"`.
     """
@@ -4570,12 +5177,12 @@ class ElicitationSchema(BaseModel):
             Dict[
                 str,
                 Union[
-                    ElicitationStringPropertySchema,
-                    ElicitationNumberPropertySchema,
-                    ElicitationIntegerPropertySchema,
-                    ElicitationBooleanPropertySchema,
-                    ElicitationMultiSelectPropertySchema,
-                    ElicitationOtherPropertySchema,
+                    ElicitationPropertySchema1,
+                    ElicitationPropertySchema2,
+                    ElicitationPropertySchema3,
+                    ElicitationPropertySchema4,
+                    ElicitationPropertySchema5,
+                    ElicitationPropertySchema6,
                 ],
             ]
         ],
@@ -4601,35 +5208,34 @@ class ElicitationSchema(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("type", mode="wrap")
+    @field_validator("description", "title", "type", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: "object")
-
-    @field_validator("description", "title", mode="wrap")
-    @classmethod
-    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
-class ElicitationFormSessionMode(ElicitationSessionScope):
+class ElicitationFormMode1(ElicitationSessionScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
     """
 
 
-class ElicitationFormRequestMode(ElicitationRequestScope):
+class ElicitationFormMode2(ElicitationRequestScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
     """
 
 
-class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, ElicitationFormRequestMode]]):
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
-    root: Union[ElicitationFormSessionMode, ElicitationFormRequestMode]
+class ElicitationFormMode(RootModel[Union[ElicitationFormMode1, ElicitationFormMode2]]):
+    root: Union[ElicitationFormMode1, ElicitationFormMode2]
     """
     **UNSTABLE**
 
@@ -4640,6 +5246,9 @@ class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, Elicitatio
 
 
 class NesEventCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     document: Optional[NesDocumentEventCapabilities] = None
     """
     Document event capabilities.
@@ -4655,11 +5264,14 @@ class NesEventCapabilities(BaseModel):
 
     @field_validator("document", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionConfigOptionSelect(SessionConfigSelect):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: str
     """
     Unique identifier for the configuration option.
@@ -4673,13 +5285,7 @@ class SessionConfigOptionSelect(SessionConfigSelect):
     Optional description for the Client to display to the user.
     """
     category: Optional[
-        Union[
-            Literal["mode"],
-            Literal["model"],
-            Literal["model_config"],
-            Literal["thought_level"],
-            Dict[str, Any],
-        ]
+        Union[Literal["mode"], Literal["model"], Literal["model_config"], Literal["thought_level"], str]
     ] = None
     """
     Optional semantic category for this option (UX only).
@@ -4692,15 +5298,13 @@ class SessionConfigOptionSelect(SessionConfigSelect):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    type: Literal["select"]
-
-    @field_validator("category", "description", mode="wrap")
-    @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    type: Literal["select"] = "select"
 
 
 class LoadSessionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     modes: Optional[SessionModeState] = None
     """
     Initial mode state if supported by the Agent
@@ -4709,12 +5313,7 @@ class LoadSessionResponse(BaseModel):
     """
     config_options: Annotated[
         Optional[
-            List[
-                Annotated[
-                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
-                    Field(discriminator="type"),
-                ]
-            ]
+            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
         ],
         Field(alias="configOptions"),
     ] = None
@@ -4732,16 +5331,19 @@ class LoadSessionResponse(BaseModel):
 
     @field_validator("modes", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("config_options", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ForkSessionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     Unique identifier for the newly created forked session.
@@ -4754,12 +5356,7 @@ class ForkSessionResponse(BaseModel):
     """
     config_options: Annotated[
         Optional[
-            List[
-                Annotated[
-                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
-                    Field(discriminator="type"),
-                ]
-            ]
+            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
         ],
         Field(alias="configOptions"),
     ] = None
@@ -4777,16 +5374,19 @@ class ForkSessionResponse(BaseModel):
 
     @field_validator("modes", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("config_options", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ResumeSessionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     modes: Optional[SessionModeState] = None
     """
     Initial mode state if supported by the Agent
@@ -4795,12 +5395,7 @@ class ResumeSessionResponse(BaseModel):
     """
     config_options: Annotated[
         Optional[
-            List[
-                Annotated[
-                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
-                    Field(discriminator="type"),
-                ]
-            ]
+            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
         ],
         Field(alias="configOptions"),
     ] = None
@@ -4818,23 +5413,21 @@ class ResumeSessionResponse(BaseModel):
 
     @field_validator("modes", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("config_options", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class SetSessionConfigOptionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     config_options: Annotated[
-        List[
-            Annotated[
-                Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
-                Field(discriminator="type"),
-            ]
-        ],
+        List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]],
         Field(alias="configOptions"),
     ]
     """
@@ -4851,35 +5444,58 @@ class SetSessionConfigOptionResponse(BaseModel):
 
     @field_validator("config_options", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class NesEditSuggestionVariant(NesEditSuggestion):
-    kind: Literal["edit"]
+class NesSuggestionEdit(NesEditSuggestion):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    kind: Literal["edit"] = "edit"
 
 
-class UserMessageChunk(ContentChunk):
-    session_update: Annotated[Literal["user_message_chunk"], Field(alias="sessionUpdate")]
+class SessionUpdateUserMessageChunk(ContentChunk):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["user_message_chunk"], Field(alias="sessionUpdate")] = "user_message_chunk"
 
 
-class AgentMessageChunk(ContentChunk):
-    session_update: Annotated[Literal["agent_message_chunk"], Field(alias="sessionUpdate")]
+class SessionUpdateAgentMessageChunk(ContentChunk):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["agent_message_chunk"], Field(alias="sessionUpdate")] = "agent_message_chunk"
 
 
-class AgentThoughtChunk(ContentChunk):
-    session_update: Annotated[Literal["agent_thought_chunk"], Field(alias="sessionUpdate")]
+class SessionUpdateAgentThoughtChunk(ContentChunk):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["agent_thought_chunk"], Field(alias="sessionUpdate")] = "agent_thought_chunk"
 
 
-class AgentPlanContentUpdate(PlanUpdate):
-    session_update: Annotated[Literal["plan_update"], Field(alias="sessionUpdate")]
+class SessionUpdatePlanUpdate(PlanUpdate):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["plan_update"], Field(alias="sessionUpdate")] = "plan_update"
 
 
-class AvailableCommandsUpdate(_AvailableCommandsUpdate):
-    session_update: Annotated[Literal["available_commands_update"], Field(alias="sessionUpdate")]
+class SessionUpdateAvailableCommandsUpdate(AvailableCommandsUpdateBase):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["available_commands_update"], Field(alias="sessionUpdate")] = (
+        "available_commands_update"
+    )
 
 
 class ToolCall(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     tool_call_id: Annotated[str, Field(alias="toolCallId")]
     """
     Unique identifier for this tool call within the session.
@@ -4888,20 +5504,21 @@ class ToolCall(BaseModel):
     """
     Human-readable title describing what the tool is doing.
     """
-    kind: Optional[ToolKind] = None
+    kind: Optional[
+        Literal["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"]
+    ] = None
     """
     The category of tool being invoked.
     Helps clients choose appropriate icons and UI treatment.
     """
-    status: Optional[ToolCallStatus] = None
+    status: Optional[Literal["pending", "in_progress", "completed", "failed"]] = None
     """
     Current execution status of the tool call.
     """
     content: Optional[
         List[
             Annotated[
-                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
-                Field(discriminator="type"),
+                Union[ToolCallContentContent, ToolCallContentDiff, ToolCallContentTerminal], Field(discriminator="type")
             ]
         ]
     ] = None
@@ -4932,28 +5549,21 @@ class ToolCall(BaseModel):
 
     @field_validator("kind", "raw_input", "raw_output", "status", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
-    @field_validator("content", mode="wrap")
+    @field_validator("content", "locations", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("locations", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class _ConfigOptionUpdate(BaseModel):
+class ConfigOptionUpdateBase(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     config_options: Annotated[
-        List[
-            Annotated[
-                Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
-                Field(discriminator="type"),
-            ]
-        ],
+        List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]],
         Field(alias="configOptions"),
     ]
     """
@@ -4968,14 +5578,15 @@ class _ConfigOptionUpdate(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("config_options", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
 
 class ClientCapabilities(BaseModel):
-    fs: Annotated[Optional[FileSystemCapabilities], Field(validate_default=True)] = FileSystemCapabilities()
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    fs: Annotated[Optional[FileSystemCapabilities], Field(validate_default=True)] = {
+        "readTextFile": False,
+        "writeTextFile": False,
+    }
     """
     File system capabilities supported by the client.
     Determines which file operations the agent can request.
@@ -5035,7 +5646,9 @@ class ClientCapabilities(BaseModel):
     Optional. Omitted or `null` both mean the client does not advertise any
     NES suggestion-kind extensions.
     """
-    position_encodings: Annotated[Optional[List[str]], Field(alias="positionEncodings")] = None
+    position_encodings: Annotated[
+        Optional[List[Literal["utf-16", "utf-32", "utf-8"]]], Field(alias="positionEncodings")
+    ] = None
     """
     **UNSTABLE**
 
@@ -5052,33 +5665,21 @@ class ClientCapabilities(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("terminal", mode="wrap")
+    @field_validator("auth", "elicitation", "fs", "nes", "plan", "session", "terminal", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
-
-    @field_validator("elicitation", "nes", "plan", "session", mode="wrap")
-    @classmethod
-    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
-    @field_validator("fs", mode="wrap")
-    @classmethod
-    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: {"readTextFile": False, "writeTextFile": False})
-
-    @field_validator("auth", mode="wrap")
-    @classmethod
-    def _salvage_on_error_3(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: {"terminal": False})
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("position_encodings", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class SuggestNesRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -5099,7 +5700,7 @@ class SuggestNesRequest(BaseModel):
     """
     The current text selection range, if any.
     """
-    trigger_kind: Annotated[str, Field(alias="triggerKind")]
+    trigger_kind: Annotated[Literal["automatic", "diagnostic", "manual"], Field(alias="triggerKind")]
     """
     What triggered this suggestion request.
     """
@@ -5117,7 +5718,10 @@ class SuggestNesRequest(BaseModel):
     """
 
 
-class ClientResponseMessage(BaseModel):
+class ClientResponse1(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -5134,10 +5738,10 @@ class ClientResponseMessage(BaseModel):
         ConnectMcpResponse,
         DisconnectMcpResponse,
         Union[
-            AcceptElicitationResponse,
-            DeclineElicitationResponse,
-            CancelElicitationResponse,
-            OtherElicitationResponse,
+            CreateElicitationResponse1,
+            CreateElicitationResponse2,
+            CreateElicitationResponse3,
+            CreateElicitationResponse4,
         ],
         Any,
     ]
@@ -5146,16 +5750,17 @@ class ClientResponseMessage(BaseModel):
     """
 
 
-class ClientResponse(RootModel[Union[ClientResponseMessage, ClientErrorMessage]]):
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
-    root: Union[ClientResponseMessage, ClientErrorMessage]
+class ClientResponse(RootModel[Union[ClientResponse1, ClientResponse2]]):
+    root: Union[ClientResponse1, ClientResponse2]
     """
     A JSON-RPC response object.
     """
 
 
 class ClientNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     method: str
     """
     The notification method name.
@@ -5180,15 +5785,20 @@ class ClientNotification(BaseModel):
 
 
 class ToolCallUpdate(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     tool_call_id: Annotated[str, Field(alias="toolCallId")]
     """
     The ID of the tool call being updated.
     """
-    kind: Optional[ToolKind] = None
+    kind: Optional[
+        Literal["read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"]
+    ] = None
     """
     Update the tool kind.
     """
-    status: Optional[ToolCallStatus] = None
+    status: Optional[Literal["pending", "in_progress", "completed", "failed"]] = None
     """
     Update the execution status.
     """
@@ -5199,8 +5809,7 @@ class ToolCallUpdate(BaseModel):
     content: Optional[
         List[
             Annotated[
-                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
-                Field(discriminator="type"),
+                Union[ToolCallContentContent, ToolCallContentDiff, ToolCallContentTerminal], Field(discriminator="type")
             ]
         ]
     ] = None
@@ -5230,21 +5839,39 @@ class ToolCallUpdate(BaseModel):
 
     @field_validator("kind", "raw_input", "raw_output", "status", "title", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
-    @field_validator("content", mode="wrap")
+    @field_validator("content", "locations", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
-
-    @field_validator("locations", mode="wrap")
-    @classmethod
-    def _skip_invalid_items_1(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class CreateFormSessionElicitationRequest(ElicitationSessionScope):
+class CreateElicitationRequest11(ElicitationSessionScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
+    """
+    A JSON Schema describing the form fields to present to the user.
+    """
+
+
+class CreateElicitationRequest12(ElicitationRequestScope):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
+    """
+    A JSON Schema describing the form fields to present to the user.
+    """
+
+
+class CreateElicitationRequest14(CreateElicitationRequest11, CreateElicitationRequest13):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -5257,14 +5884,13 @@ class CreateFormSessionElicitationRequest(ElicitationSessionScope):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: Literal["form"]
-    requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
-    """
-    A JSON Schema describing the form fields to present to the user.
-    """
+    mode: Literal["form"] = "form"
 
 
-class CreateFormRequestElicitationRequest(ElicitationRequestScope):
+class CreateElicitationRequest15(CreateElicitationRequest12, CreateElicitationRequest13):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -5277,41 +5903,13 @@ class CreateFormRequestElicitationRequest(ElicitationRequestScope):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: Literal["form"]
-    requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
-    """
-    A JSON Schema describing the form fields to present to the user.
-    """
-
-
-ElicitationMode = Union[
-    ElicitationFormSessionMode,
-    ElicitationFormRequestMode,
-    ElicitationUrlSessionMode,
-    ElicitationUrlRequestMode,
-]
-CreateFormElicitationRequest = Union[
-    CreateFormSessionElicitationRequest,
-    CreateFormRequestElicitationRequest,
-]
-CreateUrlElicitationRequest = Union[
-    CreateUrlSessionElicitationRequest,
-    CreateUrlRequestElicitationRequest,
-]
-CreateElicitationRequest = Union[
-    CreateFormElicitationRequest,
-    CreateUrlElicitationRequest,
-    CreateOtherElicitationRequest,
-]
-CreateElicitationResponse = Union[
-    AcceptElicitationResponse,
-    DeclineElicitationResponse,
-    CancelElicitationResponse,
-    OtherElicitationResponse,
-]
+    mode: Literal["form"] = "form"
 
 
 class NesCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     events: Optional[NesEventCapabilities] = None
     """
     Events the agent wants to receive.
@@ -5331,11 +5929,14 @@ class NesCapabilities(BaseModel):
 
     @field_validator("context", "events", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class NewSessionResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     Unique identifier for the created session.
@@ -5350,12 +5951,7 @@ class NewSessionResponse(BaseModel):
     """
     config_options: Annotated[
         Optional[
-            List[
-                Annotated[
-                    Union[SessionConfigOptionSelect, SessionConfigOptionBoolean],
-                    Field(discriminator="type"),
-                ]
-            ]
+            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
         ],
         Field(alias="configOptions"),
     ] = None
@@ -5373,24 +5969,22 @@ class NewSessionResponse(BaseModel):
 
     @field_validator("modes", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("config_options", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class SuggestNesResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     suggestions: List[
         Annotated[
-            Union[
-                NesEditSuggestionVariant,
-                NesJumpSuggestionVariant,
-                NesRenameSuggestionVariant,
-                NesSearchAndReplaceSuggestionVariant,
-            ],
+            Union[NesSuggestionEdit, NesSuggestionJump, NesSuggestionRename, NesSuggestionSearchAndReplace],
             Field(discriminator="kind"),
         ]
     ]
@@ -5407,27 +6001,42 @@ class SuggestNesResponse(BaseModel):
     """
 
 
-class ToolCallStart(ToolCall):
-    session_update: Annotated[Literal["tool_call"], Field(alias="sessionUpdate")]
+class SessionUpdateToolCall(ToolCall):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["tool_call"], Field(alias="sessionUpdate")] = "tool_call"
 
 
-class ToolCallProgress(ToolCallUpdate):
-    session_update: Annotated[Literal["tool_call_update"], Field(alias="sessionUpdate")]
+class SessionUpdateToolCallUpdate(ToolCallUpdate):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["tool_call_update"], Field(alias="sessionUpdate")] = "tool_call_update"
 
 
-class ConfigOptionUpdate(_ConfigOptionUpdate):
-    session_update: Annotated[Literal["config_option_update"], Field(alias="sessionUpdate")]
+class SessionUpdateConfigOptionUpdate(ConfigOptionUpdateBase):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
+    session_update: Annotated[Literal["config_option_update"], Field(alias="sessionUpdate")] = "config_option_update"
 
 
 class InitializeRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
     """
     The latest protocol version supported by the client.
     """
     client_capabilities: Annotated[
-        Optional[ClientCapabilities],
-        Field(alias="clientCapabilities", validate_default=True),
-    ] = ClientCapabilities()
+        Optional[ClientCapabilities], Field(alias="clientCapabilities", validate_default=True)
+    ] = {
+        "fs": {"readTextFile": False, "writeTextFile": False},
+        "terminal": False,
+        "auth": {"terminal": False},
+    }
     """
     Capabilities supported by the client.
     """
@@ -5448,38 +6057,19 @@ class InitializeRequest(BaseModel):
 
     @field_validator("protocol_version", mode="before")
     @classmethod
-    def _coerce_protocol_version(cls, value: Any) -> int:
-        # Some clients (e.g. Zed) send a date string like "2024-11-05" instead
-        # of an integer. The Rust SDK treats legacy strings as version 0; this
-        # SDK maps unparsable values to 1 so the connection is not rejected.
-        # See: https://github.com/agentclientprotocol/rust-sdk/blob/main/crates/agent-client-protocol-schema/src/version.rs
-        if isinstance(value, int):
-            return value
-        try:
-            return int(value)
-        except (TypeError, ValueError):
-            return 1
+    def coerce_protocol_version_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return coerce_protocol_version(v, info)
 
-    @field_validator("client_info", mode="wrap")
+    @field_validator("client_capabilities", "client_info", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
-    @field_validator("client_capabilities", mode="wrap")
-    @classmethod
-    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(
-            value,
-            handler,
-            lambda: {
-                "fs": {"readTextFile": False, "writeTextFile": False},
-                "terminal": False,
-                "auth": {"terminal": False},
-            },
-        )
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class RequestPermissionRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -5503,27 +6093,34 @@ class RequestPermissionRequest(BaseModel):
 
 
 class AgentCapabilities(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     load_session: Annotated[Optional[bool], Field(alias="loadSession")] = False
     """
     Whether the agent supports `session/load`.
     """
     prompt_capabilities: Annotated[
-        Optional[PromptCapabilities],
-        Field(alias="promptCapabilities", validate_default=True),
-    ] = PromptCapabilities()
+        Optional[PromptCapabilities], Field(alias="promptCapabilities", validate_default=True)
+    ] = {
+        "image": False,
+        "audio": False,
+        "embeddedContext": False,
+    }
     """
     Prompt capabilities supported by the agent.
     """
-    mcp_capabilities: Annotated[Optional[McpCapabilities], Field(alias="mcpCapabilities", validate_default=True)] = (
-        McpCapabilities()
-    )
+    mcp_capabilities: Annotated[Optional[McpCapabilities], Field(alias="mcpCapabilities", validate_default=True)] = {
+        "http": False,
+        "sse": False,
+        "acp": False,
+    }
     """
     MCP capabilities supported by the agent.
     """
     session_capabilities: Annotated[
-        Optional[SessionCapabilities],
-        Field(alias="sessionCapabilities", validate_default=True),
-    ] = SessionCapabilities()
+        Optional[SessionCapabilities], Field(alias="sessionCapabilities", validate_default=True)
+    ] = {}
     """
     Session lifecycle and prompt capabilities advertised by the agent.
     """
@@ -5553,7 +6150,7 @@ class AgentCapabilities(BaseModel):
     Optional. Omitted or `null` both mean the agent does not advertise support
     for NES methods.
     """
-    position_encoding: Annotated[Optional[str], Field(alias="positionEncoding")] = None
+    position_encoding: Annotated[Optional[Literal["utf-16", "utf-32", "utf-8"]], Field(alias="positionEncoding")] = None
     """
     **UNSTABLE**
 
@@ -5570,52 +6167,45 @@ class AgentCapabilities(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("load_session", mode="wrap")
+    @field_validator(
+        "auth",
+        "load_session",
+        "mcp_capabilities",
+        "nes",
+        "position_encoding",
+        "prompt_capabilities",
+        "providers",
+        "session_capabilities",
+        mode="wrap",
+    )
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: False)
-
-    @field_validator("nes", "position_encoding", "providers", mode="wrap")
-    @classmethod
-    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
-    @field_validator("mcp_capabilities", mode="wrap")
-    @classmethod
-    def _salvage_on_error_2(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: {"http": False, "sse": False, "acp": False})
-
-    @field_validator("prompt_capabilities", mode="wrap")
-    @classmethod
-    def _salvage_on_error_3(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: {"image": False, "audio": False, "embeddedContext": False})
-
-    @field_validator("auth", "session_capabilities", mode="wrap")
-    @classmethod
-    def _salvage_on_error_4(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: {})
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session this update pertains to.
     """
     update: Annotated[
         Union[
-            UserMessageChunk,
-            AgentMessageChunk,
-            AgentThoughtChunk,
-            ToolCallStart,
-            ToolCallProgress,
-            AgentPlanUpdate,
-            AgentPlanContentUpdate,
-            AgentPlanRemovedUpdate,
-            AvailableCommandsUpdate,
-            CurrentModeUpdate,
-            ConfigOptionUpdate,
-            SessionInfoUpdate,
-            UsageUpdate,
+            SessionUpdateUserMessageChunk,
+            SessionUpdateAgentMessageChunk,
+            SessionUpdateAgentThoughtChunk,
+            SessionUpdateToolCall,
+            SessionUpdateToolCallUpdate,
+            SessionUpdatePlan,
+            SessionUpdatePlanUpdate,
+            SessionUpdatePlanRemoved,
+            SessionUpdateAvailableCommandsUpdate,
+            SessionUpdateCurrentModeUpdate,
+            SessionUpdateConfigOptionUpdate,
+            SessionUpdateSessionInfoUpdate,
+            SessionUpdateUsageUpdate,
         ],
         Field(discriminator="session_update"),
     ]
@@ -5633,6 +6223,9 @@ class SessionNotification(BaseModel):
 
 
 class ClientRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: Optional[Union[int, str]]
     """
     The request id used to correlate the matching response.
@@ -5662,7 +6255,7 @@ class ClientRequest(BaseModel):
             SuggestNesRequest,
             CloseNesRequest,
             MessageMcpRequest,
-            Union[SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest],
+            Union[SetSessionConfigOptionRequest1, SetSessionConfigOptionRequest2],
             Any,
         ]
     ] = None
@@ -5672,6 +6265,9 @@ class ClientRequest(BaseModel):
 
 
 class AgentRequest(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: Optional[Union[int, str]]
     """
     The request id used to correlate the matching response.
@@ -5694,11 +6290,9 @@ class AgentRequest(BaseModel):
             MessageMcpRequest,
             DisconnectMcpRequest,
             Union[
-                CreateFormSessionElicitationRequest,
-                CreateFormRequestElicitationRequest,
-                CreateUrlSessionElicitationRequest,
-                CreateUrlRequestElicitationRequest,
-                CreateOtherElicitationRequest,
+                Union[CreateElicitationRequest3, CreateElicitationRequest4],
+                Union[CreateElicitationRequest14, CreateElicitationRequest15],
+                Union[CreateElicitationRequest24, CreateElicitationRequest25],
             ],
             Any,
         ]
@@ -5709,6 +6303,9 @@ class AgentRequest(BaseModel):
 
 
 class InitializeResponse(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
     """
     The protocol version the client specified if supported by the agent,
@@ -5717,14 +6314,19 @@ class InitializeResponse(BaseModel):
     The client should disconnect, if it doesn't support this version.
     """
     agent_capabilities: Annotated[
-        Optional[AgentCapabilities],
-        Field(alias="agentCapabilities", validate_default=True),
-    ] = AgentCapabilities()
+        Optional[AgentCapabilities], Field(alias="agentCapabilities", validate_default=True)
+    ] = {
+        "loadSession": False,
+        "promptCapabilities": {"image": False, "audio": False, "embeddedContext": False},
+        "mcpCapabilities": {"http": False, "sse": False, "acp": False},
+        "sessionCapabilities": {},
+        "auth": {},
+    }
     """
     Capabilities supported by the agent.
     """
     auth_methods: Annotated[
-        Optional[List[Union[EnvVarAuthMethod, TerminalAuthMethod, AuthMethodAgent]]],
+        Optional[List[Union[AuthMethodEnvVarModel, AuthMethodTerminalModel, AuthMethodAgent]]],
         Field(alias="authMethods", validate_default=True),
     ] = []
     """
@@ -5745,51 +6347,35 @@ class InitializeResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("agent_info", mode="wrap")
+    @field_validator("agent_capabilities", "agent_info", mode="wrap")
     @classmethod
-    def _salvage_on_error_0(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(value, handler, lambda: None)
-
-    @field_validator("agent_capabilities", mode="wrap")
-    @classmethod
-    def _salvage_on_error_1(cls, value: Any, handler: Any) -> Any:
-        return salvage_on_error(
-            value,
-            handler,
-            lambda: {
-                "loadSession": False,
-                "promptCapabilities": {"image": False, "audio": False, "embeddedContext": False},
-                "mcpCapabilities": {"http": False, "sse": False, "acp": False},
-                "sessionCapabilities": {},
-                "auth": {},
-            },
-        )
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
     @field_validator("auth_methods", mode="wrap")
     @classmethod
-    def _skip_invalid_items_0(cls, value: Any, handler: Any) -> Any:
-        return skip_invalid_items(value, handler)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class AgentNotification(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     method: str
     """
     The notification method name.
     """
-    params: Optional[
-        Union[
-            SessionNotification,
-            CompleteElicitationNotification,
-            MessageMcpNotification,
-            Any,
-        ]
-    ] = None
+    params: Optional[Union[SessionNotification, CompleteElicitationNotification, MessageMcpNotification, Any]] = None
     """
     Method-specific notification parameters.
     """
 
 
-class AgentResponseMessage(BaseModel):
+class AgentResponse1(BaseModel):
+    model_config = ConfigDict(
+        use_attribute_docstrings=True,
+    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -5821,10 +6407,139 @@ class AgentResponseMessage(BaseModel):
     """
 
 
-class AgentResponse(RootModel[Union[AgentResponseMessage, AgentErrorMessage]]):
-    model_config = ConfigDict(use_attribute_docstrings=True)
-
-    root: Union[AgentResponseMessage, AgentErrorMessage]
+class AgentResponse(RootModel[Union[AgentResponse1, AgentResponse2]]):
+    root: Union[AgentResponse1, AgentResponse2]
     """
     A JSON-RPC response object.
     """
+
+
+PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
+PlanEntryPriority = Literal["high", "medium", "low"]
+PlanEntryStatus = Literal["pending", "in_progress", "completed"]
+StopReason = Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]
+ToolCallStatus = Literal["pending", "in_progress", "completed", "failed"]
+ToolKind = Literal[
+    "read",
+    "edit",
+    "delete",
+    "move",
+    "search",
+    "execute",
+    "think",
+    "fetch",
+    "switch_mode",
+    "other",
+]
+
+AgentResponseMessage = AgentResponse1
+AgentErrorMessage = AgentResponse2
+ClientResponseMessage = ClientResponse1
+ClientErrorMessage = ClientResponse2
+
+TextContentBlock = ContentBlockText
+ImageContentBlock = ContentBlockImage
+AudioContentBlock = ContentBlockAudio
+ResourceContentBlock = ContentBlockResourceLink
+EmbeddedResourceContentBlock = ContentBlockResource
+
+HttpMcpServer = McpServerHttpModel
+SseMcpServer = McpServerSseModel
+AcpMcpServer = McpServerAcpModel
+DeniedOutcome = RequestPermissionOutcomeCancelled
+AllowedOutcome = RequestPermissionOutcomeSelected
+EnvVarAuthMethod = AuthMethodEnvVarModel
+TerminalAuthMethod = AuthMethodTerminalModel
+SetSessionConfigOptionBooleanRequest = SetSessionConfigOptionRequest1
+SetSessionConfigOptionSelectRequest = SetSessionConfigOptionRequest2
+SetSessionConfigOptionRequest1.__acp_public_name__ = "SetSessionConfigOptionBooleanRequest"
+SetSessionConfigOptionRequest2.__acp_public_name__ = "SetSessionConfigOptionSelectRequest"
+
+UserMessageChunk = SessionUpdateUserMessageChunk
+AgentMessageChunk = SessionUpdateAgentMessageChunk
+AgentThoughtChunk = SessionUpdateAgentThoughtChunk
+ToolCallStart = SessionUpdateToolCall
+ToolCallProgress = SessionUpdateToolCallUpdate
+AgentPlanUpdate = SessionUpdatePlan
+AgentPlanContentUpdate = SessionUpdatePlanUpdate
+AgentPlanRemovedUpdate = SessionUpdatePlanRemoved
+
+_AvailableCommandsUpdate = AvailableCommandsUpdateBase
+_CurrentModeUpdate = CurrentModeUpdateBase
+_ConfigOptionUpdate = ConfigOptionUpdateBase
+_SessionInfoUpdate = SessionInfoUpdateBase
+_UsageUpdate = UsageUpdateBase
+AvailableCommandsUpdate = SessionUpdateAvailableCommandsUpdate
+CurrentModeUpdate = SessionUpdateCurrentModeUpdate
+ConfigOptionUpdate = SessionUpdateConfigOptionUpdate
+SessionInfoUpdate = SessionUpdateSessionInfoUpdate
+UsageUpdate = SessionUpdateUsageUpdate
+
+PlanUpdateItems = PlanUpdateContentItems
+PlanUpdateFile = PlanUpdateContentFile
+PlanUpdateMarkdown = PlanUpdateContentMarkdown
+ContentToolCallContent = ToolCallContentContent
+FileEditToolCallContent = ToolCallContentDiff
+TerminalToolCallContent = ToolCallContentTerminal
+
+CreateOtherElicitationRequest = Union[
+    CreateElicitationRequest3,
+    CreateElicitationRequest4,
+]
+CreateFormSessionElicitationRequest = CreateElicitationRequest14
+CreateFormRequestElicitationRequest = CreateElicitationRequest15
+CreateUrlSessionElicitationRequest = CreateElicitationRequest24
+CreateUrlRequestElicitationRequest = CreateElicitationRequest25
+CreateFormElicitationRequest = Union[
+    CreateFormSessionElicitationRequest,
+    CreateFormRequestElicitationRequest,
+]
+CreateUrlElicitationRequest = Union[
+    CreateUrlSessionElicitationRequest,
+    CreateUrlRequestElicitationRequest,
+]
+CreateElicitationRequest = Union[
+    CreateFormElicitationRequest,
+    CreateUrlElicitationRequest,
+    CreateOtherElicitationRequest,
+]
+
+AcceptElicitationResponse = CreateElicitationResponse1
+DeclineElicitationResponse = CreateElicitationResponse2
+CancelElicitationResponse = CreateElicitationResponse3
+OtherElicitationResponse = CreateElicitationResponse4
+CreateElicitationResponse = Union[
+    AcceptElicitationResponse,
+    DeclineElicitationResponse,
+    CancelElicitationResponse,
+    OtherElicitationResponse,
+]
+ElicitationFormSessionMode = ElicitationFormMode1
+ElicitationFormRequestMode = ElicitationFormMode2
+ElicitationUrlSessionMode = ElicitationUrlMode1
+ElicitationUrlRequestMode = ElicitationUrlMode2
+ElicitationMode = Union[
+    ElicitationFormSessionMode,
+    ElicitationFormRequestMode,
+    ElicitationUrlSessionMode,
+    ElicitationUrlRequestMode,
+]
+
+ElicitationStringPropertySchema = ElicitationPropertySchema1
+ElicitationNumberPropertySchema = ElicitationPropertySchema2
+ElicitationIntegerPropertySchema = ElicitationPropertySchema3
+ElicitationBooleanPropertySchema = ElicitationPropertySchema4
+ElicitationMultiSelectPropertySchema = ElicitationPropertySchema5
+ElicitationOtherPropertySchema = ElicitationPropertySchema6
+_StringMultiSelectItems = StringMultiSelectItemsBase
+StringMultiSelectItems = MultiSelectItems1
+OtherMultiSelectItems = MultiSelectItems2
+
+NesEditSuggestionVariant = NesSuggestionEdit
+NesJumpSuggestionVariant = NesSuggestionJump
+NesRenameSuggestionVariant = NesSuggestionRename
+NesSearchAndReplaceSuggestionVariant = NesSuggestionSearchAndReplace
+
+
+class Jsonrpc(Enum):
+    field_2_0 = "2.0"
