@@ -1,0 +1,8 @@
+{
+  "sessionUpdate": "compaction_summary_chunk",
+  "compactionId": "compaction_001",
+  "content": {
+    "type": "text",
+    "text": "Earlier context summarized."
+  }
+}

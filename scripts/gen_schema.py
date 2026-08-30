@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import argparse
-import copy
 import difflib
 import json
 import subprocess
@@ -33,13 +32,6 @@ UNSIGNED_TYPE_MAPPINGS = (
     "integer+uint32=integer",
     "integer+uint64=integer",
 )
-
-OPEN_UNIONS = {
-    "CreateElicitationRequest": 2,
-    "CreateElicitationResponse": 3,
-    "ElicitationPropertySchema": 5,
-    "MultiSelectItems": 1,
-}
 
 
 def _inline_model_ref(definition: str, *steps: tuple[str, int | None]) -> str:
@@ -312,7 +304,7 @@ def render_schema() -> str:
     if not SCHEMA_JSON.exists():
         raise FileNotFoundError("schema/schema.json is missing; fetch a pinned schema release first")
 
-    schema = _schema_for_codegen(json.loads(SCHEMA_JSON.read_text(encoding="utf-8")))
+    schema = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
     generated = generate(
         schema,
         input_file_type=InputFileType.JsonSchema,
@@ -346,18 +338,6 @@ def render_schema() -> str:
     if not isinstance(generated, str):
         raise TypeError("Schema generation did not produce a single Python module")
     return _format_python(f"{generated.rstrip()}\n\n\n{COMPATIBILITY_ALIASES}\n")
-
-
-def _schema_for_codegen(schema: dict[str, Any]) -> dict[str, Any]:
-    """Drop open-union constraints that Pydantic cannot represent statically."""
-    patched = copy.deepcopy(schema)
-    for name, catchall_index in OPEN_UNIONS.items():
-        try:
-            del patched["$defs"][name]["discriminator"]
-            del patched["$defs"][name]["anyOf"][catchall_index]["not"]
-        except KeyError:
-            raise ValueError(f"{name} no longer has the expected open-union shape") from None
-    return patched
 
 
 def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidators]:

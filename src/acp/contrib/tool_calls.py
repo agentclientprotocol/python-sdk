@@ -56,6 +56,7 @@ class TrackedToolCallView(BaseModel):
 
     tool_call_id: str
     title: str | None
+    name: str | None
     kind: ToolKind | None
     status: ToolCallStatus | None
     content: tuple[Any, ...] | None
@@ -70,6 +71,7 @@ class _TrackedToolCall:
         *,
         tool_call_id: str,
         title: str | None = None,
+        name: str | None = None,
         kind: ToolKind | None = None,
         status: ToolCallStatus | None = None,
         content: Sequence[Any] | None = None,
@@ -79,6 +81,7 @@ class _TrackedToolCall:
     ) -> None:
         self.tool_call_id = tool_call_id
         self.title = title
+        self.name = name
         self.kind = kind
         self.status = status
         self.content = _copy_model_list(content)
@@ -91,6 +94,7 @@ class _TrackedToolCall:
         return TrackedToolCallView(
             tool_call_id=self.tool_call_id,
             title=self.title,
+            name=self.name,
             kind=self.kind,
             status=self.status,
             content=tuple(item.model_copy(deep=True) for item in self.content) if self.content else None,
@@ -103,6 +107,7 @@ class _TrackedToolCall:
         return ToolCallUpdate(
             tool_call_id=self.tool_call_id,
             title=self.title,
+            name=self.name,
             kind=self.kind,
             status=self.status,
             content=_copy_model_list(self.content),
@@ -118,6 +123,7 @@ class _TrackedToolCall:
             session_update="tool_call",
             tool_call_id=self.tool_call_id,
             title=self.title,
+            name=self.name,
             kind=self.kind,
             status=self.status,
             content=_copy_model_list(self.content),
@@ -130,6 +136,7 @@ class _TrackedToolCall:
         self,
         *,
         title: Any = UNSET,
+        name: Any = UNSET,
         kind: Any = UNSET,
         status: Any = UNSET,
         content: Any = UNSET,
@@ -141,6 +148,9 @@ class _TrackedToolCall:
         if title is not UNSET:
             self.title = cast(str | None, title)
             kwargs["title"] = self.title
+        if name is not UNSET:
+            self.name = cast(str | None, name)
+            kwargs["name"] = self.name
         if kind is not UNSET:
             self.kind = cast(ToolKind | None, kind)
             kwargs["kind"] = self.kind
@@ -190,6 +200,7 @@ class ToolCallTracker:
         external_id: str,
         *,
         title: str,
+        name: str | None = None,
         kind: ToolKind | None = None,
         status: ToolCallStatus | None = "in_progress",
         content: Sequence[Any] | None = None,
@@ -202,6 +213,7 @@ class ToolCallTracker:
         state = _TrackedToolCall(
             tool_call_id=call_id,
             title=title,
+            name=name,
             kind=kind,
             status=status,
             content=content,
@@ -217,6 +229,7 @@ class ToolCallTracker:
         external_id: str,
         *,
         title: Any = UNSET,
+        name: Any = UNSET,
         kind: Any = UNSET,
         status: Any = UNSET,
         content: Any = UNSET,
@@ -228,6 +241,7 @@ class ToolCallTracker:
         state = self._require_call(external_id)
         return state.update(
             title=title,
+            name=name,
             kind=kind,
             status=status,
             content=content,

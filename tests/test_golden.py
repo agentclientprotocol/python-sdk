@@ -32,6 +32,8 @@ from acp.schema import (
     RequestPermissionRequest,
     RequestPermissionResponse,
     ResourceContentBlock,
+    SessionUpdateCompactionSummaryChunk,
+    SessionUpdateCompactionUpdate,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
     TerminalToolCallContent,
@@ -69,6 +71,8 @@ GOLDEN_CASES: dict[str, type[BaseModel]] = {
     "request_permission_response_selected": RequestPermissionResponse,
     "session_update_agent_message_chunk": AgentMessageChunk,
     "session_update_agent_thought_chunk": AgentThoughtChunk,
+    "session_update_compaction_summary_chunk": SessionUpdateCompactionSummaryChunk,
+    "session_update_compaction_update": SessionUpdateCompactionUpdate,
     "session_update_config_option_update": ConfigOptionUpdate,
     "session_update_plan": AgentPlanUpdate,
     "session_update_tool_call": ToolCallStart,
@@ -154,6 +158,15 @@ MODEL_BUILDERS: dict[str, Callable[[], BaseModel]] = {
                 status="pending",
             ),
         ]
+    ),
+    "session_update_compaction_summary_chunk": lambda: SessionUpdateCompactionSummaryChunk(
+        compaction_id="compaction_001",
+        content=TextContentBlock(text="Earlier context summarized."),
+    ),
+    "session_update_compaction_update": lambda: SessionUpdateCompactionUpdate(
+        compaction_id="compaction_001",
+        status="completed",
+        summary=[TextContentBlock(text="Earlier context summarized.")],
     ),
     "session_update_tool_call": lambda: ToolCallStart(
         tool_call_id="call_001",

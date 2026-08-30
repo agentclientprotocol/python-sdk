@@ -49,6 +49,8 @@ from ..schema import (
     RequestPermissionResponse,
     SessionInfoUpdate,
     SessionNotification,
+    SessionUpdateCompactionSummaryChunk,
+    SessionUpdateCompactionUpdate,
     TerminalOutputRequest,
     TerminalOutputResponse,
     ToolCallProgress,
@@ -121,7 +123,9 @@ class AgentSideConnection:
         | CurrentModeUpdate
         | ConfigOptionUpdate
         | SessionInfoUpdate
-        | UsageUpdate,
+        | UsageUpdate
+        | SessionUpdateCompactionUpdate
+        | SessionUpdateCompactionSummaryChunk,
         **kwargs: Any,
     ) -> None:
         await notify_model(
