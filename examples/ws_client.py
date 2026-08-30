@@ -12,8 +12,9 @@ Start the server first (``uv run examples/http_server.py``), then run this.
 import asyncio
 from typing import Any
 
-from acp import connect_to_agent, text_block
+from acp import connect_to_agent
 from acp.interfaces import Client
+from acp.schema import TextContentBlock
 from acp.ws import create_websocket_stream
 
 
@@ -42,7 +43,9 @@ async def main() -> None:
         print(f"initialized (protocol v{init.protocol_version})")
         session = await conn.new_session(cwd=".", mcp_servers=[])
         print(f"session: {session.session_id}")
-        result = await conn.prompt(session_id=session.session_id, prompt=[text_block("hello over websocket")])
+        result = await conn.prompt(
+            session_id=session.session_id, prompt=[TextContentBlock(text="hello over websocket")]
+        )
         print(f"stop reason: {result.stop_reason}")
     finally:
         await conn.close()

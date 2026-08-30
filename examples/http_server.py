@@ -25,12 +25,10 @@ from acp import (
     InitializeResponse,
     NewSessionResponse,
     PromptResponse,
-    text_block,
-    update_agent_message,
 )
 from acp.http.asgi import create_asgi_app
 from acp.interfaces import Client
-from acp.schema import ClientCapabilities, Implementation
+from acp.schema import AgentMessageChunk, ClientCapabilities, Implementation, TextContentBlock
 
 
 class EchoAgent(Agent):
@@ -56,7 +54,7 @@ class EchoAgent(Agent):
             text = block.get("text", "") if isinstance(block, dict) else getattr(block, "text", "")
             await self._conn.session_update(
                 session_id=session_id,
-                update=update_agent_message(text_block(f"echo: {text}")),
+                update=AgentMessageChunk(content=TextContentBlock(text=f"echo: {text}")),
             )
         return PromptResponse(stop_reason="end_turn")
 

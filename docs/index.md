@@ -24,9 +24,8 @@ Next steps live in the [Quickstart](quickstart.md): launch the echo agent, wire 
 
 ## SDK building blocks
 
-- `acp.schema`: generated Pydantic models that validate every payload against the canonical specification.
+- `acp.schema`: generated Pydantic models with defaults for protocol discriminator fields.
 - `acp.agent` / `acp.client`: async base classes, JSON-RPC supervision, and lifecycle orchestration.
-- `acp.helpers`: builders for content blocks, tool calls, permissions, and notifications.
 - `acp.contrib`: experimental utilities (session accumulators, permission brokers, tool call trackers) harvested from production deployments.
 - `examples/`: runnable agents, clients, duet demos, and the Gemini CLI bridge.
 
@@ -44,7 +43,7 @@ Next steps live in the [Quickstart](quickstart.md): launch the echo agent, wire 
 ## Choose a path
 
 - **Just exploring?** Skim [use-cases.md](use-cases.md) to see how kimi-cli, agent-client-kernel, and others use the SDK.
-- **Building agents?** Copy `examples/echo_agent.py` or `examples/agent.py`, then layer in `acp.helpers` for tool calls and permissions.
+- **Building agents?** Copy `examples/echo_agent.py` or `examples/agent.py`, then use the generated models directly. Use `acp.contrib` for permission workflows and other stateful patterns.
 - **Embedding clients?** Start with `examples/client.py` or the `spawn_agent_process` / `spawn_client_process` helpers in the [Quickstart](quickstart.md#programmatic-launch).
 
 ## Reference material

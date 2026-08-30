@@ -93,8 +93,9 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from acp import PROTOCOL_VERSION, spawn_agent_process, text_block
+from acp import PROTOCOL_VERSION, spawn_agent_process
 from acp.interfaces import Client
+from acp.schema import TextContentBlock
 
 
 class SimpleClient(Client):
@@ -114,7 +115,7 @@ async def main() -> None:
         session = await conn.new_session(cwd=str(script.parent), mcp_servers=[])
         await conn.prompt(
             session_id=session.session_id,
-            prompt=[text_block("Hello from spawn!")],
+            prompt=[TextContentBlock(text="Hello from spawn!")],
         )
 
 asyncio.run(main())
@@ -145,20 +146,16 @@ Run it with `run_agent()` inside an async entrypoint and wire it to your client.
 - [`examples/duet.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py) to see `spawn_agent_process` in action alongside the interactive client
 - [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) to drive the Gemini CLI (`--acp`; use `--experimental-acp` for older versions) directly from Python
 
-Need builders for common payloads? `acp.helpers` mirrors the Go/TS helper APIs:
+Generated models provide defaults for discriminator fields such as `type` and
+`sessionUpdate`, so they can be constructed directly:
 
 ```python
-from acp import start_tool_call, update_tool_call, text_block, tool_content
+from acp.schema import AgentMessageChunk, TextContentBlock
 
-start_update = start_tool_call("call-42", "Open file", kind="read", status="pending")
-finish_update = update_tool_call(
-    "call-42",
-    status="completed",
-    content=[tool_content(text_block("File opened."))],
+update = AgentMessageChunk(
+    content=TextContentBlock(text="File opened."),
 )
 ```
-
-Each helper wraps the generated Pydantic models in `acp.schema`, so the right discriminator fields (`type`, `sessionUpdate`, and friends) are always populated. That keeps examples readable while maintaining the same validation guarantees as constructing the models directly. Golden fixtures in `tests/test_golden.py` ensure the helpers stay in sync with future schema revisions.
 
 ## Optional — Talk to the Gemini CLI
 

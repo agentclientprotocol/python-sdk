@@ -28,9 +28,6 @@ from acp import (
     SetSessionModeResponse,
     WriteTextFileResponse,
     spawn_agent_process,
-    start_tool_call,
-    update_agent_message_text,
-    update_tool_call,
 )
 from acp.connection import Connection
 from acp.core import AgentSideConnection, ClientSideConnection
@@ -754,14 +751,14 @@ class _ExampleAgent(Agent):
 
         await self._conn.session_update(
             session_id,
-            update_agent_message_text("I'll help you with that."),
+            AgentMessageChunk(content=TextContentBlock(text="I'll help you with that.")),
         )
 
         await self._conn.session_update(
             session_id,
-            start_tool_call(
-                "call_1",
-                "Modifying configuration",
+            ToolCallStart(
+                tool_call_id="call_1",
+                title="Modifying configuration",
                 kind="edit",
                 status="pending",
                 locations=[ToolCallLocation(path="/project/config.json")],
@@ -790,15 +787,15 @@ class _ExampleAgent(Agent):
         if isinstance(response.outcome, AllowedOutcome) and response.outcome.option_id == "allow":
             await self._conn.session_update(
                 session_id,
-                update_tool_call(
-                    "call_1",
+                ToolCallProgress(
+                    tool_call_id="call_1",
                     status="completed",
                     raw_output={"success": True},
                 ),
             )
             await self._conn.session_update(
                 session_id,
-                update_agent_message_text("Done."),
+                AgentMessageChunk(content=TextContentBlock(text="Done.")),
             )
 
         return PromptResponse(stop_reason="end_turn")

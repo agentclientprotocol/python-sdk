@@ -14,11 +14,10 @@ from acp import (
     NewSessionResponse,
     PromptResponse,
     run_agent,
-    text_block,
-    update_agent_message,
 )
 from acp.interfaces import Client
 from acp.schema import (
+    AgentMessageChunk,
     AudioContentBlock,
     ClientCapabilities,
     EmbeddedResourceContentBlock,
@@ -70,7 +69,7 @@ class EchoAgent(Agent):
     ) -> PromptResponse:
         for block in prompt:
             text = block.get("text", "") if isinstance(block, dict) else getattr(block, "text", "")
-            chunk = update_agent_message(text_block(text))
+            chunk = AgentMessageChunk(content=TextContentBlock(text=text))
             chunk.field_meta = {"echo": True}
             chunk.content.field_meta = {"echo": True}
 

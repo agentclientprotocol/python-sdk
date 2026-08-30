@@ -12,7 +12,6 @@ from acp import (
     Client,
     RequestError,
     connect_to_agent,
-    text_block,
 )
 from acp.core import ClientSideConnection
 from acp.schema import (
@@ -170,7 +169,7 @@ async def interactive_loop(conn: ClientSideConnection, session_id: str) -> None:
         try:
             await conn.prompt(
                 session_id=session_id,
-                prompt=[text_block(line)],
+                prompt=[TextContentBlock(text=line)],
             )
         except Exception as exc:
             logging.error("Prompt failed: %s", exc)  # noqa: TRY400
