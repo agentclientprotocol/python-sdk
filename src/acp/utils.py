@@ -30,7 +30,7 @@ MultiParamModelSpec = tuple[type[BaseModel], ...]
 
 
 def _param_models_name(models: MultiParamModelSpec) -> str:
-    return " | ".join(getattr(model_type, "__acp_public_name__", model_type.__name__) for model_type in models)
+    return " | ".join(model_type.__name__ for model_type in models)
 
 
 def _param_models_field_names(models: MultiParamModelSpec) -> tuple[str, ...]:

@@ -20,14 +20,14 @@ class BaseModel(pydantic.BaseModel):
     """Runtime behavior shared by generated ACP schema models."""
 
     _reserved_tags: ClassVar[dict[str, tuple[str, frozenset[str]]]] = {
-        "CreateElicitationRequest3": ("mode", frozenset({"form", "url"})),
-        "CreateElicitationRequest4": ("mode", frozenset({"form", "url"})),
-        "CreateElicitationResponse4": ("action", frozenset({"accept", "cancel", "decline"})),
-        "ElicitationPropertySchema6": (
+        "CreateOtherSessionElicitationRequest": ("mode", frozenset({"form", "url"})),
+        "CreateOtherRequestElicitationRequest": ("mode", frozenset({"form", "url"})),
+        "OtherElicitationResponse": ("action", frozenset({"accept", "cancel", "decline"})),
+        "ElicitationOtherPropertySchema": (
             "type",
             frozenset({"array", "boolean", "integer", "number", "string"}),
         ),
-        "MultiSelectItems2": ("type", frozenset({"string"})),
+        "OtherMultiSelectItems": ("type", frozenset({"string"})),
     }
 
     model_config = ConfigDict(

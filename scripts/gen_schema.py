@@ -34,22 +34,22 @@ UNSIGNED_TYPE_MAPPINGS = (
     "integer+uint64=integer",
 )
 
-# These are generator configuration, not schema rewrites. The v1.19 schema uses
-# discriminators for open variants that datamodel-code-generator otherwise renders
-# as placeholder literals.
-CATCHALL_TYPE_OVERRIDES = {
-    "CreateElicitationRequest3.mode": "acp._schema_types.OpenString",
-    "CreateElicitationRequest4.mode": "acp._schema_types.OpenString",
-    "CreateElicitationResponse4.action": "acp._schema_types.OpenString",
-    "ElicitationPropertySchema6.type": "acp._schema_types.OpenString",
-    "MultiSelectItems2.type": "acp._schema_types.OpenString",
+OPEN_UNIONS = {
+    "CreateElicitationRequest": 2,
+    "CreateElicitationResponse": 3,
+    "ElicitationPropertySchema": 5,
+    "MultiSelectItems": 1,
 }
-OPEN_UNIONS = (
-    "CreateElicitationRequest",
-    "CreateElicitationResponse",
-    "ElicitationPropertySchema",
-    "MultiSelectItems",
-)
+
+
+def _inline_model_ref(definition: str, *steps: tuple[str, int | None]) -> str:
+    ref = f"#/$defs/{definition}"
+    for keyword, index in steps:
+        ref += f"#-datamodel-code-generator-#-{keyword}-#-special-#"
+        if index is not None:
+            ref += f"/{index}"
+    return ref
+
 
 # A few schema definitions share their name with a tagged SessionUpdate or
 # MultiSelectItems variant. Give the definition an internal base name so the public
@@ -65,6 +65,72 @@ MODEL_NAME_MAP = {
         "UsageUpdate",
     )
 }
+MODEL_NAME_MAP.update({
+    _inline_model_ref("AgentResponse", ("anyOf", 0), ("object", None)): "AgentResponseMessage",
+    _inline_model_ref("AgentResponse", ("anyOf", 1), ("object", None)): "AgentErrorMessage",
+    _inline_model_ref("ClientResponse", ("anyOf", 0), ("object", None)): "ClientResponseMessage",
+    _inline_model_ref("ClientResponse", ("anyOf", 1), ("object", None)): "ClientErrorMessage",
+    _inline_model_ref("SetSessionConfigOptionRequest", ("anyOf", 0), ("object", None)): (
+        "SetSessionConfigOptionBooleanRequest"
+    ),
+    _inline_model_ref("SetSessionConfigOptionRequest", ("anyOf", 1), ("object", None)): (
+        "SetSessionConfigOptionSelectRequest"
+    ),
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 0), ("allOf", None)): "AcceptElicitationResponse",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 1), ("object", None)): "DeclineElicitationResponse",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 2), ("object", None)): "CancelElicitationResponse",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 3), ("object", None)): "OtherElicitationResponse",
+    _inline_model_ref("ElicitationFormMode", ("anyOf", 0), ("allOf", None)): "ElicitationFormSessionMode",
+    _inline_model_ref("ElicitationFormMode", ("anyOf", 1), ("allOf", None)): "ElicitationFormRequestMode",
+    _inline_model_ref("ElicitationUrlMode", ("anyOf", 0), ("allOf", None)): "ElicitationUrlSessionMode",
+    _inline_model_ref("ElicitationUrlMode", ("anyOf", 1), ("allOf", None)): "ElicitationUrlRequestMode",
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 0), ("allOf", None)): ("ElicitationStringPropertySchema"),
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 1), ("allOf", None)): ("ElicitationNumberPropertySchema"),
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 2), ("allOf", None)): ("ElicitationIntegerPropertySchema"),
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 3), ("allOf", None)): ("ElicitationBooleanPropertySchema"),
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 4), ("allOf", None)): (
+        "ElicitationMultiSelectPropertySchema"
+    ),
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
+    _inline_model_ref("MultiSelectItems", ("anyOf", 0), ("allOf", None)): "StringMultiSelectItems",
+    _inline_model_ref("MultiSelectItems", ("anyOf", 1), ("object", None)): "OtherMultiSelectItems",
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("allOf", None)): (
+        "CreateFormElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", 0), ("allOf", None)): (
+        "CreateFormSessionElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", 1), ("allOf", None)): (
+        "CreateFormRequestElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("union_model-0", None)): (
+        "CreateFormSessionElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("union_model-1", None)): (
+        "CreateFormRequestElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("allOf", None)): (
+        "CreateUrlElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", 0), ("allOf", None)): (
+        "CreateUrlSessionElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", 1), ("allOf", None)): (
+        "CreateUrlRequestElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("union_model-0", None)): (
+        "CreateUrlSessionElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("union_model-1", None)): (
+        "CreateUrlRequestElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 2), ("anyOf", 0), ("allOf", None)): (
+        "CreateOtherSessionElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 2), ("anyOf", 1), ("allOf", None)): (
+        "CreateOtherRequestElicitationRequest"
+    ),
+})
 
 # datamodel-code-generator owns schema interpretation and its internal model names.
 # This block only preserves the Python names already published by the SDK.
@@ -87,11 +153,6 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
         "other",
     ]
 
-    AgentResponseMessage = AgentResponse1
-    AgentErrorMessage = AgentResponse2
-    ClientResponseMessage = ClientResponse1
-    ClientErrorMessage = ClientResponse2
-
     TextContentBlock = ContentBlockText
     ImageContentBlock = ContentBlockImage
     AudioContentBlock = ContentBlockAudio
@@ -105,11 +166,6 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
     AllowedOutcome = RequestPermissionOutcomeSelected
     EnvVarAuthMethod = AuthMethodEnvVarModel
     TerminalAuthMethod = AuthMethodTerminalModel
-    SetSessionConfigOptionBooleanRequest = SetSessionConfigOptionRequest1
-    SetSessionConfigOptionSelectRequest = SetSessionConfigOptionRequest2
-    SetSessionConfigOptionRequest1.__acp_public_name__ = "SetSessionConfigOptionBooleanRequest"
-    SetSessionConfigOptionRequest2.__acp_public_name__ = "SetSessionConfigOptionSelectRequest"
-
     UserMessageChunk = SessionUpdateUserMessageChunk
     AgentMessageChunk = SessionUpdateAgentMessageChunk
     AgentThoughtChunk = SessionUpdateAgentThoughtChunk
@@ -138,13 +194,9 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
     TerminalToolCallContent = ToolCallContentTerminal
 
     CreateOtherElicitationRequest = Union[
-        CreateElicitationRequest3,
-        CreateElicitationRequest4,
+        CreateOtherSessionElicitationRequest,
+        CreateOtherRequestElicitationRequest,
     ]
-    CreateFormSessionElicitationRequest = CreateElicitationRequest14
-    CreateFormRequestElicitationRequest = CreateElicitationRequest15
-    CreateUrlSessionElicitationRequest = CreateElicitationRequest24
-    CreateUrlRequestElicitationRequest = CreateElicitationRequest25
     CreateFormElicitationRequest = Union[
         CreateFormSessionElicitationRequest,
         CreateFormRequestElicitationRequest,
@@ -159,20 +211,12 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
         CreateOtherElicitationRequest,
     ]
 
-    AcceptElicitationResponse = CreateElicitationResponse1
-    DeclineElicitationResponse = CreateElicitationResponse2
-    CancelElicitationResponse = CreateElicitationResponse3
-    OtherElicitationResponse = CreateElicitationResponse4
     CreateElicitationResponse = Union[
         AcceptElicitationResponse,
         DeclineElicitationResponse,
         CancelElicitationResponse,
         OtherElicitationResponse,
     ]
-    ElicitationFormSessionMode = ElicitationFormMode1
-    ElicitationFormRequestMode = ElicitationFormMode2
-    ElicitationUrlSessionMode = ElicitationUrlMode1
-    ElicitationUrlRequestMode = ElicitationUrlMode2
     ElicitationMode = Union[
         ElicitationFormSessionMode,
         ElicitationFormRequestMode,
@@ -180,15 +224,7 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
         ElicitationUrlRequestMode,
     ]
 
-    ElicitationStringPropertySchema = ElicitationPropertySchema1
-    ElicitationNumberPropertySchema = ElicitationPropertySchema2
-    ElicitationIntegerPropertySchema = ElicitationPropertySchema3
-    ElicitationBooleanPropertySchema = ElicitationPropertySchema4
-    ElicitationMultiSelectPropertySchema = ElicitationPropertySchema5
-    ElicitationOtherPropertySchema = ElicitationPropertySchema6
     _StringMultiSelectItems = StringMultiSelectItemsBase
-    StringMultiSelectItems = MultiSelectItems1
-    OtherMultiSelectItems = MultiSelectItems2
 
     NesEditSuggestionVariant = NesSuggestionEdit
     NesJumpSuggestionVariant = NesSuggestionJump
@@ -264,7 +300,6 @@ def render_schema() -> str:
         schema_version="2020-12",
         schema_version_mode=VersionMode.Strict,
         type_mappings=list(UNSIGNED_TYPE_MAPPINGS),
-        type_overrides=CATCHALL_TYPE_OVERRIDES,
         generate_schema_validators=True,
         use_annotated=True,
         field_constraints=True,
@@ -277,13 +312,14 @@ def render_schema() -> str:
 
 
 def _schema_for_codegen(schema: dict[str, Any]) -> dict[str, Any]:
-    """Apply the fixed v1.19 compatibility patch required for open unions."""
+    """Drop open-union constraints that Pydantic cannot represent statically."""
     patched = copy.deepcopy(schema)
-    for name in OPEN_UNIONS:
+    for name, catchall_index in OPEN_UNIONS.items():
         try:
             del patched["$defs"][name]["discriminator"]
+            del patched["$defs"][name]["anyOf"][catchall_index]["not"]
         except KeyError:
-            raise ValueError(f"{name} no longer has the expected discriminator") from None
+            raise ValueError(f"{name} no longer has the expected open-union shape") from None
     return patched
 
 

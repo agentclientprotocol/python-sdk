@@ -8,7 +8,6 @@ from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
 from acp._schema_base import BaseModel
-from acp._schema_types import OpenString
 from pydantic import AnyUrl, ConfigDict, Field, RootModel, ValidationInfo, ValidatorFunctionWrapHandler, field_validator
 
 
@@ -262,7 +261,7 @@ class KillTerminalRequest(BaseModel):
     """
 
 
-class CreateElicitationRequest13(BaseModel):
+class CreateFormElicitationRequestBase(BaseModel):
     message: str
     """
     A human-readable message describing what input is needed.
@@ -278,7 +277,7 @@ class CreateElicitationRequest13(BaseModel):
     mode: Literal["form"] = "form"
 
 
-class CreateElicitationRequest23(BaseModel):
+class CreateUrlElicitationRequestBase(BaseModel):
     message: str
     """
     A human-readable message describing what input is needed.
@@ -317,11 +316,11 @@ class ElicitationRequestScope(BaseModel):
     """
 
 
-class ElicitationPropertySchema6(BaseModel):
+class ElicitationOtherPropertySchema(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    type: OpenString
+    type: str
     """
     Custom or future elicitation property schema type.
 
@@ -511,11 +510,11 @@ class BooleanPropertySchema(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class MultiSelectItems2(BaseModel):
+class OtherMultiSelectItems(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
-    type: OpenString
+    type: str
     """
     Custom or future multi-select item type.
 
@@ -555,7 +554,7 @@ class TitledMultiSelectItems(BaseModel):
     """
 
 
-class ElicitationUrlMode1(ElicitationSessionScope):
+class ElicitationUrlSessionMode(ElicitationSessionScope):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -566,7 +565,7 @@ class ElicitationUrlMode1(ElicitationSessionScope):
     """
 
 
-class ElicitationUrlMode2(ElicitationRequestScope):
+class ElicitationUrlRequestMode(ElicitationRequestScope):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -577,8 +576,8 @@ class ElicitationUrlMode2(ElicitationRequestScope):
     """
 
 
-class ElicitationUrlMode(RootModel[Union[ElicitationUrlMode1, ElicitationUrlMode2]]):
-    root: Union[ElicitationUrlMode1, ElicitationUrlMode2]
+class ElicitationUrlMode(RootModel[Union[ElicitationUrlSessionMode, ElicitationUrlRequestMode]]):
+    root: Union[ElicitationUrlSessionMode, ElicitationUrlRequestMode]
     """
     **UNSTABLE**
 
@@ -2022,7 +2021,7 @@ class SetSessionModeRequest(BaseModel):
     """
 
 
-class SetSessionConfigOptionRequest1(BaseModel):
+class SetSessionConfigOptionBooleanRequest(BaseModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the configuration option for.
@@ -2046,7 +2045,7 @@ class SetSessionConfigOptionRequest1(BaseModel):
     type: Literal["boolean"] = "boolean"
 
 
-class SetSessionConfigOptionRequest2(BaseModel):
+class SetSessionConfigOptionSelectRequest(BaseModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the configuration option for.
@@ -2348,7 +2347,7 @@ class KillTerminalResponse(BaseModel):
     """
 
 
-class CreateElicitationResponse2(BaseModel):
+class DeclineElicitationResponse(BaseModel):
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2360,7 +2359,7 @@ class CreateElicitationResponse2(BaseModel):
     action: Literal["decline"] = "decline"
 
 
-class CreateElicitationResponse3(BaseModel):
+class CancelElicitationResponse(BaseModel):
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2372,7 +2371,7 @@ class CreateElicitationResponse3(BaseModel):
     action: Literal["cancel"] = "cancel"
 
 
-class CreateElicitationResponse4(BaseModel):
+class OtherElicitationResponse(BaseModel):
     model_config = ConfigDict(
         extra="allow",
     )
@@ -2384,7 +2383,7 @@ class CreateElicitationResponse4(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    action: OpenString
+    action: str
     """
     Custom or future elicitation action.
 
@@ -2843,7 +2842,7 @@ class CreateTerminalRequest(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class CreateElicitationRequest21(ElicitationSessionScope):
+class CreateUrlSessionElicitationRequestBase(ElicitationSessionScope):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -2854,7 +2853,7 @@ class CreateElicitationRequest21(ElicitationSessionScope):
     """
 
 
-class CreateElicitationRequest22(ElicitationRequestScope):
+class CreateUrlRequestElicitationRequestBase(ElicitationRequestScope):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -2865,7 +2864,7 @@ class CreateElicitationRequest22(ElicitationRequestScope):
     """
 
 
-class CreateElicitationRequest24(CreateElicitationRequest21, CreateElicitationRequest23):
+class CreateUrlSessionElicitationRequest(CreateUrlSessionElicitationRequestBase, CreateUrlElicitationRequestBase):
     message: str
     """
     A human-readable message describing what input is needed.
@@ -2881,7 +2880,7 @@ class CreateElicitationRequest24(CreateElicitationRequest21, CreateElicitationRe
     mode: Literal["url"] = "url"
 
 
-class CreateElicitationRequest25(CreateElicitationRequest22, CreateElicitationRequest23):
+class CreateUrlRequestElicitationRequest(CreateUrlRequestElicitationRequestBase, CreateUrlElicitationRequestBase):
     message: str
     """
     A human-readable message describing what input is needed.
@@ -2897,7 +2896,7 @@ class CreateElicitationRequest25(CreateElicitationRequest22, CreateElicitationRe
     mode: Literal["url"] = "url"
 
 
-class CreateElicitationRequest3(ElicitationSessionScope):
+class CreateOtherSessionElicitationRequest(ElicitationSessionScope):
     model_config = ConfigDict(
         extra="allow",
     )
@@ -2913,7 +2912,7 @@ class CreateElicitationRequest3(ElicitationSessionScope):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: OpenString
+    mode: str
     """
     Custom or future elicitation mode.
 
@@ -2923,7 +2922,7 @@ class CreateElicitationRequest3(ElicitationSessionScope):
     """
 
 
-class CreateElicitationRequest4(ElicitationRequestScope):
+class CreateOtherRequestElicitationRequest(ElicitationRequestScope):
     model_config = ConfigDict(
         extra="allow",
     )
@@ -2939,7 +2938,7 @@ class CreateElicitationRequest4(ElicitationRequestScope):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-    mode: OpenString
+    mode: str
     """
     Custom or future elicitation mode.
 
@@ -2949,23 +2948,23 @@ class CreateElicitationRequest4(ElicitationRequestScope):
     """
 
 
-class ElicitationPropertySchema1(StringPropertySchema):
+class ElicitationStringPropertySchema(StringPropertySchema):
     type: Literal["string"] = "string"
 
 
-class ElicitationPropertySchema2(NumberPropertySchema):
+class ElicitationNumberPropertySchema(NumberPropertySchema):
     type: Literal["number"] = "number"
 
 
-class ElicitationPropertySchema3(IntegerPropertySchema):
+class ElicitationIntegerPropertySchema(IntegerPropertySchema):
     type: Literal["integer"] = "integer"
 
 
-class ElicitationPropertySchema4(BooleanPropertySchema):
+class ElicitationBooleanPropertySchema(BooleanPropertySchema):
     type: Literal["boolean"] = "boolean"
 
 
-class MultiSelectItems1(StringMultiSelectItemsBase):
+class StringMultiSelectItems(StringMultiSelectItemsBase):
     type: Literal["string"] = "string"
 
 
@@ -2986,7 +2985,7 @@ class MultiSelectPropertySchema(BaseModel):
     """
     Maximum number of items to select.
     """
-    items: Union[MultiSelectItems1, MultiSelectItems2, TitledMultiSelectItems]
+    items: Union[StringMultiSelectItems, OtherMultiSelectItems, TitledMultiSelectItems]
     """
     The items definition describing allowed values.
     """
@@ -3897,7 +3896,7 @@ class NesDiagnostic(BaseModel):
     """
 
 
-class ClientResponse2(BaseModel):
+class ClientErrorMessage(BaseModel):
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -3940,7 +3939,7 @@ class TerminalOutputResponse(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class CreateElicitationResponse1(ElicitationAcceptAction):
+class AcceptElicitationResponse(ElicitationAcceptAction):
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4068,11 +4067,11 @@ class Content(BaseModel):
     """
 
 
-class ElicitationPropertySchema5(MultiSelectPropertySchema):
+class ElicitationMultiSelectPropertySchema(MultiSelectPropertySchema):
     type: Literal["array"] = "array"
 
 
-class AgentResponse2(BaseModel):
+class AgentErrorMessage(BaseModel):
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -4491,12 +4490,12 @@ class ElicitationSchema(BaseModel):
             Dict[
                 str,
                 Union[
-                    ElicitationPropertySchema1,
-                    ElicitationPropertySchema2,
-                    ElicitationPropertySchema3,
-                    ElicitationPropertySchema4,
-                    ElicitationPropertySchema5,
-                    ElicitationPropertySchema6,
+                    ElicitationStringPropertySchema,
+                    ElicitationNumberPropertySchema,
+                    ElicitationIntegerPropertySchema,
+                    ElicitationBooleanPropertySchema,
+                    ElicitationMultiSelectPropertySchema,
+                    ElicitationOtherPropertySchema,
                 ],
             ]
         ],
@@ -4528,22 +4527,22 @@ class ElicitationSchema(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class ElicitationFormMode1(ElicitationSessionScope):
+class ElicitationFormSessionMode(ElicitationSessionScope):
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
     """
 
 
-class ElicitationFormMode2(ElicitationRequestScope):
+class ElicitationFormRequestMode(ElicitationRequestScope):
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
     """
 
 
-class ElicitationFormMode(RootModel[Union[ElicitationFormMode1, ElicitationFormMode2]]):
-    root: Union[ElicitationFormMode1, ElicitationFormMode2]
+class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, ElicitationFormRequestMode]]):
+    root: Union[ElicitationFormSessionMode, ElicitationFormRequestMode]
     """
     **UNSTABLE**
 
@@ -4978,7 +4977,7 @@ class SuggestNesRequest(BaseModel):
     """
 
 
-class ClientResponse1(BaseModel):
+class ClientResponseMessage(BaseModel):
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -4995,10 +4994,7 @@ class ClientResponse1(BaseModel):
         ConnectMcpResponse,
         DisconnectMcpResponse,
         Union[
-            CreateElicitationResponse1,
-            CreateElicitationResponse2,
-            CreateElicitationResponse3,
-            CreateElicitationResponse4,
+            AcceptElicitationResponse, DeclineElicitationResponse, CancelElicitationResponse, OtherElicitationResponse
         ],
         Any,
     ]
@@ -5007,8 +5003,8 @@ class ClientResponse1(BaseModel):
     """
 
 
-class ClientResponse(RootModel[Union[ClientResponse1, ClientResponse2]]):
-    root: Union[ClientResponse1, ClientResponse2]
+class ClientResponse(RootModel[Union[ClientResponseMessage, ClientErrorMessage]]):
+    root: Union[ClientResponseMessage, ClientErrorMessage]
     """
     A JSON-RPC response object.
     """
@@ -5099,21 +5095,21 @@ class ToolCallUpdate(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class CreateElicitationRequest11(ElicitationSessionScope):
+class CreateFormSessionElicitationRequestBase(ElicitationSessionScope):
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
     """
 
 
-class CreateElicitationRequest12(ElicitationRequestScope):
+class CreateFormRequestElicitationRequestBase(ElicitationRequestScope):
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
     """
 
 
-class CreateElicitationRequest14(CreateElicitationRequest11, CreateElicitationRequest13):
+class CreateFormSessionElicitationRequest(CreateFormSessionElicitationRequestBase, CreateFormElicitationRequestBase):
     message: str
     """
     A human-readable message describing what input is needed.
@@ -5129,7 +5125,7 @@ class CreateElicitationRequest14(CreateElicitationRequest11, CreateElicitationRe
     mode: Literal["form"] = "form"
 
 
-class CreateElicitationRequest15(CreateElicitationRequest12, CreateElicitationRequest13):
+class CreateFormRequestElicitationRequest(CreateFormRequestElicitationRequestBase, CreateFormElicitationRequestBase):
     message: str
     """
     A human-readable message describing what input is needed.
@@ -5461,7 +5457,7 @@ class ClientRequest(BaseModel):
             SuggestNesRequest,
             CloseNesRequest,
             MessageMcpRequest,
-            Union[SetSessionConfigOptionRequest1, SetSessionConfigOptionRequest2],
+            Union[SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest],
             Any,
         ]
     ] = None
@@ -5493,9 +5489,9 @@ class AgentRequest(BaseModel):
             MessageMcpRequest,
             DisconnectMcpRequest,
             Union[
-                Union[CreateElicitationRequest3, CreateElicitationRequest4],
-                Union[CreateElicitationRequest14, CreateElicitationRequest15],
-                Union[CreateElicitationRequest24, CreateElicitationRequest25],
+                Union[CreateOtherSessionElicitationRequest, CreateOtherRequestElicitationRequest],
+                Union[CreateFormSessionElicitationRequest, CreateFormRequestElicitationRequest],
+                Union[CreateUrlSessionElicitationRequest, CreateUrlRequestElicitationRequest],
             ],
             Any,
         ]
@@ -5569,7 +5565,7 @@ class AgentNotification(BaseModel):
     """
 
 
-class AgentResponse1(BaseModel):
+class AgentResponseMessage(BaseModel):
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -5601,8 +5597,8 @@ class AgentResponse1(BaseModel):
     """
 
 
-class AgentResponse(RootModel[Union[AgentResponse1, AgentResponse2]]):
-    root: Union[AgentResponse1, AgentResponse2]
+class AgentResponse(RootModel[Union[AgentResponseMessage, AgentErrorMessage]]):
+    root: Union[AgentResponseMessage, AgentErrorMessage]
     """
     A JSON-RPC response object.
     """
@@ -5626,11 +5622,6 @@ ToolKind = Literal[
     "other",
 ]
 
-AgentResponseMessage = AgentResponse1
-AgentErrorMessage = AgentResponse2
-ClientResponseMessage = ClientResponse1
-ClientErrorMessage = ClientResponse2
-
 TextContentBlock = ContentBlockText
 ImageContentBlock = ContentBlockImage
 AudioContentBlock = ContentBlockAudio
@@ -5644,11 +5635,6 @@ DeniedOutcome = RequestPermissionOutcomeCancelled
 AllowedOutcome = RequestPermissionOutcomeSelected
 EnvVarAuthMethod = AuthMethodEnvVarModel
 TerminalAuthMethod = AuthMethodTerminalModel
-SetSessionConfigOptionBooleanRequest = SetSessionConfigOptionRequest1
-SetSessionConfigOptionSelectRequest = SetSessionConfigOptionRequest2
-SetSessionConfigOptionRequest1.__acp_public_name__ = "SetSessionConfigOptionBooleanRequest"
-SetSessionConfigOptionRequest2.__acp_public_name__ = "SetSessionConfigOptionSelectRequest"
-
 UserMessageChunk = SessionUpdateUserMessageChunk
 AgentMessageChunk = SessionUpdateAgentMessageChunk
 AgentThoughtChunk = SessionUpdateAgentThoughtChunk
@@ -5677,13 +5663,9 @@ FileEditToolCallContent = ToolCallContentDiff
 TerminalToolCallContent = ToolCallContentTerminal
 
 CreateOtherElicitationRequest = Union[
-    CreateElicitationRequest3,
-    CreateElicitationRequest4,
+    CreateOtherSessionElicitationRequest,
+    CreateOtherRequestElicitationRequest,
 ]
-CreateFormSessionElicitationRequest = CreateElicitationRequest14
-CreateFormRequestElicitationRequest = CreateElicitationRequest15
-CreateUrlSessionElicitationRequest = CreateElicitationRequest24
-CreateUrlRequestElicitationRequest = CreateElicitationRequest25
 CreateFormElicitationRequest = Union[
     CreateFormSessionElicitationRequest,
     CreateFormRequestElicitationRequest,
@@ -5698,20 +5680,12 @@ CreateElicitationRequest = Union[
     CreateOtherElicitationRequest,
 ]
 
-AcceptElicitationResponse = CreateElicitationResponse1
-DeclineElicitationResponse = CreateElicitationResponse2
-CancelElicitationResponse = CreateElicitationResponse3
-OtherElicitationResponse = CreateElicitationResponse4
 CreateElicitationResponse = Union[
     AcceptElicitationResponse,
     DeclineElicitationResponse,
     CancelElicitationResponse,
     OtherElicitationResponse,
 ]
-ElicitationFormSessionMode = ElicitationFormMode1
-ElicitationFormRequestMode = ElicitationFormMode2
-ElicitationUrlSessionMode = ElicitationUrlMode1
-ElicitationUrlRequestMode = ElicitationUrlMode2
 ElicitationMode = Union[
     ElicitationFormSessionMode,
     ElicitationFormRequestMode,
@@ -5719,15 +5693,7 @@ ElicitationMode = Union[
     ElicitationUrlRequestMode,
 ]
 
-ElicitationStringPropertySchema = ElicitationPropertySchema1
-ElicitationNumberPropertySchema = ElicitationPropertySchema2
-ElicitationIntegerPropertySchema = ElicitationPropertySchema3
-ElicitationBooleanPropertySchema = ElicitationPropertySchema4
-ElicitationMultiSelectPropertySchema = ElicitationPropertySchema5
-ElicitationOtherPropertySchema = ElicitationPropertySchema6
 _StringMultiSelectItems = StringMultiSelectItemsBase
-StringMultiSelectItems = MultiSelectItems1
-OtherMultiSelectItems = MultiSelectItems2
 
 NesEditSuggestionVariant = NesSuggestionEdit
 NesJumpSuggestionVariant = NesSuggestionJump
