@@ -6,8 +6,9 @@ from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict
 
-from ..helpers import text_block, tool_content
 from ..schema import (
+    ContentToolCallContent,
+    TextContentBlock,
     ToolCallLocation,
     ToolCallProgress,
     ToolCallStart,
@@ -173,7 +174,7 @@ class _TrackedToolCall:
         status: Any = UNSET,
     ) -> ToolCallProgress:
         self._stream_buffer = (self._stream_buffer or "") + text
-        content = [tool_content(text_block(self._stream_buffer))]
+        content = [ContentToolCallContent(content=TextContentBlock(text=self._stream_buffer))]
         return self.update(title=title, status=status, content=content)
 
 

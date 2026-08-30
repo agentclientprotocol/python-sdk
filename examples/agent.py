@@ -12,8 +12,6 @@ from acp import (
     PromptResponse,
     SetSessionModeResponse,
     run_agent,
-    text_block,
-    update_agent_message,
 )
 from acp.interfaces import Client
 from acp.schema import (
@@ -43,7 +41,7 @@ class ExampleAgent(Agent):
         self._conn = conn
 
     async def _send_agent_message(self, session_id: str, content: Any) -> None:
-        update = content if isinstance(content, AgentMessageChunk) else update_agent_message(content)
+        update = content if isinstance(content, AgentMessageChunk) else AgentMessageChunk(content=content)
         await self._conn.session_update(session_id, update)
 
     async def initialize(
@@ -109,7 +107,7 @@ class ExampleAgent(Agent):
         if session_id not in self._sessions:
             self._sessions.add(session_id)
 
-        await self._send_agent_message(session_id, text_block("Client sent:"))
+        await self._send_agent_message(session_id, TextContentBlock(text="Client sent:"))
         for block in prompt:
             await self._send_agent_message(session_id, block)
         return PromptResponse(stop_reason="end_turn")

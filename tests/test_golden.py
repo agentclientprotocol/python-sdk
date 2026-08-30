@@ -7,33 +7,13 @@ from pathlib import Path
 import pytest
 from pydantic import BaseModel
 
-from acp import (
-    audio_block,
-    embedded_blob_resource,
-    embedded_text_resource,
-    image_block,
-    plan_entry,
-    resource_block,
-    resource_link_block,
-    start_edit_tool_call,
-    start_read_tool_call,
-    start_tool_call,
-    text_block,
-    tool_content,
-    tool_diff_content,
-    tool_terminal_ref,
-    update_agent_message_text,
-    update_agent_thought_text,
-    update_plan,
-    update_tool_call,
-    update_user_message_text,
-)
 from acp.schema import (
     AgentMessageChunk,
     AgentPlanUpdate,
     AgentThoughtChunk,
     AllowedOutcome,
     AudioContentBlock,
+    BlobResourceContents,
     CancelNotification,
     ConfigOptionUpdate,
     ContentToolCallContent,
@@ -45,6 +25,7 @@ from acp.schema import (
     InitializeResponse,
     NewSessionRequest,
     NewSessionResponse,
+    PlanEntry,
     PromptRequest,
     ReadTextFileRequest,
     ReadTextFileResponse,
@@ -55,6 +36,7 @@ from acp.schema import (
     SetSessionConfigOptionSelectRequest,
     TerminalToolCallContent,
     TextContentBlock,
+    TextResourceContents,
     ToolCallLocation,
     ToolCallProgress,
     ToolCallStart,
@@ -107,98 +89,122 @@ GOLDEN_CASES: dict[str, type[BaseModel]] = {
 _PARAMS = tuple(sorted(GOLDEN_CASES.items()))
 _PARAM_IDS = [name for name, _ in _PARAMS]
 
-GOLDEN_BUILDERS: dict[str, Callable[[], BaseModel]] = {
-    "content_text": lambda: text_block("What's the weather like today?"),
-    "content_image": lambda: image_block("iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...", "image/png"),
-    "content_audio": lambda: audio_block("UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAAB...", "audio/wav"),
-    "content_resource_text": lambda: resource_block(
-        embedded_text_resource(
-            "file:///home/user/script.py",
-            "def hello():\n    print('Hello, world!')",
+MODEL_BUILDERS: dict[str, Callable[[], BaseModel]] = {
+    "content_text": lambda: TextContentBlock(text="What's the weather like today?"),
+    "content_image": lambda: ImageContentBlock(
+        data="iVBORw0KGgoAAAANSUhEUgAAAAEAAAAB...",
+        mime_type="image/png",
+    ),
+    "content_audio": lambda: AudioContentBlock(
+        data="UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAAB...",
+        mime_type="audio/wav",
+    ),
+    "content_resource_text": lambda: EmbeddedResourceContentBlock(
+        resource=TextResourceContents(
+            uri="file:///home/user/script.py",
+            text="def hello():\n    print('Hello, world!')",
             mime_type="text/x-python",
         )
     ),
-    "content_resource_blob": lambda: resource_block(
-        embedded_blob_resource(
-            "file:///home/user/document.pdf",
-            "<b64>",
+    "content_resource_blob": lambda: EmbeddedResourceContentBlock(
+        resource=BlobResourceContents(
+            uri="file:///home/user/document.pdf",
+            blob="<b64>",
             mime_type="application/pdf",
         )
     ),
-    "content_resource_link": lambda: resource_link_block(
-        "document.pdf",
-        "file:///home/user/document.pdf",
+    "content_resource_link": lambda: ResourceContentBlock(
+        name="document.pdf",
+        uri="file:///home/user/document.pdf",
         mime_type="application/pdf",
         size=1_024_000,
     ),
-    "tool_content_content_text": lambda: tool_content(text_block("Analysis complete. Found 3 issues.")),
-    "tool_content_diff": lambda: tool_diff_content(
-        "/home/user/project/src/config.json",
-        '{\n  "debug": true\n}',
-        '{\n  "debug": false\n}',
+    "tool_content_content_text": lambda: ContentToolCallContent(
+        content=TextContentBlock(text="Analysis complete. Found 3 issues.")
     ),
-    "tool_content_diff_no_old": lambda: tool_diff_content(
-        "/home/user/project/src/config.json",
-        '{\n  "debug": true\n}',
+    "tool_content_diff": lambda: FileEditToolCallContent(
+        path="/home/user/project/src/config.json",
+        new_text='{\n  "debug": true\n}',
+        old_text='{\n  "debug": false\n}',
     ),
-    "tool_content_terminal": lambda: tool_terminal_ref("term_001"),
-    "session_update_user_message_chunk": lambda: update_user_message_text("What's the capital of France?"),
-    "session_update_agent_message_chunk": lambda: update_agent_message_text("The capital of France is Paris."),
-    "session_update_agent_thought_chunk": lambda: update_agent_thought_text("Thinking about best approach..."),
-    "session_update_plan": lambda: update_plan([
-        plan_entry(
-            "Check for syntax errors",
-            priority="high",
-            status="pending",
-        ),
-        plan_entry(
-            "Identify potential type issues",
-            priority="medium",
-            status="pending",
-        ),
-    ]),
-    "session_update_tool_call": lambda: start_tool_call(
-        "call_001",
-        "Reading configuration file",
+    "tool_content_diff_no_old": lambda: FileEditToolCallContent(
+        path="/home/user/project/src/config.json",
+        new_text='{\n  "debug": true\n}',
+    ),
+    "tool_content_terminal": lambda: TerminalToolCallContent(terminal_id="term_001"),
+    "session_update_user_message_chunk": lambda: UserMessageChunk(
+        content=TextContentBlock(text="What's the capital of France?")
+    ),
+    "session_update_agent_message_chunk": lambda: AgentMessageChunk(
+        content=TextContentBlock(text="The capital of France is Paris.")
+    ),
+    "session_update_agent_thought_chunk": lambda: AgentThoughtChunk(
+        content=TextContentBlock(text="Thinking about best approach...")
+    ),
+    "session_update_plan": lambda: AgentPlanUpdate(
+        entries=[
+            PlanEntry(
+                content="Check for syntax errors",
+                priority="high",
+                status="pending",
+            ),
+            PlanEntry(
+                content="Identify potential type issues",
+                priority="medium",
+                status="pending",
+            ),
+        ]
+    ),
+    "session_update_tool_call": lambda: ToolCallStart(
+        tool_call_id="call_001",
+        title="Reading configuration file",
         kind="read",
         status="pending",
     ),
-    "session_update_tool_call_read": lambda: start_read_tool_call(
-        "call_001",
-        "Reading configuration file",
-        "/home/user/project/src/config.json",
-    ),
-    "session_update_tool_call_edit": lambda: start_edit_tool_call(
-        "call_003",
-        "Apply edit",
-        "/home/user/project/src/config.json",
-        "print('hello')",
-    ),
-    "session_update_tool_call_locations_rawinput": lambda: start_tool_call(
-        "call_lr",
-        "Tracking file",
+    "session_update_tool_call_read": lambda: ToolCallStart(
+        tool_call_id="call_001",
+        title="Reading configuration file",
+        kind="read",
+        status="pending",
         locations=[ToolCallLocation(path="/home/user/project/src/config.json")],
         raw_input={"path": "/home/user/project/src/config.json"},
     ),
-    "session_update_tool_call_update_content": lambda: update_tool_call(
-        "call_001",
-        status="in_progress",
-        content=[tool_content(text_block("Found 3 configuration files..."))],
+    "session_update_tool_call_edit": lambda: ToolCallStart(
+        tool_call_id="call_003",
+        title="Apply edit",
+        kind="edit",
+        status="pending",
+        locations=[ToolCallLocation(path="/home/user/project/src/config.json")],
+        raw_input={
+            "path": "/home/user/project/src/config.json",
+            "content": "print('hello')",
+        },
     ),
-    "session_update_tool_call_update_more_fields": lambda: update_tool_call(
-        "call_010",
+    "session_update_tool_call_locations_rawinput": lambda: ToolCallStart(
+        tool_call_id="call_lr",
+        title="Tracking file",
+        locations=[ToolCallLocation(path="/home/user/project/src/config.json")],
+        raw_input={"path": "/home/user/project/src/config.json"},
+    ),
+    "session_update_tool_call_update_content": lambda: ToolCallProgress(
+        tool_call_id="call_001",
+        status="in_progress",
+        content=[ContentToolCallContent(content=TextContentBlock(text="Found 3 configuration files..."))],
+    ),
+    "session_update_tool_call_update_more_fields": lambda: ToolCallProgress(
+        tool_call_id="call_010",
         title="Processing changes",
         kind="edit",
         status="completed",
         locations=[ToolCallLocation(path="/home/user/project/src/config.json")],
         raw_input={"path": "/home/user/project/src/config.json"},
         raw_output={"result": "ok"},
-        content=[tool_content(text_block("Edit completed."))],
+        content=[ContentToolCallContent(content=TextContentBlock(text="Edit completed."))],
     ),
 }
 
-_HELPER_PARAMS = tuple(sorted(GOLDEN_BUILDERS.items()))
-_HELPER_IDS = [name for name, _ in _HELPER_PARAMS]
+_MODEL_PARAMS = tuple(sorted(MODEL_BUILDERS.items()))
+_MODEL_IDS = [name for name, _ in _MODEL_PARAMS]
 
 
 def _load_golden(name: str) -> dict:
@@ -228,10 +234,10 @@ def test_json_golden_roundtrip(name: str, model_cls: type[BaseModel]) -> None:
 
 @pytest.mark.parametrize(
     ("name", "builder"),
-    _HELPER_PARAMS,
-    ids=_HELPER_IDS,
+    _MODEL_PARAMS,
+    ids=_MODEL_IDS,
 )
-def test_helpers_match_golden(name: str, builder: Callable[[], BaseModel]) -> None:
+def test_models_match_golden(name: str, builder: Callable[[], BaseModel]) -> None:
     raw = _load_golden(name)
     model = builder()
     assert isinstance(model, BaseModel)

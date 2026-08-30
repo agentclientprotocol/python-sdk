@@ -17,7 +17,6 @@ from acp import (
     Client,
     RequestError,
     connect_to_agent,
-    text_block,
 )
 from acp.core import ClientSideConnection
 from acp.schema import (
@@ -254,7 +253,7 @@ def _print_text_content(content: object) -> None:
 async def _send_prompt(conn: ClientSideConnection, session_id: str, prompt: str, timeout: float | None) -> None:
     request = conn.prompt(
         session_id=session_id,
-        prompt=[text_block(prompt)],
+        prompt=[TextContentBlock(text=prompt)],
     )
     if timeout is None:
         await request

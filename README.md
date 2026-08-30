@@ -4,7 +4,7 @@
 
 # Agent Client Protocol (Python)
 
-Build ACP-compliant agents and clients in Python with generated schema models, asyncio transports, helper builders, and runnable demos.
+Build ACP-compliant agents and clients in Python with generated schema models, asyncio transports, and runnable demos.
 
 > Releases track the upstream ACP schema; contributions that tighten coverage or tooling are always welcome.
 
@@ -19,14 +19,14 @@ uv add agent-client-protocol
 ## At a glance
 
 - **Spec parity:** Generated Pydantic models in `acp.schema` track every ACP release so payloads stay valid.
+- **Direct construction:** Generated discriminator fields have defaults, so models can be instantiated directly.
 - **Runtime ergonomics:** Async base classes, stdio JSON-RPC plumbing, and lifecycle helpers keep custom agents tiny.
 - **Examples ready:** Streaming, permissions, Gemini bridge, and duet demos live under `examples/`.
-- **Helper builders:** `acp.helpers` mirrors the Go/TS SDK APIs for content blocks, tool calls, and session updates.
 - **Contrib utilities:** Session accumulators, tool call trackers, and permission brokers share patterns from real deployments.
 
 ## Who benefits
 
-- Agent authors who need typed models, helper builders, and event-stream ergonomics for ACP-compatible assistants.
+- Agent authors who need typed models and event-stream ergonomics for ACP-compatible assistants.
 - Client integrators embedding ACP parties inside Python applications or wrapping existing CLIs via stdio.
 - Tooling teams experimenting with permission flows, streaming UX, or Gemini bridges without re-implementing transports.
 See real adopters like kimi-cli in the [Use Cases list](https://agentclientprotocol.github.io/python-sdk/use-cases/).
@@ -52,7 +52,7 @@ See real adopters like kimi-cli in the [Use Cases list](https://agentclientproto
 
 ## Project layout
 
-- `src/acp/`: runtime package (agents, clients, transports, helpers, schema bindings, contrib utilities)
+- `src/acp/`: runtime package (agents, clients, transports, schema bindings, contrib utilities)
 - `schema/`: upstream JSON schema sources (regenerate via `make gen-all`)
 - `docs/`: MkDocs content backing the published documentation
 - `examples/`: runnable scripts covering stdio orchestration patterns

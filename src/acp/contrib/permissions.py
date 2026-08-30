@@ -3,8 +3,14 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable, Sequence
 from typing import Any
 
-from ..helpers import text_block, tool_content
-from ..schema import PermissionOption, RequestPermissionRequest, RequestPermissionResponse, ToolCallUpdate
+from ..schema import (
+    ContentToolCallContent,
+    PermissionOption,
+    RequestPermissionRequest,
+    RequestPermissionResponse,
+    TextContentBlock,
+    ToolCallUpdate,
+)
 from .tool_calls import ToolCallTracker, _copy_model_list
 
 
@@ -75,7 +81,7 @@ class PermissionBroker:
 
         if description:
             existing = tool_call.content or []
-            existing.append(tool_content(text_block(description)))
+            existing.append(ContentToolCallContent(content=TextContentBlock(text=description)))
             tool_call.content = existing
 
         option_set = tuple(option.model_copy(deep=True) for option in (options or self._default_options))
