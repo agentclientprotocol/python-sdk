@@ -51,46 +51,123 @@ def _inline_model_ref(definition: str, *steps: tuple[str, int | None]) -> str:
     return ref
 
 
-# A few schema definitions share their name with a tagged SessionUpdate or
-# MultiSelectItems variant. Give the definition an internal base name so the public
-# tagged model can keep the established SDK name without shadowing a class.
+def _variant_model_map(
+    definition: str,
+    keyword: str,
+    branch: str,
+    names: tuple[str, ...],
+) -> dict[str, str]:
+    return {_inline_model_ref(definition, (keyword, index), (branch, None)): name for index, name in enumerate(names)}
+
+
 MODEL_NAME_MAP = {
-    f"#/$defs/{name}": f"{name}Base"
-    for name in (
-        "AvailableCommandsUpdate",
-        "ConfigOptionUpdate",
-        "CurrentModeUpdate",
-        "SessionInfoUpdate",
-        "StringMultiSelectItems",
-        "UsageUpdate",
-    )
+    "#/$defs/AvailableCommandsUpdate": "AvailableCommandsUpdateBase",
+    "#/$defs/ConfigOptionUpdate": "ConfigOptionUpdateBase",
+    "#/$defs/CurrentModeUpdate": "CurrentModeUpdateBase",
+    "#/$defs/SessionInfoUpdate": "SessionInfoUpdateBase",
+    "#/$defs/StringMultiSelectItems": "StringMultiSelectItemsBase",
+    "#/$defs/UsageUpdate": "UsageUpdateBase",
 }
+for variant_map in (
+    _variant_model_map("AgentResponse", "anyOf", "object", ("AgentResponseMessage", "AgentErrorMessage")),
+    _variant_model_map("ClientResponse", "anyOf", "object", ("ClientResponseMessage", "ClientErrorMessage")),
+    _variant_model_map("AuthMethod", "anyOf", "allOf", ("EnvVarAuthMethod", "TerminalAuthMethod")),
+    _variant_model_map("McpServer", "anyOf", "allOf", ("HttpMcpServer", "SseMcpServer", "AcpMcpServer")),
+    _variant_model_map(
+        "SetSessionConfigOptionRequest",
+        "anyOf",
+        "object",
+        ("SetSessionConfigOptionBooleanRequest", "SetSessionConfigOptionSelectRequest"),
+    ),
+    _variant_model_map(
+        "ContentBlock",
+        "oneOf",
+        "allOf",
+        (
+            "TextContentBlock",
+            "ImageContentBlock",
+            "AudioContentBlock",
+            "ResourceContentBlock",
+            "EmbeddedResourceContentBlock",
+        ),
+    ),
+    _variant_model_map(
+        "ToolCallContent",
+        "oneOf",
+        "allOf",
+        ("ContentToolCallContent", "FileEditToolCallContent", "TerminalToolCallContent"),
+    ),
+    _variant_model_map(
+        "PlanUpdateContent",
+        "oneOf",
+        "allOf",
+        ("PlanUpdateItems", "PlanUpdateFile", "PlanUpdateMarkdown"),
+    ),
+    _variant_model_map(
+        "NesSuggestion",
+        "oneOf",
+        "allOf",
+        (
+            "NesEditSuggestionVariant",
+            "NesJumpSuggestionVariant",
+            "NesRenameSuggestionVariant",
+            "NesSearchAndReplaceSuggestionVariant",
+        ),
+    ),
+    _variant_model_map(
+        "SessionUpdate",
+        "oneOf",
+        "allOf",
+        (
+            "UserMessageChunk",
+            "AgentMessageChunk",
+            "AgentThoughtChunk",
+            "ToolCallStart",
+            "ToolCallProgress",
+            "AgentPlanUpdate",
+            "AgentPlanContentUpdate",
+            "AgentPlanRemovedUpdate",
+            "AvailableCommandsUpdate",
+            "CurrentModeUpdate",
+            "ConfigOptionUpdate",
+            "SessionInfoUpdate",
+            "UsageUpdate",
+        ),
+    ),
+    _variant_model_map(
+        "ElicitationFormMode",
+        "anyOf",
+        "allOf",
+        ("ElicitationFormSessionMode", "ElicitationFormRequestMode"),
+    ),
+    _variant_model_map(
+        "ElicitationUrlMode",
+        "anyOf",
+        "allOf",
+        ("ElicitationUrlSessionMode", "ElicitationUrlRequestMode"),
+    ),
+    _variant_model_map(
+        "ElicitationPropertySchema",
+        "anyOf",
+        "allOf",
+        (
+            "ElicitationStringPropertySchema",
+            "ElicitationNumberPropertySchema",
+            "ElicitationIntegerPropertySchema",
+            "ElicitationBooleanPropertySchema",
+            "ElicitationMultiSelectPropertySchema",
+        ),
+    ),
+):
+    MODEL_NAME_MAP.update(variant_map)
+
 MODEL_NAME_MAP.update({
-    _inline_model_ref("AgentResponse", ("anyOf", 0), ("object", None)): "AgentResponseMessage",
-    _inline_model_ref("AgentResponse", ("anyOf", 1), ("object", None)): "AgentErrorMessage",
-    _inline_model_ref("ClientResponse", ("anyOf", 0), ("object", None)): "ClientResponseMessage",
-    _inline_model_ref("ClientResponse", ("anyOf", 1), ("object", None)): "ClientErrorMessage",
-    _inline_model_ref("SetSessionConfigOptionRequest", ("anyOf", 0), ("object", None)): (
-        "SetSessionConfigOptionBooleanRequest"
-    ),
-    _inline_model_ref("SetSessionConfigOptionRequest", ("anyOf", 1), ("object", None)): (
-        "SetSessionConfigOptionSelectRequest"
-    ),
+    _inline_model_ref("RequestPermissionOutcome", ("oneOf", 0), ("object", None)): "DeniedOutcome",
+    _inline_model_ref("RequestPermissionOutcome", ("oneOf", 1), ("allOf", None)): "AllowedOutcome",
     _inline_model_ref("CreateElicitationResponse", ("anyOf", 0), ("allOf", None)): "AcceptElicitationResponse",
     _inline_model_ref("CreateElicitationResponse", ("anyOf", 1), ("object", None)): "DeclineElicitationResponse",
     _inline_model_ref("CreateElicitationResponse", ("anyOf", 2), ("object", None)): "CancelElicitationResponse",
     _inline_model_ref("CreateElicitationResponse", ("anyOf", 3), ("object", None)): "OtherElicitationResponse",
-    _inline_model_ref("ElicitationFormMode", ("anyOf", 0), ("allOf", None)): "ElicitationFormSessionMode",
-    _inline_model_ref("ElicitationFormMode", ("anyOf", 1), ("allOf", None)): "ElicitationFormRequestMode",
-    _inline_model_ref("ElicitationUrlMode", ("anyOf", 0), ("allOf", None)): "ElicitationUrlSessionMode",
-    _inline_model_ref("ElicitationUrlMode", ("anyOf", 1), ("allOf", None)): "ElicitationUrlRequestMode",
-    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 0), ("allOf", None)): ("ElicitationStringPropertySchema"),
-    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 1), ("allOf", None)): ("ElicitationNumberPropertySchema"),
-    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 2), ("allOf", None)): ("ElicitationIntegerPropertySchema"),
-    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 3), ("allOf", None)): ("ElicitationBooleanPropertySchema"),
-    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 4), ("allOf", None)): (
-        "ElicitationMultiSelectPropertySchema"
-    ),
     _inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
     _inline_model_ref("MultiSelectItems", ("anyOf", 0), ("allOf", None)): "StringMultiSelectItems",
     _inline_model_ref("MultiSelectItems", ("anyOf", 1), ("object", None)): "OtherMultiSelectItems",
@@ -153,46 +230,6 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
         "other",
     ]
 
-    TextContentBlock = ContentBlockText
-    ImageContentBlock = ContentBlockImage
-    AudioContentBlock = ContentBlockAudio
-    ResourceContentBlock = ContentBlockResourceLink
-    EmbeddedResourceContentBlock = ContentBlockResource
-
-    HttpMcpServer = McpServerHttpModel
-    SseMcpServer = McpServerSseModel
-    AcpMcpServer = McpServerAcpModel
-    DeniedOutcome = RequestPermissionOutcomeCancelled
-    AllowedOutcome = RequestPermissionOutcomeSelected
-    EnvVarAuthMethod = AuthMethodEnvVarModel
-    TerminalAuthMethod = AuthMethodTerminalModel
-    UserMessageChunk = SessionUpdateUserMessageChunk
-    AgentMessageChunk = SessionUpdateAgentMessageChunk
-    AgentThoughtChunk = SessionUpdateAgentThoughtChunk
-    ToolCallStart = SessionUpdateToolCall
-    ToolCallProgress = SessionUpdateToolCallUpdate
-    AgentPlanUpdate = SessionUpdatePlan
-    AgentPlanContentUpdate = SessionUpdatePlanUpdate
-    AgentPlanRemovedUpdate = SessionUpdatePlanRemoved
-
-    _AvailableCommandsUpdate = AvailableCommandsUpdateBase
-    _CurrentModeUpdate = CurrentModeUpdateBase
-    _ConfigOptionUpdate = ConfigOptionUpdateBase
-    _SessionInfoUpdate = SessionInfoUpdateBase
-    _UsageUpdate = UsageUpdateBase
-    AvailableCommandsUpdate = SessionUpdateAvailableCommandsUpdate
-    CurrentModeUpdate = SessionUpdateCurrentModeUpdate
-    ConfigOptionUpdate = SessionUpdateConfigOptionUpdate
-    SessionInfoUpdate = SessionUpdateSessionInfoUpdate
-    UsageUpdate = SessionUpdateUsageUpdate
-
-    PlanUpdateItems = PlanUpdateContentItems
-    PlanUpdateFile = PlanUpdateContentFile
-    PlanUpdateMarkdown = PlanUpdateContentMarkdown
-    ContentToolCallContent = ToolCallContentContent
-    FileEditToolCallContent = ToolCallContentDiff
-    TerminalToolCallContent = ToolCallContentTerminal
-
     CreateOtherElicitationRequest = Union[
         CreateOtherSessionElicitationRequest,
         CreateOtherRequestElicitationRequest,
@@ -224,12 +261,12 @@ COMPATIBILITY_ALIASES = textwrap.dedent("""
         ElicitationUrlRequestMode,
     ]
 
+    _AvailableCommandsUpdate = AvailableCommandsUpdateBase
+    _CurrentModeUpdate = CurrentModeUpdateBase
+    _ConfigOptionUpdate = ConfigOptionUpdateBase
+    _SessionInfoUpdate = SessionInfoUpdateBase
+    _UsageUpdate = UsageUpdateBase
     _StringMultiSelectItems = StringMultiSelectItemsBase
-
-    NesEditSuggestionVariant = NesSuggestionEdit
-    NesJumpSuggestionVariant = NesSuggestionJump
-    NesRenameSuggestionVariant = NesSuggestionRename
-    NesSearchAndReplaceSuggestionVariant = NesSuggestionSearchAndReplace
 
     class Jsonrpc(Enum):
         field_2_0 = "2.0"

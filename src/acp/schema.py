@@ -2243,7 +2243,7 @@ class ReadTextFileResponse(BaseModel):
     """
 
 
-class RequestPermissionOutcomeCancelled(BaseModel):
+class DeniedOutcome(BaseModel):
     outcome: Literal["cancelled"] = "cancelled"
 
 
@@ -2574,11 +2574,11 @@ class WriteTextFileRequest(BaseModel):
     """
 
 
-class ToolCallContentDiff(Diff):
+class FileEditToolCallContent(Diff):
     type: Literal["diff"] = "diff"
 
 
-class ToolCallContentTerminal(Terminal):
+class TerminalToolCallContent(Terminal):
     type: Literal["terminal"] = "terminal"
 
 
@@ -3202,32 +3202,12 @@ class NesContextCapabilities(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class AuthMethodEnvVarModel(AuthMethodEnvVar):
+class EnvVarAuthMethod(AuthMethodEnvVar):
     type: Literal["env_var"] = "env_var"
 
-    @field_validator("description", "link", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
 
-    @field_validator("vars", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class AuthMethodTerminalModel(AuthMethodTerminal):
+class TerminalAuthMethod(AuthMethodTerminal):
     type: Literal["terminal"] = "terminal"
-
-    @field_validator("description", "env", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-    @field_validator("args", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
 
 
 class ProviderInfo(BaseModel):
@@ -3408,15 +3388,15 @@ class PromptResponse(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class NesSuggestionJump(NesJumpSuggestion):
+class NesJumpSuggestionVariant(NesJumpSuggestion):
     kind: Literal["jump"] = "jump"
 
 
-class NesSuggestionRename(NesRenameSuggestion):
+class NesRenameSuggestionVariant(NesRenameSuggestion):
     kind: Literal["rename"] = "rename"
 
 
-class NesSuggestionSearchAndReplace(NesSearchAndReplaceSuggestion):
+class NesSearchAndReplaceSuggestionVariant(NesSearchAndReplaceSuggestion):
     kind: Literal["searchAndReplace"] = "searchAndReplace"
 
 
@@ -3472,20 +3452,30 @@ class Error(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class SessionUpdatePlanRemoved(PlanRemoved):
+class AgentPlanRemovedUpdate(PlanRemoved):
     session_update: Annotated[Literal["plan_removed"], Field(alias="sessionUpdate")] = "plan_removed"
 
 
-class SessionUpdateCurrentModeUpdate(CurrentModeUpdateBase):
+class CurrentModeUpdate(CurrentModeUpdateBase):
     session_update: Annotated[Literal["current_mode_update"], Field(alias="sessionUpdate")] = "current_mode_update"
 
 
-class SessionUpdateSessionInfoUpdate(SessionInfoUpdateBase):
+class SessionInfoUpdate(SessionInfoUpdateBase):
     session_update: Annotated[Literal["session_info_update"], Field(alias="sessionUpdate")] = "session_info_update"
 
+    @field_validator("title", "updated_at", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
-class SessionUpdateUsageUpdate(UsageUpdateBase):
+
+class UsageUpdate(UsageUpdateBase):
     session_update: Annotated[Literal["usage_update"], Field(alias="sessionUpdate")] = "usage_update"
+
+    @field_validator("cost", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class PlanEntry(BaseModel):
@@ -3535,11 +3525,11 @@ class Plan(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class PlanUpdateContentFile(PlanFile):
+class PlanUpdateFile(PlanFile):
     type: Literal["file"] = "file"
 
 
-class PlanUpdateContentMarkdown(PlanMarkdown):
+class PlanUpdateMarkdown(PlanMarkdown):
     type: Literal["markdown"] = "markdown"
 
 
@@ -3660,21 +3650,21 @@ class ClientNesCapabilities(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class McpServerHttpModel(McpServerHttp):
+class HttpMcpServer(McpServerHttp):
     type: Literal["http"] = "http"
 
 
-class McpServerSseModel(McpServerSse):
+class SseMcpServer(McpServerSse):
     type: Literal["sse"] = "sse"
 
 
-class McpServerAcpModel(McpServerAcp):
+class AcpMcpServer(McpServerAcp):
     type: Literal["acp"] = "acp"
 
 
 class LoadSessionRequest(BaseModel):
     mcp_servers: Annotated[
-        List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]], Field(alias="mcpServers")
+        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]], Field(alias="mcpServers")
     ]
     """
     List of MCP servers to connect to for this session.
@@ -3729,8 +3719,7 @@ class ForkSessionRequest(BaseModel):
     session.
     """
     mcp_servers: Annotated[
-        Optional[List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]]],
-        Field(alias="mcpServers"),
+        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]], Field(alias="mcpServers")
     ] = None
     """
     List of MCP servers to connect to for this session.
@@ -3769,8 +3758,7 @@ class ResumeSessionRequest(BaseModel):
     the request `cwd` matches the session's `cwd`.
     """
     mcp_servers: Annotated[
-        Optional[List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]]],
-        Field(alias="mcpServers"),
+        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]], Field(alias="mcpServers")
     ] = None
     """
     List of MCP servers to connect to for this session.
@@ -3907,7 +3895,7 @@ class ClientErrorMessage(BaseModel):
     """
 
 
-class RequestPermissionOutcomeSelected(SelectedPermissionOutcome):
+class AllowedOutcome(SelectedPermissionOutcome):
     outcome: Literal["selected"] = "selected"
 
 
@@ -4029,29 +4017,31 @@ class RejectNesNotification(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class ContentBlockText(TextContent):
+class TextContentBlock(TextContent):
     type: Literal["text"] = "text"
 
 
-class ContentBlockImage(ImageContent):
+class ImageContentBlock(ImageContent):
     type: Literal["image"] = "image"
 
 
-class ContentBlockAudio(AudioContent):
+class AudioContentBlock(AudioContent):
     type: Literal["audio"] = "audio"
 
 
-class ContentBlockResourceLink(ResourceLink):
+class ResourceContentBlock(ResourceLink):
     type: Literal["resource_link"] = "resource_link"
 
 
-class ContentBlockResource(EmbeddedResource):
+class EmbeddedResourceContentBlock(EmbeddedResource):
     type: Literal["resource"] = "resource"
 
 
 class Content(BaseModel):
     content: Annotated[
-        Union[ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource],
+        Union[
+            TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock
+        ],
         Field(discriminator="type"),
     ]
     """
@@ -4195,13 +4185,15 @@ class NesEditSuggestion(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class SessionUpdatePlan(Plan):
+class AgentPlanUpdate(Plan):
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")] = "plan"
 
 
 class ContentChunk(BaseModel):
     content: Annotated[
-        Union[ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource],
+        Union[
+            TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock
+        ],
         Field(discriminator="type"),
     ]
     """
@@ -4229,14 +4221,12 @@ class ContentChunk(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class PlanUpdateContentItems(PlanItems):
+class PlanUpdateItems(PlanItems):
     type: Literal["items"] = "items"
 
 
 class PlanUpdate(BaseModel):
-    plan: Annotated[
-        Union[PlanUpdateContentItems, PlanUpdateContentFile, PlanUpdateContentMarkdown], Field(discriminator="type")
-    ]
+    plan: Annotated[Union[PlanUpdateItems, PlanUpdateFile, PlanUpdateMarkdown], Field(discriminator="type")]
     """
     The updated plan content.
     """
@@ -4330,7 +4320,7 @@ class NewSessionRequest(BaseModel):
     additional roots are activated for the new session.
     """
     mcp_servers: Annotated[
-        List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]], Field(alias="mcpServers")
+        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]], Field(alias="mcpServers")
     ]
     """
     List of MCP (Model Context Protocol) servers the agent should connect to.
@@ -4358,7 +4348,11 @@ class PromptRequest(BaseModel):
     prompt: List[
         Annotated[
             Union[
-                ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource
+                TextContentBlock,
+                ImageContentBlock,
+                AudioContentBlock,
+                ResourceContentBlock,
+                EmbeddedResourceContentBlock,
             ],
             Field(discriminator="type"),
         ]
@@ -4424,9 +4418,7 @@ class NesSuggestContext(BaseModel):
 
 
 class RequestPermissionResponse(BaseModel):
-    outcome: Annotated[
-        Union[RequestPermissionOutcomeCancelled, RequestPermissionOutcomeSelected], Field(discriminator="outcome")
-    ]
+    outcome: Annotated[Union[DeniedOutcome, AllowedOutcome], Field(discriminator="outcome")]
     """
     The user's decision on the permission request.
     """
@@ -4472,7 +4464,7 @@ class DidChangeDocumentNotification(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class ToolCallContentContent(Content):
+class ContentToolCallContent(Content):
     type: Literal["content"] = "content"
 
 
@@ -4737,30 +4729,35 @@ class SetSessionConfigOptionResponse(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class NesSuggestionEdit(NesEditSuggestion):
+class NesEditSuggestionVariant(NesEditSuggestion):
     kind: Literal["edit"] = "edit"
 
 
-class SessionUpdateUserMessageChunk(ContentChunk):
+class UserMessageChunk(ContentChunk):
     session_update: Annotated[Literal["user_message_chunk"], Field(alias="sessionUpdate")] = "user_message_chunk"
 
 
-class SessionUpdateAgentMessageChunk(ContentChunk):
+class AgentMessageChunk(ContentChunk):
     session_update: Annotated[Literal["agent_message_chunk"], Field(alias="sessionUpdate")] = "agent_message_chunk"
 
 
-class SessionUpdateAgentThoughtChunk(ContentChunk):
+class AgentThoughtChunk(ContentChunk):
     session_update: Annotated[Literal["agent_thought_chunk"], Field(alias="sessionUpdate")] = "agent_thought_chunk"
 
 
-class SessionUpdatePlanUpdate(PlanUpdate):
+class AgentPlanContentUpdate(PlanUpdate):
     session_update: Annotated[Literal["plan_update"], Field(alias="sessionUpdate")] = "plan_update"
 
 
-class SessionUpdateAvailableCommandsUpdate(AvailableCommandsUpdateBase):
+class AvailableCommandsUpdate(AvailableCommandsUpdateBase):
     session_update: Annotated[Literal["available_commands_update"], Field(alias="sessionUpdate")] = (
         "available_commands_update"
     )
+
+    @field_validator("available_commands", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class ToolCall(BaseModel):
@@ -4786,7 +4783,8 @@ class ToolCall(BaseModel):
     content: Optional[
         List[
             Annotated[
-                Union[ToolCallContentContent, ToolCallContentDiff, ToolCallContentTerminal], Field(discriminator="type")
+                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
+                Field(discriminator="type"),
             ]
         ]
     ] = None
@@ -5056,7 +5054,8 @@ class ToolCallUpdate(BaseModel):
     content: Optional[
         List[
             Annotated[
-                Union[ToolCallContentContent, ToolCallContentDiff, ToolCallContentTerminal], Field(discriminator="type")
+                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
+                Field(discriminator="type"),
             ]
         ]
     ] = None
@@ -5210,7 +5209,12 @@ class NewSessionResponse(BaseModel):
 class SuggestNesResponse(BaseModel):
     suggestions: List[
         Annotated[
-            Union[NesSuggestionEdit, NesSuggestionJump, NesSuggestionRename, NesSuggestionSearchAndReplace],
+            Union[
+                NesEditSuggestionVariant,
+                NesJumpSuggestionVariant,
+                NesRenameSuggestionVariant,
+                NesSearchAndReplaceSuggestionVariant,
+            ],
             Field(discriminator="kind"),
         ]
     ]
@@ -5227,16 +5231,21 @@ class SuggestNesResponse(BaseModel):
     """
 
 
-class SessionUpdateToolCall(ToolCall):
+class ToolCallStart(ToolCall):
     session_update: Annotated[Literal["tool_call"], Field(alias="sessionUpdate")] = "tool_call"
 
 
-class SessionUpdateToolCallUpdate(ToolCallUpdate):
+class ToolCallProgress(ToolCallUpdate):
     session_update: Annotated[Literal["tool_call_update"], Field(alias="sessionUpdate")] = "tool_call_update"
 
 
-class SessionUpdateConfigOptionUpdate(ConfigOptionUpdateBase):
+class ConfigOptionUpdate(ConfigOptionUpdateBase):
     session_update: Annotated[Literal["config_option_update"], Field(alias="sessionUpdate")] = "config_option_update"
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class InitializeRequest(BaseModel):
@@ -5398,19 +5407,19 @@ class SessionNotification(BaseModel):
     """
     update: Annotated[
         Union[
-            SessionUpdateUserMessageChunk,
-            SessionUpdateAgentMessageChunk,
-            SessionUpdateAgentThoughtChunk,
-            SessionUpdateToolCall,
-            SessionUpdateToolCallUpdate,
-            SessionUpdatePlan,
-            SessionUpdatePlanUpdate,
-            SessionUpdatePlanRemoved,
-            SessionUpdateAvailableCommandsUpdate,
-            SessionUpdateCurrentModeUpdate,
-            SessionUpdateConfigOptionUpdate,
-            SessionUpdateSessionInfoUpdate,
-            SessionUpdateUsageUpdate,
+            UserMessageChunk,
+            AgentMessageChunk,
+            AgentThoughtChunk,
+            ToolCallStart,
+            ToolCallProgress,
+            AgentPlanUpdate,
+            AgentPlanContentUpdate,
+            AgentPlanRemovedUpdate,
+            AvailableCommandsUpdate,
+            CurrentModeUpdate,
+            ConfigOptionUpdate,
+            SessionInfoUpdate,
+            UsageUpdate,
         ],
         Field(discriminator="session_update"),
     ]
@@ -5522,7 +5531,7 @@ class InitializeResponse(BaseModel):
     Capabilities supported by the agent.
     """
     auth_methods: Annotated[
-        Optional[List[Union[AuthMethodEnvVarModel, AuthMethodTerminalModel, AuthMethodAgent]]],
+        Optional[List[Union[EnvVarAuthMethod, TerminalAuthMethod, AuthMethodAgent]]],
         Field(alias="authMethods", validate_default=True),
     ] = []
     """
@@ -5622,46 +5631,6 @@ ToolKind = Literal[
     "other",
 ]
 
-TextContentBlock = ContentBlockText
-ImageContentBlock = ContentBlockImage
-AudioContentBlock = ContentBlockAudio
-ResourceContentBlock = ContentBlockResourceLink
-EmbeddedResourceContentBlock = ContentBlockResource
-
-HttpMcpServer = McpServerHttpModel
-SseMcpServer = McpServerSseModel
-AcpMcpServer = McpServerAcpModel
-DeniedOutcome = RequestPermissionOutcomeCancelled
-AllowedOutcome = RequestPermissionOutcomeSelected
-EnvVarAuthMethod = AuthMethodEnvVarModel
-TerminalAuthMethod = AuthMethodTerminalModel
-UserMessageChunk = SessionUpdateUserMessageChunk
-AgentMessageChunk = SessionUpdateAgentMessageChunk
-AgentThoughtChunk = SessionUpdateAgentThoughtChunk
-ToolCallStart = SessionUpdateToolCall
-ToolCallProgress = SessionUpdateToolCallUpdate
-AgentPlanUpdate = SessionUpdatePlan
-AgentPlanContentUpdate = SessionUpdatePlanUpdate
-AgentPlanRemovedUpdate = SessionUpdatePlanRemoved
-
-_AvailableCommandsUpdate = AvailableCommandsUpdateBase
-_CurrentModeUpdate = CurrentModeUpdateBase
-_ConfigOptionUpdate = ConfigOptionUpdateBase
-_SessionInfoUpdate = SessionInfoUpdateBase
-_UsageUpdate = UsageUpdateBase
-AvailableCommandsUpdate = SessionUpdateAvailableCommandsUpdate
-CurrentModeUpdate = SessionUpdateCurrentModeUpdate
-ConfigOptionUpdate = SessionUpdateConfigOptionUpdate
-SessionInfoUpdate = SessionUpdateSessionInfoUpdate
-UsageUpdate = SessionUpdateUsageUpdate
-
-PlanUpdateItems = PlanUpdateContentItems
-PlanUpdateFile = PlanUpdateContentFile
-PlanUpdateMarkdown = PlanUpdateContentMarkdown
-ContentToolCallContent = ToolCallContentContent
-FileEditToolCallContent = ToolCallContentDiff
-TerminalToolCallContent = ToolCallContentTerminal
-
 CreateOtherElicitationRequest = Union[
     CreateOtherSessionElicitationRequest,
     CreateOtherRequestElicitationRequest,
@@ -5693,12 +5662,12 @@ ElicitationMode = Union[
     ElicitationUrlRequestMode,
 ]
 
+_AvailableCommandsUpdate = AvailableCommandsUpdateBase
+_CurrentModeUpdate = CurrentModeUpdateBase
+_ConfigOptionUpdate = ConfigOptionUpdateBase
+_SessionInfoUpdate = SessionInfoUpdateBase
+_UsageUpdate = UsageUpdateBase
 _StringMultiSelectItems = StringMultiSelectItemsBase
-
-NesEditSuggestionVariant = NesSuggestionEdit
-NesJumpSuggestionVariant = NesSuggestionJump
-NesRenameSuggestionVariant = NesSuggestionRename
-NesSearchAndReplaceSuggestionVariant = NesSuggestionSearchAndReplace
 
 
 class Jsonrpc(Enum):
