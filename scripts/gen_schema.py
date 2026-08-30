@@ -266,7 +266,6 @@ def render_schema() -> str:
         type_mappings=list(UNSIGNED_TYPE_MAPPINGS),
         type_overrides=CATCHALL_TYPE_OVERRIDES,
         generate_schema_validators=True,
-        use_attribute_docstrings=True,
         use_annotated=True,
         field_constraints=True,
         use_field_description=True,

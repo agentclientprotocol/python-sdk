@@ -13,9 +13,6 @@ from pydantic import AnyUrl, ConfigDict, Field, RootModel, ValidationInfo, Valid
 
 
 class ReadTextFileRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -48,9 +45,6 @@ class ReadTextFileRequest(BaseModel):
 
 
 class TextResourceContents(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     mime_type: Annotated[Optional[str], Field(alias="mimeType")] = None
     """
     MIME type describing the encoded media payload.
@@ -79,9 +73,6 @@ class TextResourceContents(BaseModel):
 
 
 class BlobResourceContents(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     blob: str
     """
     Base64-encoded bytes for a binary resource payload.
@@ -110,9 +101,6 @@ class BlobResourceContents(BaseModel):
 
 
 class Diff(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     path: str
     """
     The absolute file path being modified.
@@ -141,9 +129,6 @@ class Diff(BaseModel):
 
 
 class Terminal(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     terminal_id: Annotated[str, Field(alias="terminalId")]
     """
     Identifier of the terminal instance to embed in the content stream.
@@ -159,9 +144,6 @@ class Terminal(BaseModel):
 
 
 class ToolCallLocation(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     path: str
     """
     The absolute file path being accessed or modified.
@@ -186,9 +168,6 @@ class ToolCallLocation(BaseModel):
 
 
 class EnvVariable(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     The name of the environment variable.
@@ -208,9 +187,6 @@ class EnvVariable(BaseModel):
 
 
 class TerminalOutputRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -230,9 +206,6 @@ class TerminalOutputRequest(BaseModel):
 
 
 class ReleaseTerminalRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -252,9 +225,6 @@ class ReleaseTerminalRequest(BaseModel):
 
 
 class WaitForTerminalExitRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -274,9 +244,6 @@ class WaitForTerminalExitRequest(BaseModel):
 
 
 class KillTerminalRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -296,9 +263,6 @@ class KillTerminalRequest(BaseModel):
 
 
 class CreateElicitationRequest13(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -315,9 +279,6 @@ class CreateElicitationRequest13(BaseModel):
 
 
 class CreateElicitationRequest23(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -334,9 +295,6 @@ class CreateElicitationRequest23(BaseModel):
 
 
 class ElicitationSessionScope(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session this elicitation is tied to.
@@ -353,9 +311,6 @@ class ElicitationSessionScope(BaseModel):
 
 
 class ElicitationRequestScope(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     request_id: Annotated[Optional[Union[int, str]], Field(alias="requestId")]
     """
     The request this elicitation is tied to.
@@ -365,7 +320,6 @@ class ElicitationRequestScope(BaseModel):
 class ElicitationPropertySchema6(BaseModel):
     model_config = ConfigDict(
         extra="allow",
-        use_attribute_docstrings=True,
     )
     type: OpenString
     """
@@ -378,9 +332,6 @@ class ElicitationPropertySchema6(BaseModel):
 
 
 class EnumOption(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     const: str
     """
     The constant value for this option.
@@ -409,9 +360,6 @@ class EnumOption(BaseModel):
 
 
 class StringPropertySchema(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -464,9 +412,6 @@ class StringPropertySchema(BaseModel):
 
 
 class NumberPropertySchema(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -503,9 +448,6 @@ class NumberPropertySchema(BaseModel):
 
 
 class IntegerPropertySchema(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -542,9 +484,6 @@ class IntegerPropertySchema(BaseModel):
 
 
 class BooleanPropertySchema(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -575,7 +514,6 @@ class BooleanPropertySchema(BaseModel):
 class MultiSelectItems2(BaseModel):
     model_config = ConfigDict(
         extra="allow",
-        use_attribute_docstrings=True,
     )
     type: OpenString
     """
@@ -588,9 +526,6 @@ class MultiSelectItems2(BaseModel):
 
 
 class StringMultiSelectItemsBase(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     enum: List[str]
     """
     Allowed enum values.
@@ -606,9 +541,6 @@ class StringMultiSelectItemsBase(BaseModel):
 
 
 class TitledMultiSelectItems(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     any_of: Annotated[List[EnumOption], Field(alias="anyOf")]
     """
     Titled enum options.
@@ -624,9 +556,6 @@ class TitledMultiSelectItems(BaseModel):
 
 
 class ElicitationUrlMode1(ElicitationSessionScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -638,9 +567,6 @@ class ElicitationUrlMode1(ElicitationSessionScope):
 
 
 class ElicitationUrlMode2(ElicitationRequestScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -663,9 +589,6 @@ class ElicitationUrlMode(RootModel[Union[ElicitationUrlMode1, ElicitationUrlMode
 
 
 class DisconnectMcpRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The MCP-over-ACP connection to close.
@@ -681,9 +604,6 @@ class DisconnectMcpRequest(BaseModel):
 
 
 class PromptCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     image: Optional[bool] = False
     """
     Agent supports [`ContentBlock::Image`].
@@ -715,9 +635,6 @@ class PromptCapabilities(BaseModel):
 
 
 class McpCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     http: Optional[bool] = False
     """
     Agent supports [`McpServer::Http`].
@@ -750,9 +667,6 @@ class McpCapabilities(BaseModel):
 
 
 class SessionListCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -764,9 +678,6 @@ class SessionListCapabilities(BaseModel):
 
 
 class SessionDeleteCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -778,9 +689,6 @@ class SessionDeleteCapabilities(BaseModel):
 
 
 class SessionAdditionalDirectoriesCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -792,9 +700,6 @@ class SessionAdditionalDirectoriesCapabilities(BaseModel):
 
 
 class SessionForkCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -806,9 +711,6 @@ class SessionForkCapabilities(BaseModel):
 
 
 class SessionResumeCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -820,9 +722,6 @@ class SessionResumeCapabilities(BaseModel):
 
 
 class SessionCloseCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -834,9 +733,6 @@ class SessionCloseCapabilities(BaseModel):
 
 
 class LogoutCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -848,9 +744,6 @@ class LogoutCapabilities(BaseModel):
 
 
 class ProvidersCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -862,9 +755,6 @@ class ProvidersCapabilities(BaseModel):
 
 
 class NesDocumentDidOpenCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -876,9 +766,6 @@ class NesDocumentDidOpenCapabilities(BaseModel):
 
 
 class NesDocumentDidCloseCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -890,9 +777,6 @@ class NesDocumentDidCloseCapabilities(BaseModel):
 
 
 class NesDocumentDidSaveCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -904,9 +788,6 @@ class NesDocumentDidSaveCapabilities(BaseModel):
 
 
 class NesDocumentDidFocusCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -918,9 +799,6 @@ class NesDocumentDidFocusCapabilities(BaseModel):
 
 
 class NesRecentFilesCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
     """
     Maximum number of recent files the agent can use.
@@ -941,9 +819,6 @@ class NesRecentFilesCapabilities(BaseModel):
 
 
 class NesRelatedSnippetsCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -955,9 +830,6 @@ class NesRelatedSnippetsCapabilities(BaseModel):
 
 
 class NesEditHistoryCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
     """
     Maximum number of edit history entries the agent can use.
@@ -978,9 +850,6 @@ class NesEditHistoryCapabilities(BaseModel):
 
 
 class NesUserActionsCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
     """
     Maximum number of user actions the agent can use.
@@ -1001,9 +870,6 @@ class NesUserActionsCapabilities(BaseModel):
 
 
 class NesOpenFilesCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1015,9 +881,6 @@ class NesOpenFilesCapabilities(BaseModel):
 
 
 class NesDiagnosticsCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1029,9 +892,6 @@ class NesDiagnosticsCapabilities(BaseModel):
 
 
 class AuthEnvVar(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     The environment variable name (e.g. `"OPENAI_API_KEY"`).
@@ -1069,9 +929,6 @@ class AuthEnvVar(BaseModel):
 
 
 class AuthMethodEnvVar(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for this authentication method.
@@ -1113,9 +970,6 @@ class AuthMethodEnvVar(BaseModel):
 
 
 class AuthMethodTerminal(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for this authentication method.
@@ -1157,9 +1011,6 @@ class AuthMethodTerminal(BaseModel):
 
 
 class AuthMethodAgent(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for this authentication method.
@@ -1188,9 +1039,6 @@ class AuthMethodAgent(BaseModel):
 
 
 class Implementation(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     Intended for programmatic or logical use, but can be used as a display
@@ -1224,9 +1072,6 @@ class Implementation(BaseModel):
 
 
 class AuthenticateResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1238,9 +1083,6 @@ class AuthenticateResponse(BaseModel):
 
 
 class ProviderCurrentConfig(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     api_type: Annotated[
         Union[Literal["anthropic"], Literal["openai"], Literal["azure"], Literal["vertex"], Literal["bedrock"], str],
         Field(alias="apiType"),
@@ -1263,9 +1105,6 @@ class ProviderCurrentConfig(BaseModel):
 
 
 class SetProviderResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1277,9 +1116,6 @@ class SetProviderResponse(BaseModel):
 
 
 class DisableProviderResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1291,9 +1127,6 @@ class DisableProviderResponse(BaseModel):
 
 
 class LogoutResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1305,9 +1138,6 @@ class LogoutResponse(BaseModel):
 
 
 class SessionMode(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Stable identifier used to refer to this protocol object in later messages.
@@ -1336,9 +1166,6 @@ class SessionMode(BaseModel):
 
 
 class SessionConfigSelectOption(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     value: str
     """
     Unique identifier for this option value.
@@ -1367,9 +1194,6 @@ class SessionConfigSelectOption(BaseModel):
 
 
 class SessionConfigBoolean(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     current_value: Annotated[bool, Field(alias="currentValue")]
     """
     The current value of the boolean option.
@@ -1377,9 +1201,6 @@ class SessionConfigBoolean(BaseModel):
 
 
 class SessionInfo(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     Unique identifier for the session
@@ -1425,9 +1246,6 @@ class SessionInfo(BaseModel):
 
 
 class DeleteSessionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1439,9 +1257,6 @@ class DeleteSessionResponse(BaseModel):
 
 
 class CloseSessionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1453,9 +1268,6 @@ class CloseSessionResponse(BaseModel):
 
 
 class SetSessionModeResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1467,9 +1279,6 @@ class SetSessionModeResponse(BaseModel):
 
 
 class Usage(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     total_tokens: Annotated[int, Field(alias="totalTokens", ge=0)]
     """
     Sum of all token types across session.
@@ -1510,9 +1319,6 @@ class Usage(BaseModel):
 
 
 class StartNesResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for the newly started NES session.
@@ -1528,9 +1334,6 @@ class StartNesResponse(BaseModel):
 
 
 class Position(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     line: Annotated[int, Field(ge=0)]
     """
     Zero-based line number.
@@ -1550,9 +1353,6 @@ class Position(BaseModel):
 
 
 class NesJumpSuggestion(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -1576,9 +1376,6 @@ class NesJumpSuggestion(BaseModel):
 
 
 class NesRenameSuggestion(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -1606,9 +1403,6 @@ class NesRenameSuggestion(BaseModel):
 
 
 class NesSearchAndReplaceSuggestion(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -1640,9 +1434,6 @@ class NesSearchAndReplaceSuggestion(BaseModel):
 
 
 class CloseNesResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1654,9 +1445,6 @@ class CloseNesResponse(BaseModel):
 
 
 class PlanFile(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to update.
@@ -1676,9 +1464,6 @@ class PlanFile(BaseModel):
 
 
 class PlanMarkdown(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to update.
@@ -1698,9 +1483,6 @@ class PlanMarkdown(BaseModel):
 
 
 class PlanRemoved(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to remove.
@@ -1716,9 +1498,6 @@ class PlanRemoved(BaseModel):
 
 
 class UnstructuredCommandInput(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     hint: str
     """
     A hint to display when the input hasn't been provided yet
@@ -1734,9 +1513,6 @@ class UnstructuredCommandInput(BaseModel):
 
 
 class CurrentModeUpdateBase(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     current_mode_id: Annotated[str, Field(alias="currentModeId")]
     """
     The ID of the current mode
@@ -1752,9 +1528,6 @@ class CurrentModeUpdateBase(BaseModel):
 
 
 class SessionInfoUpdateBase(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     title: Optional[str] = None
     """
     Human-readable title for the session. Set to null to clear.
@@ -1774,9 +1547,6 @@ class SessionInfoUpdateBase(BaseModel):
 
 
 class Cost(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     amount: float
     """
     Total cumulative cost for session.
@@ -1796,9 +1566,6 @@ class Cost(BaseModel):
 
 
 class UsageUpdateBase(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     used: Annotated[int, Field(ge=0)]
     """
     Tokens currently in context.
@@ -1822,9 +1589,6 @@ class UsageUpdateBase(BaseModel):
 
 
 class CompleteElicitationNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The ID of the elicitation that completed.
@@ -1840,9 +1604,6 @@ class CompleteElicitationNotification(BaseModel):
 
 
 class MessageMcpNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The MCP-over-ACP connection this message is sent on.
@@ -1873,9 +1634,6 @@ class MessageMcpNotification(BaseModel):
 
 
 class FileSystemCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     read_text_file: Annotated[Optional[bool], Field(alias="readTextFile")] = False
     """
     Whether the Client supports `fs/read_text_file` requests.
@@ -1900,9 +1658,6 @@ class FileSystemCapabilities(BaseModel):
 
 
 class BooleanConfigOptionCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1914,9 +1669,6 @@ class BooleanConfigOptionCapabilities(BaseModel):
 
 
 class PlanCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1928,9 +1680,6 @@ class PlanCapabilities(BaseModel):
 
 
 class AuthCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     terminal: Optional[bool] = False
     """
     Whether the client supports `terminal` authentication methods.
@@ -1953,9 +1702,6 @@ class AuthCapabilities(BaseModel):
 
 
 class ElicitationFormCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1967,9 +1713,6 @@ class ElicitationFormCapabilities(BaseModel):
 
 
 class ElicitationUrlCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1981,9 +1724,6 @@ class ElicitationUrlCapabilities(BaseModel):
 
 
 class NesJumpCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -1995,9 +1735,6 @@ class NesJumpCapabilities(BaseModel):
 
 
 class NesRenameCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2009,9 +1746,6 @@ class NesRenameCapabilities(BaseModel):
 
 
 class NesSearchAndReplaceCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2023,9 +1757,6 @@ class NesSearchAndReplaceCapabilities(BaseModel):
 
 
 class AuthenticateRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     method_id: Annotated[str, Field(alias="methodId")]
     """
     The ID of the authentication method to use.
@@ -2042,9 +1773,6 @@ class AuthenticateRequest(BaseModel):
 
 
 class ListProvidersRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2056,9 +1784,6 @@ class ListProvidersRequest(BaseModel):
 
 
 class SetProviderRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     provider_id: Annotated[str, Field(alias="providerId")]
     """
     Provider ID to configure.
@@ -2090,9 +1815,6 @@ class SetProviderRequest(BaseModel):
 
 
 class DisableProviderRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     provider_id: Annotated[str, Field(alias="providerId")]
     """
     Provider ID to disable.
@@ -2108,9 +1830,6 @@ class DisableProviderRequest(BaseModel):
 
 
 class LogoutRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2122,9 +1841,6 @@ class LogoutRequest(BaseModel):
 
 
 class HttpHeader(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     The name of the HTTP header.
@@ -2144,9 +1860,6 @@ class HttpHeader(BaseModel):
 
 
 class McpServerHttp(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -2170,9 +1883,6 @@ class McpServerHttp(BaseModel):
 
 
 class McpServerSse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -2196,9 +1906,6 @@ class McpServerSse(BaseModel):
 
 
 class McpServerAcp(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -2221,9 +1928,6 @@ class McpServerAcp(BaseModel):
 
 
 class McpServerStdio(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     Human-readable name identifying this MCP server.
@@ -2251,9 +1955,6 @@ class McpServerStdio(BaseModel):
 
 
 class ListSessionsRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     cwd: Optional[str] = None
     """
     Filter sessions by working directory. Must be an absolute path.
@@ -2273,9 +1974,6 @@ class ListSessionsRequest(BaseModel):
 
 
 class DeleteSessionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to delete.
@@ -2291,9 +1989,6 @@ class DeleteSessionRequest(BaseModel):
 
 
 class CloseSessionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to close.
@@ -2309,9 +2004,6 @@ class CloseSessionRequest(BaseModel):
 
 
 class SetSessionModeRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the mode for.
@@ -2331,9 +2023,6 @@ class SetSessionModeRequest(BaseModel):
 
 
 class SetSessionConfigOptionRequest1(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the configuration option for.
@@ -2358,9 +2047,6 @@ class SetSessionConfigOptionRequest1(BaseModel):
 
 
 class SetSessionConfigOptionRequest2(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to set the configuration option for.
@@ -2384,9 +2070,6 @@ class SetSessionConfigOptionRequest2(BaseModel):
 
 
 class WorkspaceFolder(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     uri: str
     """
     The URI of the folder.
@@ -2406,9 +2089,6 @@ class WorkspaceFolder(BaseModel):
 
 
 class NesRepository(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     The repository name.
@@ -2432,9 +2112,6 @@ class NesRepository(BaseModel):
 
 
 class NesRecentFile(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     uri: str
     """
     The URI of the file.
@@ -2458,9 +2135,6 @@ class NesRecentFile(BaseModel):
 
 
 class NesExcerpt(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     start_line: Annotated[int, Field(alias="startLine", ge=0)]
     """
     The start line of the excerpt (zero-based).
@@ -2484,9 +2158,6 @@ class NesExcerpt(BaseModel):
 
 
 class NesEditHistoryEntry(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     uri: str
     """
     The URI of the edited file.
@@ -2506,9 +2177,6 @@ class NesEditHistoryEntry(BaseModel):
 
 
 class NesUserAction(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     action: str
     """
     The kind of action (e.g., "insertChar", "cursorMovement").
@@ -2536,9 +2204,6 @@ class NesUserAction(BaseModel):
 
 
 class CloseNesRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the NES session to close.
@@ -2554,9 +2219,6 @@ class CloseNesRequest(BaseModel):
 
 
 class WriteTextFileResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2568,9 +2230,6 @@ class WriteTextFileResponse(BaseModel):
 
 
 class ReadTextFileResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     content: str
     """
     Content payload returned by this response.
@@ -2586,16 +2245,10 @@ class ReadTextFileResponse(BaseModel):
 
 
 class RequestPermissionOutcomeCancelled(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     outcome: Literal["cancelled"] = "cancelled"
 
 
 class SelectedPermissionOutcome(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     option_id: Annotated[str, Field(alias="optionId")]
     """
     The ID of the option the user selected.
@@ -2611,9 +2264,6 @@ class SelectedPermissionOutcome(BaseModel):
 
 
 class CreateTerminalResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     terminal_id: Annotated[str, Field(alias="terminalId")]
     """
     The unique identifier for the created terminal.
@@ -2629,9 +2279,6 @@ class CreateTerminalResponse(BaseModel):
 
 
 class TerminalExitStatus(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     exit_code: Annotated[Optional[int], Field(alias="exitCode", ge=0)] = None
     """
     The process exit code (may be null if terminated by signal).
@@ -2656,9 +2303,6 @@ class TerminalExitStatus(BaseModel):
 
 
 class ReleaseTerminalResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2670,9 +2314,6 @@ class ReleaseTerminalResponse(BaseModel):
 
 
 class WaitForTerminalExitResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     exit_code: Annotated[Optional[int], Field(alias="exitCode", ge=0)] = None
     """
     The process exit code (may be null if terminated by signal).
@@ -2697,9 +2338,6 @@ class WaitForTerminalExitResponse(BaseModel):
 
 
 class KillTerminalResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2711,9 +2349,6 @@ class KillTerminalResponse(BaseModel):
 
 
 class CreateElicitationResponse2(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2726,9 +2361,6 @@ class CreateElicitationResponse2(BaseModel):
 
 
 class CreateElicitationResponse3(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2743,7 +2375,6 @@ class CreateElicitationResponse3(BaseModel):
 class CreateElicitationResponse4(BaseModel):
     model_config = ConfigDict(
         extra="allow",
-        use_attribute_docstrings=True,
     )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -2771,9 +2402,6 @@ class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]
 
 
 class ElicitationAcceptAction(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     content: Optional[Dict[str, Any]] = None
     """
     The user-provided content, if any, as an object matching the requested schema.
@@ -2781,9 +2409,6 @@ class ElicitationAcceptAction(BaseModel):
 
 
 class ConnectMcpResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The unique identifier for this MCP-over-ACP connection.
@@ -2799,9 +2424,6 @@ class ConnectMcpResponse(BaseModel):
 
 
 class DisconnectMcpResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -2813,9 +2435,6 @@ class DisconnectMcpResponse(BaseModel):
 
 
 class CancelNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to cancel operations for.
@@ -2831,9 +2450,6 @@ class CancelNotification(BaseModel):
 
 
 class DidOpenDocumentNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2865,9 +2481,6 @@ class DidOpenDocumentNotification(BaseModel):
 
 
 class DidCloseDocumentNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2887,9 +2500,6 @@ class DidCloseDocumentNotification(BaseModel):
 
 
 class DidSaveDocumentNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2909,9 +2519,6 @@ class DidSaveDocumentNotification(BaseModel):
 
 
 class AcceptNesNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -2931,9 +2538,6 @@ class AcceptNesNotification(BaseModel):
 
 
 class CancelRequestNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     request_id: Annotated[Optional[Union[int, str]], Field(alias="requestId")]
     """
     The ID of the request to cancel.
@@ -2949,9 +2553,6 @@ class CancelRequestNotification(BaseModel):
 
 
 class WriteTextFileRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -2975,23 +2576,14 @@ class WriteTextFileRequest(BaseModel):
 
 
 class ToolCallContentDiff(Diff):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["diff"] = "diff"
 
 
 class ToolCallContentTerminal(Terminal):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["terminal"] = "terminal"
 
 
 class Annotations(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     audience: Optional[List[Literal["assistant", "user"]]] = None
     """
     Intended recipients for this content, such as the user or assistant.
@@ -3025,9 +2617,6 @@ class Annotations(BaseModel):
 
 
 class TextContent(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -3052,9 +2641,6 @@ class TextContent(BaseModel):
 
 
 class ImageContent(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -3087,9 +2673,6 @@ class ImageContent(BaseModel):
 
 
 class AudioContent(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -3118,9 +2701,6 @@ class AudioContent(BaseModel):
 
 
 class ResourceLink(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -3165,9 +2745,6 @@ class ResourceLink(BaseModel):
 
 
 class EmbeddedResource(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     annotations: Optional[Annotations] = None
     """
     Optional annotations that help clients decide how to display or route this content.
@@ -3192,9 +2769,6 @@ class EmbeddedResource(BaseModel):
 
 
 class PermissionOption(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     option_id: Annotated[str, Field(alias="optionId")]
     """
     Unique identifier for this permission option.
@@ -3218,9 +2792,6 @@ class PermissionOption(BaseModel):
 
 
 class CreateTerminalRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -3273,9 +2844,6 @@ class CreateTerminalRequest(BaseModel):
 
 
 class CreateElicitationRequest21(ElicitationSessionScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -3287,9 +2855,6 @@ class CreateElicitationRequest21(ElicitationSessionScope):
 
 
 class CreateElicitationRequest22(ElicitationRequestScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
     The unique identifier for this elicitation.
@@ -3301,9 +2866,6 @@ class CreateElicitationRequest22(ElicitationRequestScope):
 
 
 class CreateElicitationRequest24(CreateElicitationRequest21, CreateElicitationRequest23):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -3320,9 +2882,6 @@ class CreateElicitationRequest24(CreateElicitationRequest21, CreateElicitationRe
 
 
 class CreateElicitationRequest25(CreateElicitationRequest22, CreateElicitationRequest23):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -3341,7 +2900,6 @@ class CreateElicitationRequest25(CreateElicitationRequest22, CreateElicitationRe
 class CreateElicitationRequest3(ElicitationSessionScope):
     model_config = ConfigDict(
         extra="allow",
-        use_attribute_docstrings=True,
     )
     message: str
     """
@@ -3368,7 +2926,6 @@ class CreateElicitationRequest3(ElicitationSessionScope):
 class CreateElicitationRequest4(ElicitationRequestScope):
     model_config = ConfigDict(
         extra="allow",
-        use_attribute_docstrings=True,
     )
     message: str
     """
@@ -3393,44 +2950,26 @@ class CreateElicitationRequest4(ElicitationRequestScope):
 
 
 class ElicitationPropertySchema1(StringPropertySchema):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["string"] = "string"
 
 
 class ElicitationPropertySchema2(NumberPropertySchema):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["number"] = "number"
 
 
 class ElicitationPropertySchema3(IntegerPropertySchema):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["integer"] = "integer"
 
 
 class ElicitationPropertySchema4(BooleanPropertySchema):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["boolean"] = "boolean"
 
 
 class MultiSelectItems1(StringMultiSelectItemsBase):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["string"] = "string"
 
 
 class MultiSelectPropertySchema(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     title: Optional[str] = None
     """
     Optional title for the property.
@@ -3476,9 +3015,6 @@ class MultiSelectPropertySchema(BaseModel):
 
 
 class ConnectMcpRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     server_id: Annotated[str, Field(alias="serverId")]
     """
     The ACP MCP server ID that was provided by the component declaring the MCP server.
@@ -3494,9 +3030,6 @@ class ConnectMcpRequest(BaseModel):
 
 
 class MessageMcpRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     connection_id: Annotated[str, Field(alias="connectionId")]
     """
     The MCP-over-ACP connection this message is sent on.
@@ -3522,9 +3055,6 @@ class MessageMcpRequest(BaseModel):
 
 
 class SessionCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     list: Optional[SessionListCapabilities] = None
     """
     Whether the agent supports `session/list`.
@@ -3594,9 +3124,6 @@ class SessionCapabilities(BaseModel):
 
 
 class AgentAuthCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     logout: Optional[LogoutCapabilities] = None
     """
     Whether the agent supports the logout method.
@@ -3620,9 +3147,6 @@ class AgentAuthCapabilities(BaseModel):
 
 
 class NesDocumentDidChangeCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     sync_kind: Annotated[Literal["full", "incremental"], Field(alias="syncKind")]
     """
     The sync kind the agent wants: `"full"` or `"incremental"`.
@@ -3638,9 +3162,6 @@ class NesDocumentDidChangeCapabilities(BaseModel):
 
 
 class NesContextCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     recent_files: Annotated[Optional[NesRecentFilesCapabilities], Field(alias="recentFiles")] = None
     """
     Whether the agent wants recent files context.
@@ -3683,9 +3204,6 @@ class NesContextCapabilities(BaseModel):
 
 
 class AuthMethodEnvVarModel(AuthMethodEnvVar):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["env_var"] = "env_var"
 
     @field_validator("description", "link", mode="wrap")
@@ -3700,9 +3218,6 @@ class AuthMethodEnvVarModel(AuthMethodEnvVar):
 
 
 class AuthMethodTerminalModel(AuthMethodTerminal):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["terminal"] = "terminal"
 
     @field_validator("description", "env", mode="wrap")
@@ -3717,9 +3232,6 @@ class AuthMethodTerminalModel(AuthMethodTerminal):
 
 
 class ProviderInfo(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     provider_id: Annotated[str, Field(alias="providerId")]
     """
     Provider identifier, for example "main" or "openai".
@@ -3756,9 +3268,6 @@ class ProviderInfo(BaseModel):
 
 
 class SessionModeState(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     current_mode_id: Annotated[str, Field(alias="currentModeId")]
     """
     The current mode the Agent is in.
@@ -3783,9 +3292,6 @@ class SessionModeState(BaseModel):
 
 
 class SessionConfigOptionBoolean(SessionConfigBoolean):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for the configuration option.
@@ -3816,9 +3322,6 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
 
 
 class SessionConfigSelectGroup(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     group: str
     """
     Unique identifier for this group.
@@ -3847,9 +3350,6 @@ class SessionConfigSelectGroup(BaseModel):
 
 
 class ListSessionsResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     sessions: List[SessionInfo]
     """
     Array of session information objects
@@ -3880,9 +3380,6 @@ class ListSessionsResponse(BaseModel):
 
 
 class PromptResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     stop_reason: Annotated[
         Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"], Field(alias="stopReason")
     ]
@@ -3913,30 +3410,18 @@ class PromptResponse(BaseModel):
 
 
 class NesSuggestionJump(NesJumpSuggestion):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     kind: Literal["jump"] = "jump"
 
 
 class NesSuggestionRename(NesRenameSuggestion):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     kind: Literal["rename"] = "rename"
 
 
 class NesSuggestionSearchAndReplace(NesSearchAndReplaceSuggestion):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     kind: Literal["searchAndReplace"] = "searchAndReplace"
 
 
 class Range(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     start: Position
     """
     The start position (inclusive).
@@ -3956,9 +3441,6 @@ class Range(BaseModel):
 
 
 class Error(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     code: Union[
         Literal[-32700],
         Literal[-32600],
@@ -3992,37 +3474,22 @@ class Error(BaseModel):
 
 
 class SessionUpdatePlanRemoved(PlanRemoved):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["plan_removed"], Field(alias="sessionUpdate")] = "plan_removed"
 
 
 class SessionUpdateCurrentModeUpdate(CurrentModeUpdateBase):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["current_mode_update"], Field(alias="sessionUpdate")] = "current_mode_update"
 
 
 class SessionUpdateSessionInfoUpdate(SessionInfoUpdateBase):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["session_info_update"], Field(alias="sessionUpdate")] = "session_info_update"
 
 
 class SessionUpdateUsageUpdate(UsageUpdateBase):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["usage_update"], Field(alias="sessionUpdate")] = "usage_update"
 
 
 class PlanEntry(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     content: str
     """
     Human-readable description of what this task aims to accomplish.
@@ -4047,9 +3514,6 @@ class PlanEntry(BaseModel):
 
 
 class Plan(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     entries: List[PlanEntry]
     """
     The list of tasks to be accomplished.
@@ -4073,23 +3537,14 @@ class Plan(BaseModel):
 
 
 class PlanUpdateContentFile(PlanFile):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["file"] = "file"
 
 
 class PlanUpdateContentMarkdown(PlanMarkdown):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["markdown"] = "markdown"
 
 
 class PlanItems(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     plan_id: Annotated[str, Field(alias="planId")]
     """
     The plan ID to update.
@@ -4124,9 +3579,6 @@ class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
 
 
 class SessionConfigOptionsCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     boolean: Optional[BooleanConfigOptionCapabilities] = None
     """
     Whether the client supports boolean session configuration options.
@@ -4152,9 +3604,6 @@ class SessionConfigOptionsCapabilities(BaseModel):
 
 
 class ElicitationCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     form: Optional[ElicitationFormCapabilities] = None
     """
     Whether the client supports form-based elicitation.
@@ -4185,9 +3634,6 @@ class ElicitationCapabilities(BaseModel):
 
 
 class ClientNesCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     jump: Optional[NesJumpCapabilities] = None
     """
     Whether the client supports the `jump` suggestion kind.
@@ -4216,30 +3662,18 @@ class ClientNesCapabilities(BaseModel):
 
 
 class McpServerHttpModel(McpServerHttp):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["http"] = "http"
 
 
 class McpServerSseModel(McpServerSse):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["sse"] = "sse"
 
 
 class McpServerAcpModel(McpServerAcp):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["acp"] = "acp"
 
 
 class LoadSessionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     mcp_servers: Annotated[
         List[Union[McpServerHttpModel, McpServerSseModel, McpServerAcpModel, McpServerStdio]], Field(alias="mcpServers")
     ]
@@ -4279,9 +3713,6 @@ class LoadSessionRequest(BaseModel):
 
 
 class ForkSessionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to fork.
@@ -4321,9 +3752,6 @@ class ForkSessionRequest(BaseModel):
 
 
 class ResumeSessionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to resume.
@@ -4364,9 +3792,6 @@ class ResumeSessionRequest(BaseModel):
 
 
 class StartNesRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     workspace_uri: Annotated[Optional[str], Field(alias="workspaceUri")] = None
     """
     The root URI of the workspace.
@@ -4395,9 +3820,6 @@ class StartNesRequest(BaseModel):
 
 
 class NesRelatedSnippet(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     uri: str
     """
     The URI of the file containing the snippets.
@@ -4417,9 +3839,6 @@ class NesRelatedSnippet(BaseModel):
 
 
 class NesOpenFile(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     uri: str
     """
     The URI of the file.
@@ -4452,9 +3871,6 @@ class NesOpenFile(BaseModel):
 
 
 class NesDiagnostic(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     uri: str
     """
     The URI of the file containing the diagnostic.
@@ -4482,9 +3898,6 @@ class NesDiagnostic(BaseModel):
 
 
 class ClientResponse2(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -4496,16 +3909,10 @@ class ClientResponse2(BaseModel):
 
 
 class RequestPermissionOutcomeSelected(SelectedPermissionOutcome):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     outcome: Literal["selected"] = "selected"
 
 
 class TerminalOutputResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     output: str
     """
     The terminal output captured so far.
@@ -4534,9 +3941,6 @@ class TerminalOutputResponse(BaseModel):
 
 
 class CreateElicitationResponse1(ElicitationAcceptAction):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4549,9 +3953,6 @@ class CreateElicitationResponse1(ElicitationAcceptAction):
 
 
 class TextDocumentContentChangeEvent(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     range: Optional[Range] = None
     """
     The range of the document that changed. If `None`, the entire content is replaced.
@@ -4571,9 +3972,6 @@ class TextDocumentContentChangeEvent(BaseModel):
 
 
 class DidFocusDocumentNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -4605,9 +4003,6 @@ class DidFocusDocumentNotification(BaseModel):
 
 
 class RejectNesNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -4636,44 +4031,26 @@ class RejectNesNotification(BaseModel):
 
 
 class ContentBlockText(TextContent):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["text"] = "text"
 
 
 class ContentBlockImage(ImageContent):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["image"] = "image"
 
 
 class ContentBlockAudio(AudioContent):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["audio"] = "audio"
 
 
 class ContentBlockResourceLink(ResourceLink):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["resource_link"] = "resource_link"
 
 
 class ContentBlockResource(EmbeddedResource):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["resource"] = "resource"
 
 
 class Content(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     content: Annotated[
         Union[ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource],
         Field(discriminator="type"),
@@ -4692,16 +4069,10 @@ class Content(BaseModel):
 
 
 class ElicitationPropertySchema5(MultiSelectPropertySchema):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["array"] = "array"
 
 
 class AgentResponse2(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -4713,9 +4084,6 @@ class AgentResponse2(BaseModel):
 
 
 class NesDocumentEventCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     did_open: Annotated[Optional[NesDocumentDidOpenCapabilities], Field(alias="didOpen")] = None
     """
     Whether the agent wants `document/didOpen` events.
@@ -4752,9 +4120,6 @@ class NesDocumentEventCapabilities(BaseModel):
 
 
 class ListProvidersResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     providers: List[ProviderInfo]
     """
     Configurable providers with current routing info suitable for UI display.
@@ -4770,9 +4135,6 @@ class ListProvidersResponse(BaseModel):
 
 
 class SessionConfigSelect(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     current_value: Annotated[str, Field(alias="currentValue")]
     """
     The currently selected value.
@@ -4784,9 +4146,6 @@ class SessionConfigSelect(BaseModel):
 
 
 class NesTextEdit(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     range: Range
     """
     The range to replace.
@@ -4806,9 +4165,6 @@ class NesTextEdit(BaseModel):
 
 
 class NesEditSuggestion(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for accept/reject tracking.
@@ -4841,16 +4197,10 @@ class NesEditSuggestion(BaseModel):
 
 
 class SessionUpdatePlan(Plan):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")] = "plan"
 
 
 class ContentChunk(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     content: Annotated[
         Union[ContentBlockText, ContentBlockImage, ContentBlockAudio, ContentBlockResourceLink, ContentBlockResource],
         Field(discriminator="type"),
@@ -4881,16 +4231,10 @@ class ContentChunk(BaseModel):
 
 
 class PlanUpdateContentItems(PlanItems):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["items"] = "items"
 
 
 class PlanUpdate(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     plan: Annotated[
         Union[PlanUpdateContentItems, PlanUpdateContentFile, PlanUpdateContentMarkdown], Field(discriminator="type")
     ]
@@ -4908,9 +4252,6 @@ class PlanUpdate(BaseModel):
 
 
 class AvailableCommand(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     name: str
     """
     Command name (e.g., `create_plan`, `research_codebase`).
@@ -4939,9 +4280,6 @@ class AvailableCommand(BaseModel):
 
 
 class AvailableCommandsUpdateBase(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     available_commands: Annotated[List[AvailableCommand], Field(alias="availableCommands")]
     """
     Commands the agent can execute
@@ -4957,9 +4295,6 @@ class AvailableCommandsUpdateBase(BaseModel):
 
 
 class ClientSessionCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     config_options: Annotated[Optional[SessionConfigOptionsCapabilities], Field(alias="configOptions")] = None
     """
     Config option capabilities supported by the client.
@@ -4983,9 +4318,6 @@ class ClientSessionCapabilities(BaseModel):
 
 
 class NewSessionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     cwd: str
     """
     The working directory for this session. Must be an absolute path.
@@ -5020,9 +4352,6 @@ class NewSessionRequest(BaseModel):
 
 
 class PromptRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to send this user message to
@@ -5061,9 +4390,6 @@ class PromptRequest(BaseModel):
 
 
 class NesSuggestContext(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     recent_files: Annotated[Optional[List[NesRecentFile]], Field(alias="recentFiles")] = None
     """
     Recently accessed files.
@@ -5099,9 +4425,6 @@ class NesSuggestContext(BaseModel):
 
 
 class RequestPermissionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     outcome: Annotated[
         Union[RequestPermissionOutcomeCancelled, RequestPermissionOutcomeSelected], Field(discriminator="outcome")
     ]
@@ -5119,9 +4442,6 @@ class RequestPermissionResponse(BaseModel):
 
 
 class DidChangeDocumentNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this notification.
@@ -5154,16 +4474,10 @@ class DidChangeDocumentNotification(BaseModel):
 
 
 class ToolCallContentContent(Content):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Literal["content"] = "content"
 
 
 class ElicitationSchema(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     type: Optional[Literal["object"]] = "object"
     """
     Type discriminator. Always `"object"`.
@@ -5215,9 +4529,6 @@ class ElicitationSchema(BaseModel):
 
 
 class ElicitationFormMode1(ElicitationSessionScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
@@ -5225,9 +4536,6 @@ class ElicitationFormMode1(ElicitationSessionScope):
 
 
 class ElicitationFormMode2(ElicitationRequestScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
@@ -5246,9 +4554,6 @@ class ElicitationFormMode(RootModel[Union[ElicitationFormMode1, ElicitationFormM
 
 
 class NesEventCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     document: Optional[NesDocumentEventCapabilities] = None
     """
     Document event capabilities.
@@ -5269,9 +4574,6 @@ class NesEventCapabilities(BaseModel):
 
 
 class SessionConfigOptionSelect(SessionConfigSelect):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: str
     """
     Unique identifier for the configuration option.
@@ -5302,9 +4604,6 @@ class SessionConfigOptionSelect(SessionConfigSelect):
 
 
 class LoadSessionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     modes: Optional[SessionModeState] = None
     """
     Initial mode state if supported by the Agent
@@ -5341,9 +4640,6 @@ class LoadSessionResponse(BaseModel):
 
 
 class ForkSessionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     Unique identifier for the newly created forked session.
@@ -5384,9 +4680,6 @@ class ForkSessionResponse(BaseModel):
 
 
 class ResumeSessionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     modes: Optional[SessionModeState] = None
     """
     Initial mode state if supported by the Agent
@@ -5423,9 +4716,6 @@ class ResumeSessionResponse(BaseModel):
 
 
 class SetSessionConfigOptionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     config_options: Annotated[
         List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]],
         Field(alias="configOptions"),
@@ -5449,53 +4739,32 @@ class SetSessionConfigOptionResponse(BaseModel):
 
 
 class NesSuggestionEdit(NesEditSuggestion):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     kind: Literal["edit"] = "edit"
 
 
 class SessionUpdateUserMessageChunk(ContentChunk):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["user_message_chunk"], Field(alias="sessionUpdate")] = "user_message_chunk"
 
 
 class SessionUpdateAgentMessageChunk(ContentChunk):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["agent_message_chunk"], Field(alias="sessionUpdate")] = "agent_message_chunk"
 
 
 class SessionUpdateAgentThoughtChunk(ContentChunk):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["agent_thought_chunk"], Field(alias="sessionUpdate")] = "agent_thought_chunk"
 
 
 class SessionUpdatePlanUpdate(PlanUpdate):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["plan_update"], Field(alias="sessionUpdate")] = "plan_update"
 
 
 class SessionUpdateAvailableCommandsUpdate(AvailableCommandsUpdateBase):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["available_commands_update"], Field(alias="sessionUpdate")] = (
         "available_commands_update"
     )
 
 
 class ToolCall(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     tool_call_id: Annotated[str, Field(alias="toolCallId")]
     """
     Unique identifier for this tool call within the session.
@@ -5559,9 +4828,6 @@ class ToolCall(BaseModel):
 
 
 class ConfigOptionUpdateBase(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     config_options: Annotated[
         List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]],
         Field(alias="configOptions"),
@@ -5580,9 +4846,6 @@ class ConfigOptionUpdateBase(BaseModel):
 
 
 class ClientCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     fs: Annotated[Optional[FileSystemCapabilities], Field(validate_default=True)] = {
         "readTextFile": False,
         "writeTextFile": False,
@@ -5677,9 +4940,6 @@ class ClientCapabilities(BaseModel):
 
 
 class SuggestNesRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -5719,9 +4979,6 @@ class SuggestNesRequest(BaseModel):
 
 
 class ClientResponse1(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
@@ -5758,9 +5015,6 @@ class ClientResponse(RootModel[Union[ClientResponse1, ClientResponse2]]):
 
 
 class ClientNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     method: str
     """
     The notification method name.
@@ -5785,9 +5039,6 @@ class ClientNotification(BaseModel):
 
 
 class ToolCallUpdate(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     tool_call_id: Annotated[str, Field(alias="toolCallId")]
     """
     The ID of the tool call being updated.
@@ -5849,9 +5100,6 @@ class ToolCallUpdate(BaseModel):
 
 
 class CreateElicitationRequest11(ElicitationSessionScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
@@ -5859,9 +5107,6 @@ class CreateElicitationRequest11(ElicitationSessionScope):
 
 
 class CreateElicitationRequest12(ElicitationRequestScope):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     requested_schema: Annotated[ElicitationSchema, Field(alias="requestedSchema")]
     """
     A JSON Schema describing the form fields to present to the user.
@@ -5869,9 +5114,6 @@ class CreateElicitationRequest12(ElicitationRequestScope):
 
 
 class CreateElicitationRequest14(CreateElicitationRequest11, CreateElicitationRequest13):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -5888,9 +5130,6 @@ class CreateElicitationRequest14(CreateElicitationRequest11, CreateElicitationRe
 
 
 class CreateElicitationRequest15(CreateElicitationRequest12, CreateElicitationRequest13):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     message: str
     """
     A human-readable message describing what input is needed.
@@ -5907,9 +5146,6 @@ class CreateElicitationRequest15(CreateElicitationRequest12, CreateElicitationRe
 
 
 class NesCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     events: Optional[NesEventCapabilities] = None
     """
     Events the agent wants to receive.
@@ -5934,9 +5170,6 @@ class NesCapabilities(BaseModel):
 
 
 class NewSessionResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     Unique identifier for the created session.
@@ -5979,9 +5212,6 @@ class NewSessionResponse(BaseModel):
 
 
 class SuggestNesResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     suggestions: List[
         Annotated[
             Union[NesSuggestionEdit, NesSuggestionJump, NesSuggestionRename, NesSuggestionSearchAndReplace],
@@ -6002,30 +5232,18 @@ class SuggestNesResponse(BaseModel):
 
 
 class SessionUpdateToolCall(ToolCall):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["tool_call"], Field(alias="sessionUpdate")] = "tool_call"
 
 
 class SessionUpdateToolCallUpdate(ToolCallUpdate):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["tool_call_update"], Field(alias="sessionUpdate")] = "tool_call_update"
 
 
 class SessionUpdateConfigOptionUpdate(ConfigOptionUpdateBase):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_update: Annotated[Literal["config_option_update"], Field(alias="sessionUpdate")] = "config_option_update"
 
 
 class InitializeRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
     """
     The latest protocol version supported by the client.
@@ -6067,9 +5285,6 @@ class InitializeRequest(BaseModel):
 
 
 class RequestPermissionRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session ID for this request.
@@ -6093,9 +5308,6 @@ class RequestPermissionRequest(BaseModel):
 
 
 class AgentCapabilities(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     load_session: Annotated[Optional[bool], Field(alias="loadSession")] = False
     """
     Whether the agent supports `session/load`.
@@ -6184,9 +5396,6 @@ class AgentCapabilities(BaseModel):
 
 
 class SessionNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session this update pertains to.
@@ -6223,9 +5432,6 @@ class SessionNotification(BaseModel):
 
 
 class ClientRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: Optional[Union[int, str]]
     """
     The request id used to correlate the matching response.
@@ -6265,9 +5471,6 @@ class ClientRequest(BaseModel):
 
 
 class AgentRequest(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: Optional[Union[int, str]]
     """
     The request id used to correlate the matching response.
@@ -6303,9 +5506,6 @@ class AgentRequest(BaseModel):
 
 
 class InitializeResponse(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
     """
     The protocol version the client specified if supported by the agent,
@@ -6359,9 +5559,6 @@ class InitializeResponse(BaseModel):
 
 
 class AgentNotification(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     method: str
     """
     The notification method name.
@@ -6373,9 +5570,6 @@ class AgentNotification(BaseModel):
 
 
 class AgentResponse1(BaseModel):
-    model_config = ConfigDict(
-        use_attribute_docstrings=True,
-    )
     id: Optional[Union[int, str]]
     """
     The id of the request this response answers.
