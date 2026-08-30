@@ -22,6 +22,7 @@ classifiers = [
 ]
 dependencies = [
     "pydantic>=2.7",
+    "pydantic-core>=2.18.1",
 ]
 
 
@@ -32,7 +33,7 @@ Documentation = "https://agentclientprotocol.github.io/python-sdk/"
 
 [dependency-groups]
 dev = [
-    "datamodel-code-generator>=0.71.0",
+    "datamodel-code-generator==0.71.0",
     "pytest>=7.2.0",
     "pytest-asyncio>=0.21.0",
     "tox-uv>=1.11.3",

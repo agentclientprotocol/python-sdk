@@ -1,1115 +1,437 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
-import ast
+import argparse
 import copy
+import difflib
 import json
-import re
 import subprocess
 import sys
-import tempfile
 import textwrap
-from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from datamodel_code_generator import (
+    DataModelType,
+    Formatter,
+    InputFileType,
+    LiteralType,
+    PythonVersion,
+    generate,
+)
+from datamodel_code_generator.enums import NamingStrategy, VersionMode
+from datamodel_code_generator.validators import ModelValidators, ValidatorDefinition, ValidatorMode
+from pydantic.alias_generators import to_snake
+
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_DIR = ROOT / "schema"
-SCHEMA_JSON = SCHEMA_DIR / "schema.json"
-VERSION_FILE = SCHEMA_DIR / "VERSION"
+SCHEMA_JSON = ROOT / "schema" / "schema.json"
+VERSION_FILE = ROOT / "schema" / "VERSION"
 SCHEMA_OUT = ROOT / "src" / "acp" / "schema.py"
 
-STDIO_TYPE_LITERAL = 'Literal["2#-datamodel-code-generator-#-object-#-special-#"]'
-MODELS_TO_REMOVE = [
-    "AgentClientProtocol",
-    "AgentClientProtocol1",
-    "AgentClientProtocol2",
-    "AgentClientProtocol3",
-    "AgentClientProtocol4",
-    "AgentClientProtocol5",
-    "AgentClientProtocol6",
-    "AgentClientProtocol7",
-]
-
-# Map of numbered classes produced by datamodel-code-generator to descriptive names.
-# Keep this in sync with the Rust/TypeScript SDK nomenclature.
-RENAME_MAP: dict[str, str] = {
-    "AgentResponse1": "AgentResponseMessage",
-    "AgentResponse2": "AgentErrorMessage",
-    "ClientResponse1": "ClientResponseMessage",
-    "ClientResponse2": "ClientErrorMessage",
-    "ContentBlock1": "TextContentBlock",
-    "ContentBlock2": "ImageContentBlock",
-    "ContentBlock3": "AudioContentBlock",
-    "ContentBlock4": "ResourceContentBlock",
-    "ContentBlock5": "EmbeddedResourceContentBlock",
-    "McpServer1": "HttpMcpServer",
-    "McpServer2": "SseMcpServer",
-    "McpServer3": "AcpMcpServer",
-    "RequestPermissionOutcome1": "DeniedOutcome",
-    "RequestPermissionOutcome2": "AllowedOutcome",
-    "AuthMethod1": "EnvVarAuthMethod",
-    "AuthMethod2": "TerminalAuthMethod",
-    "SessionConfigOption1": "SessionConfigOptionSelect",
-    "SessionConfigOption2": "SessionConfigOptionBoolean",
-    "SetSessionConfigOptionRequest1": "SetSessionConfigOptionBooleanRequest",
-    "SetSessionConfigOptionRequest2": "SetSessionConfigOptionSelectRequest",
-    "SessionUpdate1": "UserMessageChunk",
-    "SessionUpdate2": "AgentMessageChunk",
-    "SessionUpdate3": "AgentThoughtChunk",
-    "SessionUpdate4": "ToolCallStart",
-    "SessionUpdate5": "ToolCallProgress",
-    "SessionUpdate6": "AgentPlanUpdate",
-    "SessionUpdate7": "AgentPlanContentUpdate",
-    "SessionUpdate8": "AgentPlanRemovedUpdate",
-    "SessionUpdate9": "AvailableCommandsUpdate",
-    "SessionUpdate10": "CurrentModeUpdate",
-    "SessionUpdate11": "ConfigOptionUpdate",
-    "SessionUpdate12": "SessionInfoUpdate",
-    "SessionUpdate13": "UsageUpdate",
-    "PlanUpdateContent1": "PlanUpdateItems",
-    "PlanUpdateContent2": "PlanUpdateFile",
-    "PlanUpdateContent3": "PlanUpdateMarkdown",
-    "ToolCallContent1": "ContentToolCallContent",
-    "ToolCallContent2": "FileEditToolCallContent",
-    "ToolCallContent3": "TerminalToolCallContent",
-    "CreateElicitationRequest1": "CreateFormSessionElicitationRequest",
-    "CreateElicitationRequest2": "CreateFormRequestElicitationRequest",
-    "CreateElicitationRequest3": "CreateUrlSessionElicitationRequest",
-    "CreateElicitationRequest4": "CreateUrlRequestElicitationRequest",
-    "CreateElicitationRequest5": "CreateOtherElicitationRequest",
-    "CreateElicitationResponse1": "AcceptElicitationResponse",
-    "CreateElicitationResponse2": "DeclineElicitationResponse",
-    "CreateElicitationResponse3": "CancelElicitationResponse",
-    "CreateElicitationResponse4": "OtherElicitationResponse",
-    "ElicitationFormMode1": "ElicitationFormSessionMode",
-    "ElicitationFormMode2": "ElicitationFormRequestMode",
-    "ElicitationPropertySchema1": "ElicitationStringPropertySchema",
-    "ElicitationPropertySchema2": "ElicitationNumberPropertySchema",
-    "ElicitationPropertySchema3": "ElicitationIntegerPropertySchema",
-    "ElicitationPropertySchema4": "ElicitationBooleanPropertySchema",
-    "ElicitationPropertySchema5": "ElicitationMultiSelectPropertySchema",
-    "ElicitationPropertySchema6": "ElicitationOtherPropertySchema",
-    "MultiSelectItems1": "StringMultiSelectItems",
-    "MultiSelectItems2": "OtherMultiSelectItems",
-    "ElicitationUrlMode1": "ElicitationUrlSessionMode",
-    "ElicitationUrlMode2": "ElicitationUrlRequestMode",
-    "NesSuggestion1": "NesEditSuggestionVariant",
-    "NesSuggestion2": "NesJumpSuggestionVariant",
-    "NesSuggestion3": "NesRenameSuggestionVariant",
-    "NesSuggestion4": "NesSearchAndReplaceSuggestionVariant",
-}
-
-# Extensible ("custom or future") unions: known const-tagged variants plus a
-# catch-all member tagged `"title": "other"`. _normalize_catchall_unions strips the
-# discriminator and the catch-all's `not` clause so datamodel-codegen produces a plain
-# union; the exclusion is restored at runtime by a field_validator injected into the
-# catch-all class, so a malformed known variant fails instead of silently parsing as
-# custom (mirrors the TypeScript SDK's excludeKnownTags). Maps union def name ->
-# catch-all class name; the set is asserted against the schema in
-# _validate_schema_alignment.
-EXTENSIBLE_UNIONS: dict[str, str] = {
-    "CreateElicitationRequest": "CreateOtherElicitationRequest",
-    "CreateElicitationResponse": "OtherElicitationResponse",
-    "ElicitationPropertySchema": "ElicitationOtherPropertySchema",
-    "MultiSelectItems": "OtherMultiSelectItems",
-}
-
-ENUM_LITERAL_MAP: dict[str, tuple[str, ...]] = {
-    "PermissionOptionKind": (
-        "allow_once",
-        "allow_always",
-        "reject_once",
-        "reject_always",
-    ),
-    "PlanEntryPriority": ("high", "medium", "low"),
-    "PlanEntryStatus": ("pending", "in_progress", "completed"),
-    "StopReason": ("end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"),
-    "ToolCallStatus": ("pending", "in_progress", "completed", "failed"),
-    "ToolKind": ("read", "edit", "delete", "move", "search", "execute", "think", "fetch", "switch_mode", "other"),
-}
-
-# datamodel-code-generator 0.64 promotes referenced string enums to Enum classes.
-# Keep the existing Python API, where these schema types are plain strings; the
-# selected public fields below are narrowed back to the named Literal aliases.
-STRING_ENUM_TYPES = (
-    *ENUM_LITERAL_MAP,
-    "ElicitationSchemaType",
-    "NesDiagnosticSeverity",
-    "NesRejectReason",
-    "NesTriggerKind",
-    "PositionEncodingKind",
-    "Role",
-    "StringFormat",
-    "TextDocumentSyncKind",
+UNSIGNED_TYPE_MAPPINGS = (
+    "integer+uint16=integer",
+    "integer+uint32=integer",
+    "integer+uint64=integer",
 )
 
-# Preserve RootModel classes that existed in the generated public surface before
-# 0.64; other unreferenced RootModels are intermediates left after collapsing.
-PUBLIC_ROOT_MODELS = {
-    "AgentResponse",
-    "ClientResponse",
-    "ElicitationContentValue",
-    "ElicitationFormMode",
-    "ElicitationUrlMode",
+OPEN_UNIONS = {
+    "CreateElicitationRequest": 2,
+    "CreateElicitationResponse": 3,
+    "ElicitationPropertySchema": 5,
+    "MultiSelectItems": 1,
 }
 
-FIELD_TYPE_OVERRIDES: tuple[tuple[str, str, str, bool], ...] = (
-    ("PermissionOption", "kind", "PermissionOptionKind", False),
-    ("PlanEntry", "priority", "PlanEntryPriority", False),
-    ("PlanEntry", "status", "PlanEntryStatus", False),
-    ("PromptResponse", "stop_reason", "StopReason", False),
-    ("ToolCall", "kind", "ToolKind", True),
-    ("ToolCall", "status", "ToolCallStatus", True),
-    ("ToolCallUpdate", "kind", "ToolKind", True),
-    ("ToolCallUpdate", "status", "ToolCallStatus", True),
-)
+
+def _inline_model_ref(definition: str, *steps: tuple[str, int | None]) -> str:
+    ref = f"#/$defs/{definition}"
+    for keyword, index in steps:
+        ref += f"#-datamodel-code-generator-#-{keyword}-#-special-#"
+        if index is not None:
+            ref += f"/{index}"
+    return ref
 
 
-@dataclass(frozen=True)
-class FieldValidatorInjection:
-    """A generated field validator that should be appended to one schema class."""
-
-    class_name: str
-    field_name: str
-    method_name: str
-    argument_name: str
-    return_type: str
-    comment_lines: tuple[str, ...]
-    body_lines: tuple[str, ...]
-
-    def render(self) -> str:
-        lines = [
-            f'@field_validator("{self.field_name}", mode="before")',
-            "@classmethod",
-            f"def {self.method_name}(cls, {self.argument_name}: Any) -> {self.return_type}:",
-        ]
-        lines.extend(f"    # {line}" for line in self.comment_lines)
-        lines.extend(f"    {line}" for line in self.body_lines)
-        return "\n".join(lines)
+def _variant_model_map(
+    definition: str,
+    keyword: str,
+    branch: str,
+    names: tuple[str, ...],
+) -> dict[str, str]:
+    return {_inline_model_ref(definition, (keyword, index), (branch, None)): name for index, name in enumerate(names)}
 
 
-DEFAULT_VALUE_OVERRIDES: tuple[tuple[str, str, str], ...] = (
-    ("AgentCapabilities", "mcp_capabilities", "McpCapabilities()"),
-    ("AgentCapabilities", "session_capabilities", "SessionCapabilities()"),
-    (
-        "AgentCapabilities",
-        "prompt_capabilities",
-        "PromptCapabilities()",
+MODEL_NAME_MAP = {
+    "#/$defs/AvailableCommandsUpdate": "AvailableCommandsUpdateBase",
+    "#/$defs/ConfigOptionUpdate": "ConfigOptionUpdateBase",
+    "#/$defs/CurrentModeUpdate": "CurrentModeUpdateBase",
+    "#/$defs/SessionInfoUpdate": "SessionInfoUpdateBase",
+    "#/$defs/StringMultiSelectItems": "StringMultiSelectItemsBase",
+    "#/$defs/UsageUpdate": "UsageUpdateBase",
+}
+for variant_map in (
+    _variant_model_map("AgentResponse", "anyOf", "object", ("AgentResponseMessage", "AgentErrorMessage")),
+    _variant_model_map("ClientResponse", "anyOf", "object", ("ClientResponseMessage", "ClientErrorMessage")),
+    _variant_model_map("AuthMethod", "anyOf", "allOf", ("EnvVarAuthMethod", "TerminalAuthMethod")),
+    _variant_model_map("McpServer", "anyOf", "allOf", ("HttpMcpServer", "SseMcpServer", "AcpMcpServer")),
+    _variant_model_map(
+        "SetSessionConfigOptionRequest",
+        "anyOf",
+        "object",
+        ("SetSessionConfigOptionBooleanRequest", "SetSessionConfigOptionSelectRequest"),
     ),
-    ("ClientCapabilities", "fs", "FileSystemCapabilities()"),
-    ("ClientCapabilities", "terminal", "False"),
-    (
-        "InitializeRequest",
-        "client_capabilities",
-        "ClientCapabilities()",
-    ),
-    (
-        "InitializeResponse",
-        "agent_capabilities",
-        "AgentCapabilities()",
-    ),
-)
-
-# Classes that need a field_validator injected after generation.
-CLASS_VALIDATOR_INJECTIONS: tuple[FieldValidatorInjection, ...] = (
-    FieldValidatorInjection(
-        class_name="InitializeRequest",
-        field_name="protocol_version",
-        method_name="_coerce_protocol_version",
-        argument_name="value",
-        return_type="int",
-        comment_lines=(
-            'Some clients (e.g. Zed) send a date string like "2024-11-05" instead',
-            "of an integer. The Rust SDK treats legacy strings as version 0; this",
-            "SDK maps unparsable values to 1 so the connection is not rejected.",
-            "See: https://github.com/agentclientprotocol/rust-sdk/blob/main/crates/agent-client-protocol-schema/src/version.rs",
-        ),
-        body_lines=(
-            "if isinstance(value, int):",
-            "    return value",
-            "try:",
-            "    return int(value)",
-            "except (TypeError, ValueError):",
-            "    return 1",
+    _variant_model_map(
+        "ContentBlock",
+        "oneOf",
+        "allOf",
+        (
+            "TextContentBlock",
+            "ImageContentBlock",
+            "AudioContentBlock",
+            "ResourceContentBlock",
+            "EmbeddedResourceContentBlock",
         ),
     ),
-)
+    _variant_model_map(
+        "ToolCallContent",
+        "oneOf",
+        "allOf",
+        ("ContentToolCallContent", "FileEditToolCallContent", "TerminalToolCallContent"),
+    ),
+    _variant_model_map(
+        "PlanUpdateContent",
+        "oneOf",
+        "allOf",
+        ("PlanUpdateItems", "PlanUpdateFile", "PlanUpdateMarkdown"),
+    ),
+    _variant_model_map(
+        "NesSuggestion",
+        "oneOf",
+        "allOf",
+        (
+            "NesEditSuggestionVariant",
+            "NesJumpSuggestionVariant",
+            "NesRenameSuggestionVariant",
+            "NesSearchAndReplaceSuggestionVariant",
+        ),
+    ),
+    _variant_model_map(
+        "SessionUpdate",
+        "oneOf",
+        "allOf",
+        (
+            "UserMessageChunk",
+            "AgentMessageChunk",
+            "AgentThoughtChunk",
+            "ToolCallStart",
+            "ToolCallProgress",
+            "AgentPlanUpdate",
+            "AgentPlanContentUpdate",
+            "AgentPlanRemovedUpdate",
+            "AvailableCommandsUpdate",
+            "CurrentModeUpdate",
+            "ConfigOptionUpdate",
+            "SessionInfoUpdate",
+            "UsageUpdate",
+        ),
+    ),
+    _variant_model_map(
+        "ElicitationFormMode",
+        "anyOf",
+        "allOf",
+        ("ElicitationFormSessionMode", "ElicitationFormRequestMode"),
+    ),
+    _variant_model_map(
+        "ElicitationUrlMode",
+        "anyOf",
+        "allOf",
+        ("ElicitationUrlSessionMode", "ElicitationUrlRequestMode"),
+    ),
+    _variant_model_map(
+        "ElicitationPropertySchema",
+        "anyOf",
+        "allOf",
+        (
+            "ElicitationStringPropertySchema",
+            "ElicitationNumberPropertySchema",
+            "ElicitationIntegerPropertySchema",
+            "ElicitationBooleanPropertySchema",
+            "ElicitationMultiSelectPropertySchema",
+        ),
+    ),
+):
+    MODEL_NAME_MAP.update(variant_map)
+
+MODEL_NAME_MAP.update({
+    _inline_model_ref("RequestPermissionOutcome", ("oneOf", 0), ("object", None)): "DeniedOutcome",
+    _inline_model_ref("RequestPermissionOutcome", ("oneOf", 1), ("allOf", None)): "AllowedOutcome",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 0), ("allOf", None)): "AcceptElicitationResponse",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 1), ("object", None)): "DeclineElicitationResponse",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 2), ("object", None)): "CancelElicitationResponse",
+    _inline_model_ref("CreateElicitationResponse", ("anyOf", 3), ("object", None)): "OtherElicitationResponse",
+    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
+    _inline_model_ref("MultiSelectItems", ("anyOf", 0), ("allOf", None)): "StringMultiSelectItems",
+    _inline_model_ref("MultiSelectItems", ("anyOf", 1), ("object", None)): "OtherMultiSelectItems",
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("allOf", None)): (
+        "CreateFormElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", 0), ("allOf", None)): (
+        "CreateFormSessionElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", 1), ("allOf", None)): (
+        "CreateFormRequestElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("union_model-0", None)): (
+        "CreateFormSessionElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("union_model-1", None)): (
+        "CreateFormRequestElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("allOf", None)): (
+        "CreateUrlElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", 0), ("allOf", None)): (
+        "CreateUrlSessionElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", 1), ("allOf", None)): (
+        "CreateUrlRequestElicitationRequestBase"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("union_model-0", None)): (
+        "CreateUrlSessionElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("union_model-1", None)): (
+        "CreateUrlRequestElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 2), ("anyOf", 0), ("allOf", None)): (
+        "CreateOtherSessionElicitationRequest"
+    ),
+    _inline_model_ref("CreateElicitationRequest", ("anyOf", 2), ("anyOf", 1), ("allOf", None)): (
+        "CreateOtherRequestElicitationRequest"
+    ),
+})
+
+# datamodel-code-generator owns schema interpretation and its internal model names.
+# This block only preserves the Python names already published by the SDK.
+COMPATIBILITY_ALIASES = textwrap.dedent("""
+    PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
+    PlanEntryPriority = Literal["high", "medium", "low"]
+    PlanEntryStatus = Literal["pending", "in_progress", "completed"]
+    StopReason = Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]
+    ToolCallStatus = Literal["pending", "in_progress", "completed", "failed"]
+    ToolKind = Literal[
+        "read",
+        "edit",
+        "delete",
+        "move",
+        "search",
+        "execute",
+        "think",
+        "fetch",
+        "switch_mode",
+        "other",
+    ]
+
+    CreateOtherElicitationRequest = Union[
+        CreateOtherSessionElicitationRequest,
+        CreateOtherRequestElicitationRequest,
+    ]
+    CreateFormElicitationRequest = Union[
+        CreateFormSessionElicitationRequest,
+        CreateFormRequestElicitationRequest,
+    ]
+    CreateUrlElicitationRequest = Union[
+        CreateUrlSessionElicitationRequest,
+        CreateUrlRequestElicitationRequest,
+    ]
+    CreateElicitationRequest = Union[
+        CreateFormElicitationRequest,
+        CreateUrlElicitationRequest,
+        CreateOtherElicitationRequest,
+    ]
+
+    CreateElicitationResponse = Union[
+        AcceptElicitationResponse,
+        DeclineElicitationResponse,
+        CancelElicitationResponse,
+        OtherElicitationResponse,
+    ]
+    ElicitationMode = Union[
+        ElicitationFormSessionMode,
+        ElicitationFormRequestMode,
+        ElicitationUrlSessionMode,
+        ElicitationUrlRequestMode,
+    ]
+
+    _AvailableCommandsUpdate = AvailableCommandsUpdateBase
+    _CurrentModeUpdate = CurrentModeUpdateBase
+    _ConfigOptionUpdate = ConfigOptionUpdateBase
+    _SessionInfoUpdate = SessionInfoUpdateBase
+    _UsageUpdate = UsageUpdateBase
+    _StringMultiSelectItems = StringMultiSelectItemsBase
+
+    class Jsonrpc(Enum):
+        field_2_0 = "2.0"
+    """).strip()
 
 
-@dataclass(frozen=True)
-class _ProcessingStep:
-    """A named transformation applied to the generated schema content."""
-
-    name: str
-    apply: Callable[[str], str]
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Generate ACP v1 schema bindings.")
+    parser.add_argument("--check", action="store_true", help="Fail if the committed bindings are stale.")
+    return parser.parse_args()
 
 
 def main() -> None:
-    generate_schema()
+    args = parse_args()
+    if not generate_schema(check=args.check):
+        raise SystemExit(1)
 
 
-def generate_schema() -> None:
-    if not SCHEMA_JSON.exists():
-        print(
-            "Schema file missing. Ensure schema/schema.json exists (run gen_all.py --version to download).",
-            file=sys.stderr,
-        )
-        sys.exit(1)
-
-    with tempfile.TemporaryDirectory() as tmp_dir:
-        codegen_input = Path(tmp_dir) / "schema.codegen.json"
-        codegen_input.write_text(json.dumps(_preprocess_schema_for_codegen(_load_schema()), indent=2), encoding="utf-8")
-
-        cmd = [
-            sys.executable,
-            "-m",
-            "datamodel_code_generator",
-            "--input",
-            str(codegen_input),
-            "--input-file-type",
-            "jsonschema",
-            "--output",
-            str(SCHEMA_OUT),
-            "--target-python-version",
-            "3.12",
-            "--collapse-root-models",
-            "--output-model-type",
-            "pydantic_v2.BaseModel",
-            "--no-use-specialized-enum",
-            "--no-use-standard-collections",
-            "--no-use-union-operator",
-            "--type-overrides",
-            json.dumps(dict.fromkeys(STRING_ENUM_TYPES, "builtins.str")),
-            "--formatters",
-            "black",
-            "isort",
-            "--use-annotated",
-            "--use-field-description",
-            "--snake-case-field",
-        ]
-
-        subprocess.check_call(cmd)  # noqa: S603
-    warnings = postprocess_generated_schema(SCHEMA_OUT)
-    for warning in warnings:
-        print(f"Warning: {warning}", file=sys.stderr)
-
-
-def _load_schema() -> dict[str, Any]:
-    return json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
-
-
-COMBINATOR_KEYS = ("oneOf", "anyOf")
-
-
-def _preprocess_schema_for_codegen(schema: dict[str, Any]) -> dict[str, Any]:
-    schema = _normalize_catchall_unions(schema)
-    defs = schema.get("$defs", {})
-    return _distribute_composed_object_schemas(schema, defs)
-
-
-def _normalize_catchall_unions(node: Any) -> Any:
-    # ACP "custom or future" unions include a member tagged `"title": "other"` whose
-    # discriminator (type/mode/action) is a free-form string. datamodel-codegen cannot
-    # put that in a discriminated union, so it emits `#-special-#` placeholder literals.
-    # Drop the discriminator (the union is then validated structurally) and collapse the
-    # catch-all to a permissive object so unknown variants round-trip their raw payload.
-    if isinstance(node, list):
-        return [_normalize_catchall_unions(item) for item in node]
-    if not isinstance(node, dict):
-        return node
-
-    transformed = {key: _normalize_catchall_unions(value) for key, value in node.items()}
-    for combinator in COMBINATOR_KEYS:
-        members = transformed.get(combinator)
-        if not isinstance(members, list):
-            continue
-        if not any(isinstance(member, dict) and member.get("title") == "other" for member in members):
-            continue
-        transformed.pop("discriminator", None)
-        transformed[combinator] = [
-            _collapse_catchall_member(member) if isinstance(member, dict) and member.get("title") == "other" else member
-            for member in members
-        ]
-    return transformed
-
-
-def _collapse_catchall_member(member: dict[str, Any]) -> dict[str, Any]:
-    collapsed: dict[str, Any] = {"type": "object", "additionalProperties": True}
-    for key in ("title", "description", "properties", "required"):
-        if key in member:
-            collapsed[key] = member[key]
-    return collapsed
-
-
-def _distribute_composed_object_schemas(node: Any, defs: dict[str, Any]) -> Any:
-    if isinstance(node, list):
-        return [_distribute_composed_object_schemas(item, defs) for item in node]
-    if not isinstance(node, dict):
-        return node
-
-    transformed = {key: _distribute_composed_object_schemas(value, defs) for key, value in node.items()}
-    for combinator in COMBINATOR_KEYS:
-        if combinator not in transformed or "properties" not in transformed:
-            continue
-        result = {combinator: _expand_composed_object_variants(transformed, defs)}
-        for key in ("title", "description", "discriminator"):
-            if key in transformed:
-                result[key] = transformed[key]
-        return result
-    return transformed
-
-
-def _expand_composed_object_variants(node: dict[str, Any], defs: dict[str, Any]) -> list[Any]:
-    for combinator in COMBINATOR_KEYS:
-        if combinator not in node or "properties" not in node:
-            continue
-
-        common_schema = _without_combinators(node)
-        expanded: list[Any] = []
-        for option in node[combinator]:
-            for variant in _expand_allof_union_refs(option, defs):
-                expanded.append(_merge_object_schema(common_schema, variant) if isinstance(variant, dict) else variant)
-        return expanded
-
-    return _expand_allof_union_refs(node, defs)
-
-
-def _expand_allof_union_refs(node: Any, defs: dict[str, Any]) -> list[Any]:
-    if not isinstance(node, dict):
-        return [node]
-
-    variants = [{key: copy.deepcopy(value) for key, value in node.items() if key != "allOf"}]
-    for item in node.get("allOf", []):
-        ref_name = _local_def_ref_name(item.get("$ref")) if isinstance(item, dict) else None
-        ref_schema = defs.get(ref_name) if ref_name else None
-        if isinstance(ref_schema, dict) and any(key in ref_schema for key in COMBINATOR_KEYS):
-            ref_variants = _expand_composed_object_variants(ref_schema, defs)
-        else:
-            ref_variants = [item]
-
-        variants = [
-            _merge_object_schema(variant, ref_variant) if isinstance(ref_variant, dict) else variant
-            for variant in variants
-            for ref_variant in ref_variants
-        ]
-    return variants
-
-
-def _without_combinators(node: dict[str, Any]) -> dict[str, Any]:
-    return {
-        key: copy.deepcopy(value)
-        for key, value in node.items()
-        if key not in COMBINATOR_KEYS and key != "discriminator"
-    }
-
-
-def _local_def_ref_name(ref: Any) -> str | None:
-    if isinstance(ref, str) and ref.startswith("#/$defs/"):
-        return ref.rsplit("/", 1)[-1]
-    return None
-
-
-def _pop_ref_as_allof(schema: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
-    schema = copy.deepcopy(schema)
-    if "$ref" not in schema:
-        return schema, []
-    return schema, [{"$ref": schema.pop("$ref")}]
-
-
-def _merge_object_schema(left: dict[str, Any], right: dict[str, Any]) -> dict[str, Any]:
-    left, left_refs = _pop_ref_as_allof(left)
-    right, right_refs = _pop_ref_as_allof(right)
-    merged: dict[str, Any] = {}
-
-    for key in set(left) | set(right):
-        if key in COMBINATOR_KEYS or key in {"allOf", "discriminator"}:
-            continue
-        if key == "properties":
-            merged[key] = {**left.get(key, {}), **right.get(key, {})}
-        elif key == "required":
-            required = []
-            for item in left.get(key, []) + right.get(key, []):
-                if item not in required:
-                    required.append(item)
-            if required:
-                merged[key] = required
-        elif key in right:
-            merged[key] = right[key]
-        else:
-            merged[key] = left[key]
-
-    all_of = left_refs + left.get("allOf", []) + right_refs + right.get("allOf", [])
-    if all_of:
-        merged["allOf"] = all_of
-    return merged
-
-
-def _required_nullable_fields(schema: dict[str, Any]) -> dict[str, list[str]]:
-    defs = schema.get("$defs", {})
-    fields: dict[str, list[str]] = {}
-    for class_name, definition in defs.items():
-        if not isinstance(definition, dict):
-            continue
-
-        required = set(definition.get("required", []))
-        if not required:
-            continue
-
-        properties = definition.get("properties", {})
-        nullable_fields = [
-            _schema_field_name(property_name)
-            for property_name in sorted(required)
-            if _schema_allows_null(properties.get(property_name), defs)
-        ]
-        if nullable_fields:
-            fields[class_name] = nullable_fields
-    return fields
-
-
-def _schema_allows_null(node: Any, defs: dict[str, Any]) -> bool:
-    if not isinstance(node, dict):
-        return False
-
-    schema_type = node.get("type")
-    if schema_type == "null" or (isinstance(schema_type, list) and "null" in schema_type):
-        return True
-
-    for combinator in COMBINATOR_KEYS:
-        if any(_schema_allows_null(option, defs) for option in node.get(combinator, [])):
+def generate_schema(*, check: bool = False) -> bool:
+    candidate = render_schema()
+    current = SCHEMA_OUT.read_text(encoding="utf-8") if SCHEMA_OUT.exists() else ""
+    if check:
+        if current == candidate:
             return True
-
-    ref_name = _local_def_ref_name(node.get("$ref"))
-    if ref_name is not None:
-        return _schema_allows_null(defs.get(ref_name), defs)
-
-    return any(_schema_allows_null(option, defs) for option in node.get("allOf", []))
-
-
-def _schema_field_name(name: str) -> str:
-    if name.startswith("_"):
-        return "field" + name
-    return re.sub(r"(?<!^)(?=[A-Z])", "_", name).lower()
-
-
-def postprocess_generated_schema(output_path: Path) -> list[str]:
-    if not output_path.exists():
-        raise RuntimeError(f"Generated schema not found at {output_path}")
-
-    raw_content = output_path.read_text(encoding="utf-8")
-    header_block = _build_header_block()
-
-    content = _strip_existing_header(raw_content)
-    # Type overrides for builtins are rendered as imports in 0.64, but the
-    # annotations should continue to use Python's builtin `str` directly.
-    content = content.replace("from builtins import str\n", "")
-    content = _remove_unused_models(content)
-    content, leftover_classes = _rename_numbered_models(content)
-
-    processing_steps: tuple[_ProcessingStep, ...] = (
-        _ProcessingStep("apply field overrides", _apply_field_overrides),
-        _ProcessingStep("apply default overrides", _apply_default_overrides),
-        _ProcessingStep("restore required nullable fields", _restore_required_nullable_fields),
-        _ProcessingStep("ensure custom BaseModel", _ensure_custom_base_model),
-        _ProcessingStep("enable RootModel attribute docstrings", _enable_root_model_attribute_docstrings),
-        _ProcessingStep("inject field validators", _inject_field_validators),
-        _ProcessingStep("inject deserialize defaults", _inject_deserialize_defaults),
-        _ProcessingStep("inject schema aliases", _inject_schema_aliases),
-    )
-
-    for step in processing_steps:
-        content = step.apply(content)
-
-    missing_targets = _find_missing_targets(content)
-
-    content = _inject_enum_aliases(content)
-    content = _remove_unreferenced_root_models(content)
-    final_content = header_block + content.rstrip() + "\n"
-    if not final_content.endswith("\n"):
-        final_content += "\n"
-    output_path.write_text(final_content, encoding="utf-8")
-
-    warnings: list[str] = []
-    if leftover_classes:
-        warnings.append(
-            "Unrenamed schema models detected: "
-            + ", ".join(leftover_classes)
-            + ". Update RENAME_MAP in scripts/gen_schema.py."
+        print(
+            "".join(
+                difflib.unified_diff(
+                    current.splitlines(keepends=True),
+                    candidate.splitlines(keepends=True),
+                    fromfile=str(SCHEMA_OUT.relative_to(ROOT)),
+                    tofile=f"{SCHEMA_OUT.relative_to(ROOT)} (generated)",
+                )
+            ),
+            end="",
         )
-    if missing_targets:
-        warnings.append(
-            "Renamed schema targets not found after generation: "
-            + ", ".join(sorted(missing_targets))
-            + ". Check RENAME_MAP or upstream schema changes."
-        )
-    warnings.extend(_validate_schema_alignment())
-
-    return warnings
+        return False
+    SCHEMA_OUT.write_text(candidate, encoding="utf-8")
+    return True
 
 
-def _build_header_block() -> str:
-    header_lines = ["# Generated from schema/schema.json. Do not edit by hand."]
-    if VERSION_FILE.exists():
-        ref = VERSION_FILE.read_text(encoding="utf-8").strip()
-        if ref:
-            header_lines.append(f"# Schema ref: {ref}")
-    return "\n".join(header_lines) + "\n\n"
-
-
-def _strip_existing_header(content: str) -> str:
-    existing_header = re.match(r"(#.*\n)+", content)
-    if existing_header:
-        return content[existing_header.end() :].lstrip("\n")
-    return content.lstrip("\n")
-
-
-def _rename_numbered_models(content: str) -> tuple[str, list[str]]:
-    renamed = content
-    for old, new in sorted(RENAME_MAP.items(), key=lambda item: len(item[0]), reverse=True):
-        if re.search(rf"\b{re.escape(new)}\b", renamed) is not None:
-            renamed = re.sub(rf"\b{re.escape(new)}\b", f"_{new}", renamed)
-        pattern = re.compile(rf"\b{re.escape(old)}\b")
-        renamed = pattern.sub(new, renamed)
-
-    leftover_class_pattern = re.compile(r"^class (\w+\d+)\(", re.MULTILINE)
-    leftover_classes = sorted(set(leftover_class_pattern.findall(renamed)))
-    return renamed, leftover_classes
-
-
-def _find_missing_targets(content: str) -> list[str]:
-    missing: list[str] = []
-    for new_name in RENAME_MAP.values():
-        pattern = re.compile(rf"^class {re.escape(new_name)}\(", re.MULTILINE)
-        if not pattern.search(content):
-            missing.append(new_name)
-    return missing
-
-
-def _validate_schema_alignment() -> list[str]:
-    warnings: list[str] = []
+def render_schema() -> str:
+    """Generate v1 directly from the currently pinned JSON Schema."""
     if not SCHEMA_JSON.exists():
-        warnings.append("schema/schema.json missing; unable to validate enum aliases.")
-        return warnings
+        raise FileNotFoundError("schema/schema.json is missing; fetch a pinned schema release first")
 
-    try:
-        schema_enums = _load_schema_enum_literals()
-    except json.JSONDecodeError as exc:
-        warnings.append(f"Failed to parse schema/schema.json: {exc}")
-        return warnings
-
-    for enum_name, expected_values in ENUM_LITERAL_MAP.items():
-        schema_values = schema_enums.get(enum_name)
-        if schema_values is None:
-            warnings.append(
-                f"Enum '{enum_name}' not found in schema.json; update ENUM_LITERAL_MAP or investigate schema changes."
-            )
-            continue
-        if tuple(schema_values) != expected_values:
-            warnings.append(
-                f"Enum mismatch for '{enum_name}': schema.json -> {schema_values}, generated aliases -> {expected_values}"
-            )
-
-    detected_unions = _detect_extensible_unions()
-    if detected_unions != set(EXTENSIBLE_UNIONS):
-        warnings.append(
-            f"Extensible union drift: schema defines {sorted(detected_unions)}, "
-            f"EXTENSIBLE_UNIONS lists {sorted(EXTENSIBLE_UNIONS)}. Update EXTENSIBLE_UNIONS, the "
-            "RENAME_MAP catch-all names, and the alias template together."
-        )
-    return warnings
-
-
-def _detect_extensible_unions() -> set[str]:
-    defs = _load_schema().get("$defs", {})
-    detected: set[str] = set()
-    for name, definition in defs.items():
-        if not isinstance(definition, dict) or "discriminator" not in definition:
-            continue
-        members = definition.get("anyOf") or definition.get("oneOf") or []
-        if any(isinstance(member, dict) and member.get("title") == "other" for member in members):
-            detected.add(name)
-    return detected
-
-
-def _load_schema_enum_literals() -> dict[str, tuple[str, ...]]:
-    schema_data = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
-    defs = schema_data.get("$defs", {})
-    enum_literals: dict[str, tuple[str, ...]] = {}
-
-    for name, definition in defs.items():
-        values: list[str] = []
-        if "enum" in definition:
-            values = [str(item) for item in definition["enum"]]
-        elif "oneOf" in definition:
-            values = [
-                str(option["const"])
-                for option in definition.get("oneOf", [])
-                if isinstance(option, dict) and "const" in option
-            ]
-        if values:
-            enum_literals[name] = tuple(values)
-
-    return enum_literals
-
-
-def _ensure_custom_base_model(content: str) -> str:
-    if "class BaseModel(_BaseModel):" in content:
-        return content
-    lines = content.splitlines()
-    for idx, line in enumerate(lines):
-        if not line.startswith("from pydantic import "):
-            continue
-        imports = [part.strip() for part in line[len("from pydantic import ") :].split(",")]
-        has_alias = any(part == "BaseModel as _BaseModel" for part in imports)
-        has_config = any(part == "ConfigDict" for part in imports)
-        new_imports = []
-        for part in imports:
-            if part == "BaseModel":
-                new_imports.append("BaseModel as _BaseModel")
-                has_alias = True
-            else:
-                new_imports.append(part)
-        if not has_alias:
-            new_imports.append("BaseModel as _BaseModel")
-        if not has_config:
-            new_imports.append("ConfigDict")
-        lines[idx] = "from pydantic import " + ", ".join(new_imports)
-        to_insert = textwrap.dedent("""\
-            class BaseModel(_BaseModel):
-                model_config = ConfigDict(populate_by_name=True, use_attribute_docstrings=True)
-
-                def __getattr__(self, item: str) -> Any:
-                    if item.lower() != item:
-                        snake_cased = "".join("_" + c.lower() if c.isupper() and i > 0 else c.lower() for i, c in enumerate(item))
-                        return getattr(self, snake_cased)
-                    raise AttributeError(f"'{type(self).__name__}' object has no attribute '{item}'")
-        """)
-        insert_idx = idx + 1
-        lines.insert(insert_idx, "")
-        for offset, line in enumerate(to_insert.splitlines(), 1):
-            lines.insert(insert_idx + offset, line)
-        break
-    return "\n".join(lines) + "\n"
-
-
-def _enable_root_model_attribute_docstrings(content: str) -> str:
-    lines = content.splitlines(keepends=True)
-    tree = ast.parse(content)
-    insertion_points = [
-        node.body[0].lineno - 1
-        for node in tree.body
-        if isinstance(node, ast.ClassDef)
-        and node.body
-        and any(
-            isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name) and base.value.id == "RootModel"
-            for base in node.bases
-        )
-    ]
-    for line_index in reversed(insertion_points):
-        lines.insert(line_index, "    model_config = ConfigDict(use_attribute_docstrings=True)\n\n")
-    return "".join(lines)
-
-
-def _ensure_pydantic_import(content: str, name: str) -> str:
-    """Add *name* to the ``from pydantic import ...`` line if not already present."""
-    lines = content.splitlines()
-    for idx, line in enumerate(lines):
-        if not line.startswith("from pydantic import "):
-            continue
-        imports = [part.strip() for part in line[len("from pydantic import ") :].split(",")]
-        if name not in imports:
-            imports.append(name)
-            lines[idx] = "from pydantic import " + ", ".join(imports)
-        return "\n".join(lines) + "\n"
-    return content
-
-
-def _extensible_union_excluded_tags(union_def: dict[str, Any], discriminator: str) -> tuple[str, ...]:
-    members = union_def.get("anyOf") or union_def.get("oneOf") or []
-    other = next((member for member in members if isinstance(member, dict) and member.get("title") == "other"), None)
-    if other is None:
-        return ()
-    tags: list[str] = []
-    for excluded in other.get("not", {}).get("anyOf", []):
-        const = excluded.get("properties", {}).get(discriminator, {}).get("const")
-        if isinstance(const, str) and const not in tags:
-            tags.append(const)
-    return tuple(tags)
-
-
-def _catchall_exclusion_injections() -> list[FieldValidatorInjection]:
-    defs = _load_schema().get("$defs", {})
-    injections: list[FieldValidatorInjection] = []
-    for union_name, catchall_class in EXTENSIBLE_UNIONS.items():
-        union_def = defs.get(union_name)
-        if not isinstance(union_def, dict):
-            continue
-        discriminator = union_def.get("discriminator", {}).get("propertyName")
-        if not discriminator:
-            continue
-        tags = _extensible_union_excluded_tags(union_def, discriminator)
-        if not tags:
-            continue
-        field = _schema_field_name(discriminator)
-        injections.append(
-            FieldValidatorInjection(
-                class_name=catchall_class,
-                field_name=field,
-                method_name=f"_reject_known_{field}",
-                argument_name="value",
-                return_type="Any",
-                comment_lines=(
-                    "Restore the schema's `not` clause dropped for codegen: reject the known",
-                    "variants' discriminator values so a malformed known variant fails instead",
-                    "of silently parsing as this catch-all.",
-                ),
-                body_lines=(
-                    f"if value in {tags!r}:",
-                    f'    raise ValueError("{field} value is reserved by a known variant")',
-                    "return value",
-                ),
-            )
-        )
-    return injections
-
-
-def _inject_field_validators(content: str) -> str:
-    """Inject field_validator methods for CLASS_VALIDATOR_INJECTIONS and catch-all exclusions."""
-    for injection in (*CLASS_VALIDATOR_INJECTIONS, *_catchall_exclusion_injections()):
-        content = _ensure_pydantic_import(content, "field_validator")
-
-        class_pattern = re.compile(
-            rf"(class {injection.class_name}\(BaseModel\):)(.*?)(?=\nclass |\Z)",
-            re.DOTALL,
-        )
-
-        def _append_validator(
-            match: re.Match[str],
-            _injection: FieldValidatorInjection = injection,
-        ) -> str:
-            header, block = match.group(1), match.group(2)
-            indented = "\n" + textwrap.indent(_injection.render(), "    ")
-            return header + block + indented + "\n"
-
-        content, count = class_pattern.subn(_append_validator, content, count=1)
-        if count == 0:
-            print(
-                f"Warning: class {injection.class_name} not found for validator injection",
-                file=sys.stderr,
-            )
-    return content
-
-
-def _inject_deserialize_defaults(content: str) -> str:
-    defs = _load_schema().get("$defs", {})
-
-    # `_meta` carries x-deserialize-default-on-error on almost every model; handle it once
-    # on the shared BaseModel with check_fields=False so every subclass inherits the salvage.
-    meta_validator = (
-        '@field_validator("field_meta", mode="wrap", check_fields=False)\n'
-        "@classmethod\n"
-        "def _salvage_meta_on_error(cls, value: Any, handler: Any) -> Any:\n"
-        "    return salvage_on_error(value, handler, lambda: None)\n"
+    schema = _schema_for_codegen(json.loads(SCHEMA_JSON.read_text(encoding="utf-8")))
+    generated = generate(
+        schema,
+        input_file_type=InputFileType.JsonSchema,
+        custom_file_header=_build_header(),
+        target_python_version=PythonVersion.PY_310,
+        collapse_root_models=True,
+        skip_root_model=True,
+        output_model_type=DataModelType.PydanticV2BaseModel,
+        base_class="acp._schema_base.BaseModel",
+        use_specialized_enum=False,
+        use_standard_collections=False,
+        use_union_operator=False,
+        additional_imports=["enum.Enum"],
+        enum_field_as_literal=LiteralType.All,
+        use_one_literal_as_default=True,
+        validators=_build_validators_config(schema),
+        formatters=[Formatter.BUILTIN],
+        infer_union_variant_names=True,
+        naming_strategy=NamingStrategy.PrimaryFirst,
+        model_name_map=MODEL_NAME_MAP,
+        strict_refs=True,
+        schema_version="2020-12",
+        schema_version_mode=VersionMode.Strict,
+        type_mappings=list(UNSIGNED_TYPE_MAPPINGS),
+        generate_schema_validators=True,
+        use_annotated=True,
+        field_constraints=True,
+        use_field_description=True,
+        snake_case_field=True,
     )
-    content, count = _append_class_method(content, r"class BaseModel\(_BaseModel\):", meta_validator)
-    if count == 0:
-        print("Warning: custom BaseModel not found for _meta salvage injection", file=sys.stderr)
+    if not isinstance(generated, str):
+        raise TypeError("Schema generation did not produce a single Python module")
+    return _format_python(f"{generated.rstrip()}\n\n\n{COMPATIBILITY_ALIASES}\n")
 
-    for class_name, definition in defs.items():
+
+def _schema_for_codegen(schema: dict[str, Any]) -> dict[str, Any]:
+    """Drop open-union constraints that Pydantic cannot represent statically."""
+    patched = copy.deepcopy(schema)
+    for name, catchall_index in OPEN_UNIONS.items():
+        try:
+            del patched["$defs"][name]["discriminator"]
+            del patched["$defs"][name]["anyOf"][catchall_index]["not"]
+        except KeyError:
+            raise ValueError(f"{name} no longer has the expected open-union shape") from None
+    return patched
+
+
+def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidators]:
+    validators: dict[str, list[ValidatorDefinition]] = {
+        "InitializeRequest": [
+            ValidatorDefinition(
+                field="protocol_version",
+                function="acp._deserialize.coerce_protocol_version",
+                mode=ValidatorMode.BEFORE,
+            )
+        ]
+    }
+    for class_name, definition in schema.get("$defs", {}).items():
         if not isinstance(definition, dict):
             continue
-        salvage_groups, skip_fields = _deserialize_field_specs(definition)
-        methods: list[str] = []
-        for index, (fallback, fields) in enumerate(sorted(salvage_groups.items())):
-            arguments = ", ".join(f'"{field}"' for field in sorted(fields))
-            methods.append(
-                f'@field_validator({arguments}, mode="wrap")\n'
-                "@classmethod\n"
-                f"def _salvage_on_error_{index}(cls, value: Any, handler: Any) -> Any:\n"
-                f"    return salvage_on_error(value, handler, {fallback})\n"
+        default_fields, skip_fields = _deserialize_field_specs(definition)
+        definitions = validators.setdefault(class_name, [])
+        definitions.extend(
+            ValidatorDefinition(fields=sorted(fields), function=function, mode=ValidatorMode.WRAP)
+            for fields, function in (
+                (default_fields, "acp._deserialize.use_default_on_error"),
+                (skip_fields, "acp._deserialize.skip_invalid_items"),
             )
-        for index, field in enumerate(sorted(skip_fields)):
-            methods.append(
-                f'@field_validator("{field}", mode="wrap")\n'
-                "@classmethod\n"
-                f"def _skip_invalid_items_{index}(cls, value: Any, handler: Any) -> Any:\n"
-                "    return skip_invalid_items(value, handler)\n"
-            )
-        # A plain object $def renders as `class Name(BaseModel)` (or `_Name` after a
-        # collision rename). A union $def has no class of its own; its common properties
-        # distribute to the member variant classes, so target those instead.
-        targets = [rf"class _?{re.escape(class_name)}\(BaseModel\):"]
-        members = _union_member_classes(class_name)
-        if members:
-            targets = [rf"class {re.escape(member)}\(\w+\):" for member in members]
-        for method in methods:
-            for target in targets:
-                content, count = _append_class_method(content, target, method)
-                if count == 0:
-                    print(f"Warning: no class matched {target!r} for deserialize injection", file=sys.stderr)
-
-    content = _ensure_pydantic_import(content, "field_validator")
-    return _ensure_deserialize_import(content)
-
-
-def _union_member_classes(union_name: str) -> list[str]:
-    return [new for old, new in RENAME_MAP.items() if re.fullmatch(rf"{re.escape(union_name)}\d+", old)]
-
-
-def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[dict[str, list[str]], list[str]]:
-    """Return ({fallback_expr: [field, ...]}, [skip_field, ...]) for a $def. `_meta` is handled
-    on the shared BaseModel and excluded here."""
-    required = set(definition.get("required", []))
-    salvage: dict[str, list[str]] = {}
-    skip: list[str] = []
-    for prop_name, prop in definition.get("properties", {}).items():
-        if not isinstance(prop, dict) or prop_name == "_meta":
-            continue
-        field = _schema_field_name(prop_name)
-        if prop.get("x-deserialize-skip-invalid-items"):
-            skip.append(field)
-        elif prop.get("x-deserialize-default-on-error"):
-            salvage.setdefault(_fallback_expression(prop, prop_name in required), []).append(field)
-    return salvage, skip
-
-
-def _fallback_expression(prop: dict[str, Any], is_required: bool) -> str:
-    if "default" in prop:
-        return f"lambda: {prop['default']!r}"
-    if _is_array_schema(prop) and (is_required or not _schema_allows_null(prop, {})):
-        return "lambda: []"
-    return "lambda: None"
-
-
-def _is_array_schema(prop: dict[str, Any]) -> bool:
-    prop_type = prop.get("type")
-    if prop_type == "array" or (isinstance(prop_type, list) and "array" in prop_type):
-        return True
-    return "items" in prop
-
-
-def _append_class_method(content: str, header_pattern: str, method_text: str) -> tuple[str, int]:
-    pattern = re.compile(rf"({header_pattern})(.*?)(?=\nclass |\Z)", re.DOTALL)
-
-    def _append(match: re.Match[str]) -> str:
-        indented = "\n" + textwrap.indent(method_text, "    ")
-        return match.group(1) + match.group(2) + indented + "\n"
-
-    return pattern.subn(_append, content, count=1)
-
-
-def _ensure_deserialize_import(content: str) -> str:
-    # Absolute import (not relative): gen_signature.py loads schema.py as a standalone
-    # module with no package context, where `from ._deserialize` cannot resolve.
-    statement = "from acp._deserialize import salvage_on_error, skip_invalid_items"
-    if statement in content:
-        return content
-    lines = content.splitlines()
-    for idx, line in enumerate(lines):
-        if line.startswith("from pydantic import "):
-            lines.insert(idx + 1, statement)
-            return "\n".join(lines) + "\n"
-    return content
-
-
-def _inject_schema_aliases(content: str) -> str:
-    if "CreateElicitationRequest = Union[" in content:
-        return content
-
-    aliases = textwrap.dedent("""\
-        ElicitationMode = Union[
-            ElicitationFormSessionMode,
-            ElicitationFormRequestMode,
-            ElicitationUrlSessionMode,
-            ElicitationUrlRequestMode,
-        ]
-        CreateFormElicitationRequest = Union[
-            CreateFormSessionElicitationRequest,
-            CreateFormRequestElicitationRequest,
-        ]
-        CreateUrlElicitationRequest = Union[
-            CreateUrlSessionElicitationRequest,
-            CreateUrlRequestElicitationRequest,
-        ]
-        CreateElicitationRequest = Union[
-            CreateFormElicitationRequest,
-            CreateUrlElicitationRequest,
-            CreateOtherElicitationRequest,
-        ]
-        CreateElicitationResponse = Union[
-            AcceptElicitationResponse,
-            DeclineElicitationResponse,
-            CancelElicitationResponse,
-            OtherElicitationResponse,
-        ]
-    """)
-    pattern = re.compile(
-        r"^(class CreateFormRequestElicitationRequest\([\s\S]*?\):[\s\S]*?)(?=^class \w+\(|\Z)",
-        re.MULTILINE,
-    )
-    content, count = pattern.subn(lambda match: match.group(1).rstrip() + "\n\n" + aliases + "\n", content, count=1)
-    if count == 0:
-        print("Warning: failed to insert schema aliases", file=sys.stderr)
-    return content
-
-
-def _restore_required_nullable_fields(content: str, schema: dict[str, Any] | None = None) -> str:
-    schema = _load_schema() if schema is None else schema
-    for class_name, field_names in _required_nullable_fields(schema).items():
-        class_pattern = re.compile(
-            rf"(class {re.escape(class_name)}\([^)]*\):)(.*?)(?=\nclass |\Z)",
-            re.DOTALL,
+            if fields
         )
-
-        def restore_block(match: re.Match[str], _field_names: list[str] = field_names) -> str:
-            header, block = match.group(1), match.group(2)
-            for field_name in _field_names:
-                field_patterns = (
-                    re.compile(rf"(\n\s+{re.escape(field_name)}:[^\n]*?)\s*=\s*None(?=\n)"),
-                    re.compile(rf"(\n\s+{re.escape(field_name)}:[^\n]*\[\s*\n[\s\S]*?\n\s+\]\s*)=\s*None"),
-                )
-                for field_pattern in field_patterns:
-                    block, count = field_pattern.subn(r"\1", block, count=1)
-                    if count:
-                        break
-            return header + block
-
-        content = class_pattern.sub(restore_block, content, count=1)
-    return content
-
-
-def _apply_field_overrides(content: str) -> str:
-    for class_name, field_name, new_type, optional in FIELD_TYPE_OVERRIDES:
-        old_type = "Optional[str]" if optional else "str"
-        replacement_type = f"Optional[{new_type}]" if optional else new_type
-        pattern = re.compile(
-            rf"(class {re.escape(class_name)}\(BaseModel\):.*?\n\s+{re.escape(field_name)}:\s+"
-            rf"(?:Annotated\[\s*)?){re.escape(old_type)}(?=\s*(?:,|=|\n))",
-            re.DOTALL,
-        )
-        content, count = pattern.subn(rf"\g<1>{replacement_type}", content, count=1)
-        if count == 0:
-            print(
-                f"Warning: failed to apply type override for {class_name}.{field_name} -> {new_type}",
-                file=sys.stderr,
-            )
-    return content
-
-
-def _apply_default_overrides(content: str) -> str:
-    for class_name, field_name, replacement in DEFAULT_VALUE_OVERRIDES:
-        class_pattern = re.compile(
-            rf"(class {class_name}\(BaseModel\):)(.*?)(?=\nclass |\Z)",
-            re.DOTALL,
-        )
-
-        def replace_block(
-            match: re.Match[str],
-            _field_name: str = field_name,
-            _replacement: str = replacement,
-            _class_name: str = class_name,
-        ) -> str:
-            header, block = match.group(1), match.group(2)
-            field_patterns: tuple[tuple[re.Pattern[str], Callable[[re.Match[str]], str]], ...] = (
-                (
-                    re.compile(
-                        rf"(\n\s+{_field_name}:.*?\]\s*=\s*)([\s\S]*?)"
-                        rf"(?=\n\s{{4}}(?:[A-Za-z_][A-Za-z0-9_]*\s*:|[rRuUbBfF]*(?:'''|\"\"\"))|$)",
-                        re.DOTALL,
-                    ),
-                    lambda m, _rep=_replacement: m.group(1) + _rep,
-                ),
-                (
-                    re.compile(
-                        rf"(\n\s+{_field_name}:[^\n]*=)\s*([^\n]+)",
-                        re.MULTILINE,
-                    ),
-                    lambda m, _rep=_replacement: m.group(1) + " " + _rep,
-                ),
-            )
-            for pattern, replacer in field_patterns:
-                new_block, count = pattern.subn(replacer, block, count=1)
-                if count:
-                    return header + new_block
-            print(
-                f"Warning: failed to override default for {_class_name}.{_field_name}",
-                file=sys.stderr,
-            )
-            return match.group(0)
-
-        content, count = class_pattern.subn(replace_block, content, count=1)
-        if count == 0:
-            print(
-                f"Warning: class {class_name} not found for default override on {field_name}",
-                file=sys.stderr,
-            )
-    return content
-
-
-def _inject_enum_aliases(content: str) -> str:
-    enum_lines = [
-        f"{name} = Literal[{', '.join(repr(value) for value in values)}]" for name, values in ENUM_LITERAL_MAP.items()
-    ]
-    if not enum_lines:
-        return content
-    block = "\n".join(enum_lines) + "\n\n"
-    class_index = content.find("\nclass ")
-    if class_index == -1:
-        return content
-    insertion_point = class_index + 1  # include leading newline
-    return content[:insertion_point] + block + content[insertion_point:]
-
-
-def _remove_unreferenced_root_models(content: str) -> str:
-    tree = ast.parse(content)
-    root_models = {
-        node.name: node
-        for node in tree.body
-        if isinstance(node, ast.ClassDef)
-        and any(
-            isinstance(base, ast.Subscript) and isinstance(base.value, ast.Name) and base.value.id == "RootModel"
-            for base in node.bases
-        )
+    return {
+        class_name: ModelValidators(validators=definitions)
+        for class_name, definitions in validators.items()
+        if definitions
     }
 
-    referenced_roots = set(PUBLIC_ROOT_MODELS)
-    root_dependencies: dict[str, set[str]] = {}
-    for statement in tree.body:
-        loaded_names = {
-            node.id
-            for node in ast.walk(statement)
-            if isinstance(node, ast.Name) and isinstance(node.ctx, ast.Load) and node.id in root_models
-        }
-        if isinstance(statement, ast.ClassDef) and statement.name in root_models:
-            root_dependencies[statement.name] = loaded_names
-        else:
-            referenced_roots.update(loaded_names)
 
-    pending = list(referenced_roots)
-    while pending:
-        root_name = pending.pop()
-        for dependency in root_dependencies.get(root_name, set()) - referenced_roots:
-            referenced_roots.add(dependency)
-            pending.append(dependency)
-
-    unused_models = [model for name, model in root_models.items() if name not in referenced_roots]
-    lines = content.splitlines(keepends=True)
-    for model in sorted(unused_models, key=lambda item: item.lineno, reverse=True):
-        del lines[model.lineno - 1 : model.end_lineno]
-    return re.sub(r"\n{4,}", "\n\n\n", "".join(lines))
+def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[list[str], list[str]]:
+    required = set(definition.get("required", []))
+    use_default: list[str] = []
+    skip: list[str] = []
+    for property_name, property_schema in definition.get("properties", {}).items():
+        if not isinstance(property_schema, dict) or property_name == "_meta":
+            continue
+        field_name = to_snake(property_name)
+        if property_schema.get("x-deserialize-skip-invalid-items"):
+            skip.append(field_name)
+        elif property_schema.get("x-deserialize-default-on-error"):
+            if property_name in required:
+                raise ValueError(f"{property_name!r} requests default-on-error but is required")
+            use_default.append(field_name)
+    return use_default, skip
 
 
-def _remove_unused_models(content: str) -> str:
-    for model_name in MODELS_TO_REMOVE:
-        pattern = re.compile(
-            rf"^(class {model_name}\([\s\S]*?\):)([\s\S]*?)(?=^\S|\Z)",
-            re.MULTILINE,
+def _build_header() -> str:
+    lines = ["# Generated from schema/schema.json. Do not edit by hand."]
+    if VERSION_FILE.exists() and (ref := VERSION_FILE.read_text(encoding="utf-8").strip()):
+        lines.append(f"# Schema ref: {ref}")
+    return "\n".join(lines)
+
+
+def _format_python(source: str) -> str:
+    commands = (
+        ("check", "--fix"),
+        ("format",),
+    )
+    for arguments in commands:
+        result = subprocess.run(  # noqa: S603
+            [sys.executable, "-m", "ruff", *arguments, "--stdin-filename", str(SCHEMA_OUT), "-"],
+            input=source,
+            text=True,
+            capture_output=True,
+            check=False,
+            cwd=ROOT,
         )
-        content, count = pattern.subn("", content)
-        if count > 0:
-            print(f"Removed unused model: {model_name}", file=sys.stderr)
-    return content
+        if result.returncode:
+            raise RuntimeError(f"ruff {' '.join(arguments)} failed:\n{result.stderr}")
+        source = result.stdout
+    return source
 
 
 if __name__ == "__main__":

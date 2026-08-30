@@ -12,6 +12,7 @@ version = "0.12.1"
 source = { editable = "." }
 dependencies = [
     { name = "pydantic" },
+    { name = "pydantic-core" },
 ]
 
 [package.optional-dependencies]
@@ -49,13 +50,14 @@ requires-dist = [
     { name = "logfire", marker = "extra == 'logfire'", specifier = ">=0.14" },
     { name = "opentelemetry-sdk", marker = "extra == 'logfire'", specifier = ">=1.28.0" },
     { name = "pydantic", specifier = ">=2.7" },
+    { name = "pydantic-core", specifier = ">=2.18.1" },
     { name = "websockets", marker = "extra == 'http'", specifier = ">=12.0" },
 ]
 provides-extras = ["logfire", "http"]
 
 [package.metadata.requires-dev]
 dev = [
-    { name = "datamodel-code-generator", specifier = ">=0.71.0" },
+    { name = "datamodel-code-generator", specifier = "==0.71.0" },
     { name = "deptry", specifier = ">=0.23.0" },
     { name = "httpx", extras = ["http2"], specifier = ">=0.27" },
     { name = "mkdocs", specifier = ">=1.4.2" },

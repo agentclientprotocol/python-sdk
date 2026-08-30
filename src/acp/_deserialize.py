@@ -12,6 +12,25 @@ from collections.abc import Callable
 from typing import Any
 
 from pydantic import ValidationError
+from pydantic_core import PydanticUseDefault
+
+
+def coerce_protocol_version(value: Any, _info: Any = None) -> int:
+    """Coerce legacy string protocol versions without rejecting the connection."""
+    if isinstance(value, int):
+        return value
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return 1
+
+
+def use_default_on_error(value: Any, handler: Callable[[Any], Any], _info: Any = None) -> Any:
+    """Ask Pydantic to use the declared field default after validation fails."""
+    try:
+        return handler(value)
+    except ValidationError:
+        raise PydanticUseDefault() from None
 
 
 def salvage_on_error(value: Any, handler: Callable[[Any], Any], fallback: Callable[[], Any]) -> Any:
@@ -26,7 +45,7 @@ def salvage_on_error(value: Any, handler: Callable[[Any], Any], fallback: Callab
         return fallback()
 
 
-def skip_invalid_items(value: Any, handler: Callable[[Any], Any]) -> Any:
+def skip_invalid_items(value: Any, handler: Callable[[Any], Any], _info: Any = None) -> Any:
     """Drop array items that fail validation instead of failing the whole array.
 
     Restores ``x-deserialize-skip-invalid-items``. Each item is validated through the field's

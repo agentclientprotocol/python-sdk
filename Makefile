@@ -11,6 +11,11 @@ gen-all: ## Generate all code from schema
 	@uv run ruff check --fix
 	@uv run ruff format .
 
+.PHONY: gen-check
+gen-check: ## Verify generated schema bindings without changing the worktree
+	@echo "🚀 Checking generated schema bindings"
+	@uv run --frozen python -m scripts.gen_schema --check
+
 .PHONY: check
 check: ## Run code quality tools.
 	@echo "🚀 Checking lock file consistency with 'pyproject.toml'"
