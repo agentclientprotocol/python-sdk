@@ -56,6 +56,8 @@ from .schema import (
     ResumeSessionResponse,
     SessionInfoUpdate,
     SessionNotification,
+    SessionUpdateCompactionSummaryChunk,
+    SessionUpdateCompactionUpdate,
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionResponse,
     SetSessionConfigOptionSelectRequest,
@@ -102,7 +104,9 @@ class Client(Protocol):
         | CurrentModeUpdate
         | ConfigOptionUpdate
         | SessionInfoUpdate
-        | UsageUpdate,
+        | UsageUpdate
+        | SessionUpdateCompactionUpdate
+        | SessionUpdateCompactionSummaryChunk,
         **kwargs: Any,
     ) -> None: ...
 

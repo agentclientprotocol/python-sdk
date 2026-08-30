@@ -2,6 +2,7 @@ import ast
 import importlib.util
 import inspect
 import sys
+import types
 import typing as t
 from pathlib import Path
 
@@ -35,7 +36,6 @@ class NodeTransformer(ast.NodeTransformer):
     def __init__(self) -> None:
         self._type_import_node: ast.ImportFrom | None = None
         self._schema_import_node: ast.ImportFrom | None = None
-        self._should_rewrite = False
         self._literals = {name: value for name, value in schema.__dict__.items() if t.get_origin(value) is t.Literal}
         self._current_model_name: str | None = None
 
@@ -44,21 +44,20 @@ class NodeTransformer(ast.NodeTransformer):
             return
         if not any(alias.name == name for alias in self._type_import_node.names):
             self._type_import_node.names.append(ast.alias(name=name))
-            self._should_rewrite = True
 
     def _add_schema_import(self, name: str) -> None:
         if not self._schema_import_node:
             return
         if not any(alias.name == name for alias in self._schema_import_node.names):
             self._schema_import_node.names.append(ast.alias(name=name))
-            self._should_rewrite = True
 
     def transform(self, source_file: Path) -> None:
         with source_file.open("r", encoding="utf-8") as f:
             source_code = f.read()
         tree = ast.parse(source_code)
+        before = ast.dump(tree, include_attributes=False)
         self.visit(tree)
-        if self._should_rewrite:
+        if ast.dump(tree, include_attributes=False) != before:
             print("Rewriting signatures in", source_file)
             new_code = ast.unparse(tree)
             with source_file.open("w", encoding="utf-8") as f:
@@ -90,7 +89,6 @@ class NodeTransformer(ast.NodeTransformer):
         )
         if not decorator:
             return self.generic_visit(node)
-        self._should_rewrite = True
         model_name = t.cast(ast.Name, decorator.args[0]).id
         model = t.cast(type[schema.BaseModel], getattr(schema, model_name))
         self._current_model_name = model_name
@@ -130,6 +128,12 @@ class NodeTransformer(ast.NodeTransformer):
         origin = t.get_origin(annotation)
         if origin is t.Annotated:
             return self._format_annotation(t.get_args(annotation)[0])
+        if origin in (t.Union, types.UnionType):
+            first, *rest = t.get_args(annotation)
+            formatted = self._format_annotation(first)
+            for argument in rest:
+                formatted = ast.BinOp(left=formatted, op=ast.BitOr(), right=self._format_annotation(argument))
+            return formatted
         if origin is t.Literal and annotation in self._literals.values():
             name = next(name for name, value in self._literals.items() if value is annotation)
             self._add_schema_import(name)

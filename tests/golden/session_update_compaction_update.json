@@ -1,0 +1,11 @@
+{
+  "sessionUpdate": "compaction_update",
+  "compactionId": "compaction_001",
+  "status": "completed",
+  "summary": [
+    {
+      "type": "text",
+      "text": "Earlier context summarized."
+    }
+  ]
+}
