@@ -20,6 +20,7 @@ from ._router import MethodRouter
 from .agent import _dump, _extension_method
 from .interfaces import Agent, Client
 from .meta import AGENT_METHODS, PROTOCOL_METHODS
+from .session import ActiveSession, SessionUpdateBroker
 
 __all__ = ["ClientSideConnection", "connect_to_agent"]
 
@@ -52,7 +53,8 @@ class ClientSideConnection:
     ) -> None:
         self._state = InitializationState()
         client = to_client(self) if callable(to_client) else to_client
-        router = _ClientRouter(cast(Client, client), self._state)
+        self._session_updates = SessionUpdateBroker(cast(Client, client))
+        router = _ClientRouter(cast(Client, self._session_updates), self._state)
         self._conn = open_connection(router, input_stream, output_stream, **connection_kwargs)
         if on_connect := getattr(client, "on_connect", None):
             on_connect(self)
@@ -67,7 +69,8 @@ class ClientSideConnection:
         self._state = InitializationState()
         self._conn = connection
         client = to_client(self) if callable(to_client) else to_client
-        router = _ClientRouter(cast(Client, client), self._state)
+        self._session_updates = SessionUpdateBroker(cast(Client, client))
+        router = _ClientRouter(cast(Client, self._session_updates), self._state)
         if on_connect := getattr(client, "on_connect", None):
             on_connect(self)
         return self, router
@@ -112,6 +115,14 @@ class ClientSideConnection:
 
     async def new_session(self, request: schema.NewSessionRequest) -> schema.NewSessionResponse:
         return await self._request(AGENT_METHODS["session_new"], request)
+
+    async def open_session(self, request: schema.NewSessionRequest) -> ActiveSession:
+        self._session_updates.begin_capture()
+        try:
+            response = await self.new_session(request)
+            return ActiveSession(self, response, self._session_updates)
+        finally:
+            self._session_updates.end_capture()
 
     async def list_sessions(self, request: schema.ListSessionsRequest) -> schema.ListSessionsResponse:
         return await self._request(AGENT_METHODS["session_list"], request)
