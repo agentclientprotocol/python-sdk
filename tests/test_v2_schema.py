@@ -1,7 +1,7 @@
 import pytest
 from pydantic import ValidationError
 
-from acp.experimental.v2 import PROTOCOL_VERSION
+from acp.experimental.v2 import PROTOCOL_METHODS, PROTOCOL_VERSION
 from acp.experimental.v2.schema import (
     AgentMessageChunk,
     OtherSessionUpdate,
@@ -17,6 +17,7 @@ def test_v2_models_fill_protocol_discriminators() -> None:
     )
 
     assert PROTOCOL_VERSION == 2
+    assert PROTOCOL_METHODS == {"cancel_request": "$/cancel_request"}
     assert update.model_dump(by_alias=True, exclude_none=True) == {
         "sessionUpdate": "agent_message_chunk",
         "messageId": "message-1",

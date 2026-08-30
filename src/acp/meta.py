@@ -46,4 +46,5 @@ CLIENT_METHODS = {
     "elicitation_create": "elicitation/create",
     "elicitation_complete": "elicitation/complete",
 }
+PROTOCOL_METHODS = {"cancel_request": "$/cancel_request"}
 PROTOCOL_VERSION = 1
