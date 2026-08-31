@@ -6,7 +6,6 @@ import difflib
 import json
 import subprocess
 import sys
-import textwrap
 from pathlib import Path
 from typing import Any
 
@@ -23,9 +22,13 @@ from datamodel_code_generator.validators import ModelValidators, ValidatorDefini
 from pydantic.alias_generators import to_snake
 
 ROOT = Path(__file__).resolve().parents[1]
-SCHEMA_JSON = ROOT / "schema" / "schema.json"
-VERSION_FILE = ROOT / "schema" / "VERSION"
-SCHEMA_OUT = ROOT / "src" / "acp" / "schema.py"
+if str(ROOT) not in sys.path:
+    sys.path.append(str(ROOT))
+
+from scripts._schema_semantics import (  # noqa: E402
+    SchemaSemantics,
+    get_default_schema_semantics,
+)
 
 UNSIGNED_TYPE_MAPPINGS = (
     "integer+uint16=integer",
@@ -34,239 +37,8 @@ UNSIGNED_TYPE_MAPPINGS = (
 )
 
 
-def _inline_model_ref(definition: str, *steps: tuple[str, int | None]) -> str:
-    ref = f"#/$defs/{definition}"
-    for keyword, index in steps:
-        ref += f"#-datamodel-code-generator-#-{keyword}-#-special-#"
-        if index is not None:
-            ref += f"/{index}"
-    return ref
-
-
-def _variant_model_map(
-    definition: str,
-    keyword: str,
-    branch: str,
-    names: tuple[str, ...],
-) -> dict[str, str]:
-    return {_inline_model_ref(definition, (keyword, index), (branch, None)): name for index, name in enumerate(names)}
-
-
-MODEL_NAME_MAP = {
-    "#/$defs/AvailableCommandsUpdate": "AvailableCommandsUpdateBase",
-    "#/$defs/ConfigOptionUpdate": "ConfigOptionUpdateBase",
-    "#/$defs/CurrentModeUpdate": "CurrentModeUpdateBase",
-    "#/$defs/SessionInfoUpdate": "SessionInfoUpdateBase",
-    "#/$defs/StringMultiSelectItems": "StringMultiSelectItemsBase",
-    "#/$defs/UsageUpdate": "UsageUpdateBase",
-}
-for variant_map in (
-    _variant_model_map("AgentResponse", "anyOf", "object", ("AgentResponseMessage", "AgentErrorMessage")),
-    _variant_model_map("ClientResponse", "anyOf", "object", ("ClientResponseMessage", "ClientErrorMessage")),
-    _variant_model_map("AuthMethod", "anyOf", "allOf", ("EnvVarAuthMethod", "TerminalAuthMethod")),
-    _variant_model_map("McpServer", "anyOf", "allOf", ("HttpMcpServer", "SseMcpServer", "AcpMcpServer")),
-    _variant_model_map(
-        "SetSessionConfigOptionRequest",
-        "anyOf",
-        "object",
-        ("SetSessionConfigOptionBooleanRequest", "SetSessionConfigOptionSelectRequest"),
-    ),
-    _variant_model_map(
-        "ContentBlock",
-        "oneOf",
-        "allOf",
-        (
-            "TextContentBlock",
-            "ImageContentBlock",
-            "AudioContentBlock",
-            "ResourceContentBlock",
-            "EmbeddedResourceContentBlock",
-        ),
-    ),
-    _variant_model_map(
-        "ToolCallContent",
-        "oneOf",
-        "allOf",
-        ("ContentToolCallContent", "FileEditToolCallContent", "TerminalToolCallContent"),
-    ),
-    _variant_model_map(
-        "PlanUpdateContent",
-        "oneOf",
-        "allOf",
-        ("PlanUpdateItems", "PlanUpdateFile", "PlanUpdateMarkdown"),
-    ),
-    _variant_model_map(
-        "NesSuggestion",
-        "oneOf",
-        "allOf",
-        (
-            "NesEditSuggestionVariant",
-            "NesJumpSuggestionVariant",
-            "NesRenameSuggestionVariant",
-            "NesSearchAndReplaceSuggestionVariant",
-        ),
-    ),
-    _variant_model_map(
-        "SessionUpdate",
-        "oneOf",
-        "allOf",
-        (
-            "UserMessageChunk",
-            "AgentMessageChunk",
-            "AgentThoughtChunk",
-            "ToolCallStart",
-            "ToolCallProgress",
-            "AgentPlanUpdate",
-            "AgentPlanContentUpdate",
-            "AgentPlanRemovedUpdate",
-            "AvailableCommandsUpdate",
-            "CurrentModeUpdate",
-            "ConfigOptionUpdate",
-            "SessionInfoUpdate",
-            "UsageUpdate",
-        ),
-    ),
-    _variant_model_map(
-        "ElicitationFormMode",
-        "anyOf",
-        "allOf",
-        ("ElicitationFormSessionMode", "ElicitationFormRequestMode"),
-    ),
-    _variant_model_map(
-        "ElicitationUrlMode",
-        "anyOf",
-        "allOf",
-        ("ElicitationUrlSessionMode", "ElicitationUrlRequestMode"),
-    ),
-    _variant_model_map(
-        "ElicitationPropertySchema",
-        "anyOf",
-        "allOf",
-        (
-            "ElicitationStringPropertySchema",
-            "ElicitationNumberPropertySchema",
-            "ElicitationIntegerPropertySchema",
-            "ElicitationBooleanPropertySchema",
-            "ElicitationMultiSelectPropertySchema",
-        ),
-    ),
-):
-    MODEL_NAME_MAP.update(variant_map)
-
-MODEL_NAME_MAP.update({
-    _inline_model_ref("RequestPermissionOutcome", ("oneOf", 0), ("object", None)): "DeniedOutcome",
-    _inline_model_ref("RequestPermissionOutcome", ("oneOf", 1), ("allOf", None)): "AllowedOutcome",
-    _inline_model_ref("CreateElicitationResponse", ("anyOf", 0), ("allOf", None)): "AcceptElicitationResponse",
-    _inline_model_ref("CreateElicitationResponse", ("anyOf", 1), ("object", None)): "DeclineElicitationResponse",
-    _inline_model_ref("CreateElicitationResponse", ("anyOf", 2), ("object", None)): "CancelElicitationResponse",
-    _inline_model_ref("CreateElicitationResponse", ("anyOf", 3), ("object", None)): "OtherElicitationResponse",
-    _inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
-    _inline_model_ref("MultiSelectItems", ("anyOf", 0), ("allOf", None)): "StringMultiSelectItems",
-    _inline_model_ref("MultiSelectItems", ("anyOf", 1), ("object", None)): "OtherMultiSelectItems",
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("allOf", None)): (
-        "CreateFormElicitationRequestBase"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", 0), ("allOf", None)): (
-        "CreateFormSessionElicitationRequestBase"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", 1), ("allOf", None)): (
-        "CreateFormRequestElicitationRequestBase"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("union_model-0", None)): (
-        "CreateFormSessionElicitationRequest"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 0), ("allOf", None), ("union_model-1", None)): (
-        "CreateFormRequestElicitationRequest"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("allOf", None)): (
-        "CreateUrlElicitationRequestBase"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", 0), ("allOf", None)): (
-        "CreateUrlSessionElicitationRequestBase"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", 1), ("allOf", None)): (
-        "CreateUrlRequestElicitationRequestBase"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("union_model-0", None)): (
-        "CreateUrlSessionElicitationRequest"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 1), ("allOf", None), ("union_model-1", None)): (
-        "CreateUrlRequestElicitationRequest"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 2), ("anyOf", 0), ("allOf", None)): (
-        "CreateOtherSessionElicitationRequest"
-    ),
-    _inline_model_ref("CreateElicitationRequest", ("anyOf", 2), ("anyOf", 1), ("allOf", None)): (
-        "CreateOtherRequestElicitationRequest"
-    ),
-})
-
-# datamodel-code-generator owns schema interpretation and its internal model names.
-# This block only preserves the Python names already published by the SDK.
-COMPATIBILITY_ALIASES = textwrap.dedent("""
-    PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
-    PlanEntryPriority = Literal["high", "medium", "low"]
-    PlanEntryStatus = Literal["pending", "in_progress", "completed"]
-    StopReason = Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]
-    ToolCallStatus = Literal["pending", "in_progress", "completed", "failed"]
-    ToolKind = Literal[
-        "read",
-        "edit",
-        "delete",
-        "move",
-        "search",
-        "execute",
-        "think",
-        "fetch",
-        "switch_mode",
-        "other",
-    ]
-
-    CreateOtherElicitationRequest = Union[
-        CreateOtherSessionElicitationRequest,
-        CreateOtherRequestElicitationRequest,
-    ]
-    CreateFormElicitationRequest = Union[
-        CreateFormSessionElicitationRequest,
-        CreateFormRequestElicitationRequest,
-    ]
-    CreateUrlElicitationRequest = Union[
-        CreateUrlSessionElicitationRequest,
-        CreateUrlRequestElicitationRequest,
-    ]
-    CreateElicitationRequest = Union[
-        CreateFormElicitationRequest,
-        CreateUrlElicitationRequest,
-        CreateOtherElicitationRequest,
-    ]
-
-    CreateElicitationResponse = Union[
-        AcceptElicitationResponse,
-        DeclineElicitationResponse,
-        CancelElicitationResponse,
-        OtherElicitationResponse,
-    ]
-    ElicitationMode = Union[
-        ElicitationFormSessionMode,
-        ElicitationFormRequestMode,
-        ElicitationUrlSessionMode,
-        ElicitationUrlRequestMode,
-    ]
-
-    _AvailableCommandsUpdate = AvailableCommandsUpdateBase
-    _CurrentModeUpdate = CurrentModeUpdateBase
-    _ConfigOptionUpdate = ConfigOptionUpdateBase
-    _SessionInfoUpdate = SessionInfoUpdateBase
-    _UsageUpdate = UsageUpdateBase
-    _StringMultiSelectItems = StringMultiSelectItemsBase
-
-    class Jsonrpc(Enum):
-        field_2_0 = "2.0"
-    """).strip()
-
-
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Generate ACP v1 schema bindings.")
+    parser = argparse.ArgumentParser(description="Generate ACP schema bindings.")
     parser.add_argument("--check", action="store_true", help="Fail if the committed bindings are stale.")
     return parser.parse_args()
 
@@ -278,8 +50,10 @@ def main() -> None:
 
 
 def generate_schema(*, check: bool = False) -> bool:
-    candidate = render_schema()
-    current = SCHEMA_OUT.read_text(encoding="utf-8") if SCHEMA_OUT.exists() else ""
+    semantics = get_default_schema_semantics()
+    candidate = render_schema(semantics)
+    schema_out = semantics.schema_out
+    current = schema_out.read_text(encoding="utf-8") if schema_out.exists() else ""
     if check:
         if current == candidate:
             return True
@@ -288,27 +62,29 @@ def generate_schema(*, check: bool = False) -> bool:
                 difflib.unified_diff(
                     current.splitlines(keepends=True),
                     candidate.splitlines(keepends=True),
-                    fromfile=str(SCHEMA_OUT.relative_to(ROOT)),
-                    tofile=f"{SCHEMA_OUT.relative_to(ROOT)} (generated)",
+                    fromfile=str(schema_out.relative_to(ROOT)),
+                    tofile=f"{schema_out.relative_to(ROOT)} (generated)",
                 )
             ),
             end="",
         )
         return False
-    SCHEMA_OUT.write_text(candidate, encoding="utf-8")
+    schema_out.parent.mkdir(parents=True, exist_ok=True)
+    schema_out.write_text(candidate, encoding="utf-8")
     return True
 
 
-def render_schema() -> str:
-    """Generate v1 directly from the currently pinned JSON Schema."""
-    if not SCHEMA_JSON.exists():
-        raise FileNotFoundError("schema/schema.json is missing; fetch a pinned schema release first")
+def render_schema(semantics: SchemaSemantics) -> str:
+    """Generate bindings directly from the pinned JSON Schema."""
+    schema_json = semantics.schema_json
+    if not schema_json.exists():
+        raise FileNotFoundError(f"{schema_json.relative_to(ROOT)} is missing; fetch a pinned schema release first")
 
-    schema = json.loads(SCHEMA_JSON.read_text(encoding="utf-8"))
+    schema = json.loads(schema_json.read_text(encoding="utf-8"))
     generated = generate(
         schema,
         input_file_type=InputFileType.JsonSchema,
-        custom_file_header=_build_header(),
+        custom_file_header=_build_header(schema_json, semantics.version_file),
         target_python_version=PythonVersion.PY_310,
         collapse_root_models=True,
         skip_root_model=True,
@@ -324,7 +100,7 @@ def render_schema() -> str:
         formatters=[Formatter.BUILTIN],
         infer_union_variant_names=True,
         naming_strategy=NamingStrategy.PrimaryFirst,
-        model_name_map=MODEL_NAME_MAP,
+        model_name_map=semantics.model_name_map,
         strict_refs=True,
         schema_version="2020-12",
         schema_version_mode=VersionMode.Strict,
@@ -337,7 +113,10 @@ def render_schema() -> str:
     )
     if not isinstance(generated, str):
         raise TypeError("Schema generation did not produce a single Python module")
-    return _format_python(f"{generated.rstrip()}\n\n\n{COMPATIBILITY_ALIASES}\n")
+    source = generated.rstrip()
+    if semantics.compatibility_aliases:
+        source = f"{source}\n\n\n{semantics.compatibility_aliases}"
+    return _format_python(f"{source}\n", semantics.schema_out)
 
 
 def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidators]:
@@ -387,21 +166,21 @@ def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[list[str], lis
     return use_default, skip
 
 
-def _build_header() -> str:
-    lines = ["# Generated from schema/schema.json. Do not edit by hand."]
-    if VERSION_FILE.exists() and (ref := VERSION_FILE.read_text(encoding="utf-8").strip()):
+def _build_header(schema_json: Path, version_file: Path) -> str:
+    lines = [f"# Generated from {schema_json.relative_to(ROOT)}. Do not edit by hand."]
+    if version_file.exists() and (ref := version_file.read_text(encoding="utf-8").strip()):
         lines.append(f"# Schema ref: {ref}")
     return "\n".join(lines)
 
 
-def _format_python(source: str) -> str:
+def _format_python(source: str, schema_out: Path) -> str:
     commands = (
         ("check", "--fix"),
         ("format",),
     )
     for arguments in commands:
         result = subprocess.run(  # noqa: S603
-            [sys.executable, "-m", "ruff", *arguments, "--stdin-filename", str(SCHEMA_OUT), "-"],
+            [sys.executable, "-m", "ruff", *arguments, "--stdin-filename", str(schema_out), "-"],
             input=source,
             text=True,
             capture_output=True,
