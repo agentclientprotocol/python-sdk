@@ -7,7 +7,12 @@ from typing import Protocol, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 
-DEFAULT_SEMANTICS_MODULE = "scripts.gen_schema_v1"
+DEFAULT_PROTOCOL_VERSION = 1
+SEMANTIC_MODULES = {
+    1: "scripts.gen_schema_v1",
+    2: "scripts.gen_schema_v2",
+}
+SUPPORTED_PROTOCOL_VERSIONS = tuple(SEMANTIC_MODULES)
 
 
 @dataclass(frozen=True, slots=True)
@@ -23,8 +28,12 @@ class _SemanticsModule(Protocol):
     SEMANTICS: SchemaSemantics
 
 
-def get_default_schema_semantics() -> SchemaSemantics:
-    module = cast(_SemanticsModule, import_module(DEFAULT_SEMANTICS_MODULE))
+def get_schema_semantics(protocol_version: int) -> SchemaSemantics:
+    try:
+        module_name = SEMANTIC_MODULES[protocol_version]
+    except KeyError:
+        raise ValueError(f"Unsupported protocol version: {protocol_version}") from None
+    module = cast(_SemanticsModule, import_module(module_name))
     return module.SEMANTICS
 
 

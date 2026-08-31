@@ -120,6 +120,8 @@ ignore = [
 "tests/*" = ["S101"]
 "src/acp/meta.py" = ["ALL"]
 "src/acp/schema.py" = ["ALL"]
+"src/acp/experimental/v2/meta.py" = ["ALL"]
+"src/acp/experimental/v2/schema.py" = ["ALL"]
 
 [tool.ruff.format]
 preview = true
