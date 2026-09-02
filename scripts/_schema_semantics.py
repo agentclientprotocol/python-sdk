@@ -20,6 +20,7 @@ class SchemaSemantics:
     schema_json: Path
     version_file: Path
     schema_out: Path
+    base_class: str
     model_name_map: dict[str, str]
     compatibility_aliases: str = ""
 

@@ -227,5 +227,6 @@ SEMANTICS = SchemaSemantics(
     schema_json=ROOT / "schema" / "v2" / "schema.json",
     version_file=ROOT / "schema" / "v2" / "VERSION",
     schema_out=ROOT / "src" / "acp" / "experimental" / "v2" / "schema.py",
+    base_class="acp.experimental.v2._schema_base.BaseModel",
     model_name_map=MODEL_NAME_MAP,
 )

@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
-from acp._schema_base import BaseModel
+from acp.experimental.v2._schema_base import BaseModel
 from pydantic import (
     AnyUrl,
     AwareDatetime,

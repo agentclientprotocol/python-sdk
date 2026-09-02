@@ -97,7 +97,7 @@ def render_schema(semantics: SchemaSemantics) -> str:
         collapse_root_models=True,
         skip_root_model=True,
         output_model_type=DataModelType.PydanticV2BaseModel,
-        base_class="acp._schema_base.BaseModel",
+        base_class=semantics.base_class,
         use_specialized_enum=False,
         use_standard_collections=False,
         use_union_operator=False,
