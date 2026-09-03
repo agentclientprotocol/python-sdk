@@ -10,7 +10,7 @@ from acp.connection import Connection
 
 from . import schema
 from ._connection import open_connection
-from ._initialization import Initialization, InitializationState
+from ._initialization import InitializationState
 from ._methods import (
     AGENT_NOTIFICATIONS,
     AGENT_REQUESTS,
@@ -19,12 +19,10 @@ from ._methods import (
     CreateElicitationResponse,
 )
 from ._router import MethodRouter
-from .interfaces import Agent, Client
+from .interfaces import Agent
 from .meta import CLIENT_METHODS
 
 __all__ = ["AgentSideConnection", "run_agent"]
-
-AgentFactory = Callable[[Client], Agent]
 
 
 def _dump(model: BaseModel) -> dict[str, Any]:
@@ -58,21 +56,20 @@ class AgentSideConnection:
 
     def __init__(
         self,
-        to_agent: AgentFactory | Agent,
+        agent: Agent,
         input_stream: Any,
         output_stream: Any = None,
         *,
-        listening: bool = True,
+        _listening: bool = True,
         **connection_kwargs: Any,
     ) -> None:
         self._state = InitializationState()
-        agent = to_agent(self) if callable(to_agent) else to_agent
-        router = _AgentRouter(cast(Agent, agent), self._state)
+        router = _AgentRouter(agent, self._state)
         self._conn = open_connection(
             router,
             input_stream,
             output_stream,
-            listening=listening,
+            listening=_listening,
             **connection_kwargs,
         )
         if on_connect := getattr(agent, "on_connect", None):
@@ -80,21 +77,18 @@ class AgentSideConnection:
 
     @classmethod
     def _attach(
-        cls, to_agent: AgentFactory | Agent, connection: Connection
+        cls,
+        agent_factory: Callable[[AgentSideConnection], Agent],
+        connection: Connection,
     ) -> tuple[AgentSideConnection, _AgentRouter]:
         self = cls.__new__(cls)
         self._state = InitializationState()
         self._conn = connection
-        agent = to_agent(self) if callable(to_agent) else to_agent
-        router = _AgentRouter(cast(Agent, agent), self._state)
-        if on_connect := getattr(agent, "on_connect", None):
-            on_connect(self)
+        agent = agent_factory(self)
+        router = _AgentRouter(agent, self._state)
         return self, router
 
-    async def wait_until_initialized(self) -> Initialization:
-        return await self._state.initialized()
-
-    async def listen(self) -> None:
+    async def _listen(self) -> None:
         await self._conn.main_loop()
 
     async def request_permission(
@@ -112,7 +106,7 @@ class AgentSideConnection:
     async def connect_mcp(self, request: schema.ConnectMcpRequest) -> schema.ConnectMcpResponse:
         return await self._request(CLIENT_METHODS["mcp_connect"], request)
 
-    async def message_mcp(self, message: schema.MessageMcpRequest) -> Any:
+    async def mcp_message(self, message: schema.MessageMcpRequest) -> Any:
         return await self._request(CLIENT_METHODS["mcp_message"], message)
 
     async def notify_mcp(self, notification: schema.MessageMcpNotification) -> None:
@@ -130,11 +124,11 @@ class AgentSideConnection:
     async def complete_elicitation(self, notification: schema.CompleteElicitationNotification) -> None:
         await self._notify(CLIENT_METHODS["elicitation_complete"], notification)
 
-    async def ext_method(self, method: str, params: Any = None) -> Any:
+    async def send_extension_request(self, method: str, params: Any = None) -> Any:
         await self._state.require(method)
         return await self._conn.send_request(_extension_method(method), params)
 
-    async def ext_notification(self, method: str, params: Any = None) -> None:
+    async def send_extension_notification(self, method: str, params: Any = None) -> None:
         await self._state.require(method)
         await self._conn.send_notification(_extension_method(method), params)
 
@@ -161,11 +155,13 @@ class AgentSideConnection:
 
 
 def _extension_method(method: str) -> str:
-    return method if method.startswith("_") else f"_{method}"
+    if not method.startswith("_"):
+        raise ValueError("ACP extension methods must start with '_'")
+    return method
 
 
 async def run_agent(
-    agent: AgentFactory | Agent,
+    agent: Agent,
     input_stream: Any = None,
     output_stream: Any = None,
     *,
@@ -180,10 +176,10 @@ async def run_agent(
         agent,
         input_stream,
         output_stream,
-        listening=False,
+        _listening=False,
         **connection_kwargs,
     )
     try:
-        await connection.listen()
+        await connection._listen()
     finally:
         await asyncio.shield(connection.close())

@@ -1,7 +1,8 @@
 import pytest
 from pydantic import ValidationError
 
-from acp.experimental.v2 import PROTOCOL_METHODS, PROTOCOL_VERSION
+from acp.experimental.v2 import PROTOCOL_VERSION
+from acp.experimental.v2.meta import PROTOCOL_METHODS
 from acp.experimental.v2.schema import (
     AgentMessageChunk,
     OtherSessionUpdate,

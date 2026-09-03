@@ -109,7 +109,7 @@ AGENT_REQUESTS = (
         schema.PromptResponse,
         empty_response=True,
     ),
-    request(AGENT_METHODS["mcp_message"], "message_mcp", schema.MessageMcpRequest, Any),
+    request(AGENT_METHODS["mcp_message"], "mcp_message", schema.MessageMcpRequest, Any),
     request(AGENT_METHODS["session_list"], "list_sessions", schema.ListSessionsRequest, schema.ListSessionsResponse),
     request(
         AGENT_METHODS["session_delete"],
@@ -148,8 +148,8 @@ AGENT_REQUESTS = (
 )
 
 AGENT_NOTIFICATIONS = (
-    notification(AGENT_METHODS["session_cancel"], "cancel", schema.CancelSessionNotification),
-    notification(AGENT_METHODS["mcp_message"], "message_mcp", schema.MessageMcpNotification),
+    notification(AGENT_METHODS["session_cancel"], "cancel_session", schema.CancelSessionNotification),
+    notification(AGENT_METHODS["mcp_message"], "notify_mcp", schema.MessageMcpNotification),
     notification(AGENT_METHODS["document_did_open"], "did_open", schema.DidOpenDocumentNotification),
     notification(AGENT_METHODS["document_did_change"], "did_change", schema.DidChangeDocumentNotification),
     notification(AGENT_METHODS["document_did_close"], "did_close", schema.DidCloseDocumentNotification),
@@ -167,7 +167,7 @@ CLIENT_REQUESTS = (
         schema.RequestPermissionResponse,
     ),
     request(CLIENT_METHODS["mcp_connect"], "connect_mcp", schema.ConnectMcpRequest, schema.ConnectMcpResponse),
-    request(CLIENT_METHODS["mcp_message"], "message_mcp", schema.MessageMcpRequest, Any),
+    request(CLIENT_METHODS["mcp_message"], "mcp_message", schema.MessageMcpRequest, Any),
     request(
         CLIENT_METHODS["mcp_disconnect"],
         "disconnect_mcp",
@@ -185,7 +185,7 @@ CLIENT_REQUESTS = (
 
 CLIENT_NOTIFICATIONS = (
     notification(CLIENT_METHODS["session_update"], "session_update", schema.UpdateSessionNotification),
-    notification(CLIENT_METHODS["mcp_message"], "message_mcp", schema.MessageMcpNotification),
+    notification(CLIENT_METHODS["mcp_message"], "notify_mcp", schema.MessageMcpNotification),
     notification(
         CLIENT_METHODS["elicitation_complete"],
         "complete_elicitation",

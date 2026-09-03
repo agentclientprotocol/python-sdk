@@ -38,7 +38,7 @@ class MethodRouter:
     async def handle_notification(self, spec: NotificationSpec, params: Any) -> None:
         handler = getattr(self._target, spec.handler, None)
         if handler is None:
-            raise RequestError.method_not_found(spec.method)
+            return
         await handler(spec.params.validate_python(params))
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
@@ -47,7 +47,7 @@ class MethodRouter:
         if is_notification:
             spec = self._notifications.get(method)
             if spec is None:
-                raise RequestError.method_not_found(method)
+                return None
             await self.handle_notification(spec, params)
             return None
         spec = self._requests.get(method)
@@ -56,8 +56,10 @@ class MethodRouter:
         return await self.handle_request(spec, params)
 
     async def _handle_extension(self, method: str, params: Any, is_notification: bool) -> Any:
-        handler_name = "ext_notification" if is_notification else "ext_method"
+        handler_name = "handle_extension_notification" if is_notification else "handle_extension_request"
         handler = getattr(self._target, handler_name, None)
         if handler is None:
+            if is_notification:
+                return None
             raise RequestError.method_not_found(method)
         return await handler(method, params)

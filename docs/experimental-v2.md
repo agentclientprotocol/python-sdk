@@ -47,8 +47,22 @@ Agents that serve both versions use `AgentProtocolRouter`:
 ```python
 from acp.experimental import AgentProtocolRouter
 
-router = AgentProtocolRouter(v1=v1_agent, v2=v2_agent)
+router = AgentProtocolRouter(
+    v1=lambda connection: V1Agent(connection),
+    v2=lambda connection: V2Agent(connection),
+)
 await router.run()
+```
+
+The factories create a fresh agent for each connection, so connection state is
+never shared accidentally.
+
+Extension method names are explicit and must include the protocol-required `_`
+prefix:
+
+```python
+result = await connection.send_extension_request("_vendor/method", {"value": 1})
+await connection.send_extension_notification("_vendor/event", {"value": 1})
 ```
 
 The selected runtime remains strict after initialization: v1 messages are not

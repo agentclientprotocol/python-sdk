@@ -12,19 +12,19 @@ from acp.agent.connection import AgentSideConnection as V1AgentSideConnection
 from acp.connection import Connection, MethodHandler
 from acp.exceptions import RequestError
 from acp.interfaces import Agent as V1Agent
-from acp.interfaces import Client as V1Client
 
 from . import v2
 from .v2._connection import open_connection
-from .v2.agent import AgentFactory as V2AgentFactory
 from .v2.agent import AgentSideConnection as V2AgentSideConnection
+from .v2.meta import AGENT_METHODS as V2_AGENT_METHODS
 
 __all__ = [
     "AgentProtocolConnection",
     "AgentProtocolRouter",
 ]
 
-V1AgentFactory = Callable[[V1Client], V1Agent]
+V1AgentFactory = Callable[[V1AgentSideConnection], V1Agent]
+V2AgentFactory = Callable[[V2AgentSideConnection], v2.Agent]
 
 
 def _dump(model: BaseModel) -> dict[str, Any]:
@@ -71,8 +71,8 @@ def _normalize_initialize(params: Any, selected_version: int) -> dict[str, Any]:
 class _AgentNegotiationHandler:
     def __init__(
         self,
-        v1_agent: V1AgentFactory | V1Agent | None,
-        v2_agent: V2AgentFactory | v2.Agent | None,
+        v1_agent: V1AgentFactory | None,
+        v2_agent: V2AgentFactory | None,
     ) -> None:
         self._v1_agent = v1_agent
         self._v2_agent = v2_agent
@@ -88,13 +88,13 @@ class _AgentNegotiationHandler:
         async with self._lock:
             if self._selected is None:
                 return await self._initialize(method, params, is_notification)
-            if not is_notification and method == v2.AGENT_METHODS["initialize"]:
+            if not is_notification and method == V2_AGENT_METHODS["initialize"]:
                 raise RequestError.invalid_request({"details": "ACP connections may only be initialized once"})
             handler = self._selected
         return await handler(method, params, is_notification)
 
     async def _initialize(self, method: str, params: Any, is_notification: bool) -> Any:
-        if is_notification or method != v2.AGENT_METHODS["initialize"]:
+        if is_notification or method != V2_AGENT_METHODS["initialize"]:
             raise RequestError.invalid_request({"details": "The first ACP request must be initialize"})
         requested = _read_protocol_version(params)
         selected = self._select(requested)
@@ -139,7 +139,7 @@ class AgentProtocolConnection:
     def __init__(self, connection: Connection) -> None:
         self._connection = connection
 
-    async def listen(self) -> None:
+    async def _listen(self) -> None:
         await self._connection.main_loop()
 
     async def close(self) -> None:
@@ -158,8 +158,8 @@ class AgentProtocolRouter:
     def __init__(
         self,
         *,
-        v1: V1AgentFactory | V1Agent | None = None,
-        v2: V2AgentFactory | v2.Agent | None = None,
+        v1: V1AgentFactory | None = None,
+        v2: V2AgentFactory | None = None,
     ) -> None:
         if v1 is None and v2 is None:
             raise ValueError("Configure at least one ACP protocol implementation")
@@ -167,6 +167,14 @@ class AgentProtocolRouter:
         self._v2 = v2
 
     def connect(
+        self,
+        input_stream: Any,
+        output_stream: Any = None,
+        **connection_kwargs: Any,
+    ) -> AgentProtocolConnection:
+        return self._connect(input_stream, output_stream, **connection_kwargs)
+
+    def _connect(
         self,
         input_stream: Any,
         output_stream: Any = None,
@@ -197,13 +205,13 @@ class AgentProtocolRouter:
             from acp.stdio import stdio_streams
 
             output_stream, input_stream = await stdio_streams(limit=stdio_buffer_limit_bytes)
-        connection = self.connect(
+        connection = self._connect(
             input_stream,
             output_stream,
             listening=False,
             **connection_kwargs,
         )
         try:
-            await connection.listen()
+            await connection._listen()
         finally:
             await asyncio.shield(connection.close())

@@ -1,13 +1,12 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel
 
 from . import schema
 from ._connection import open_connection
-from ._initialization import Initialization, InitializationState
+from ._initialization import InitializationState
 from ._methods import (
     AGENT_REQUESTS_BY_METHOD,
     CLIENT_NOTIFICATIONS,
@@ -16,16 +15,13 @@ from ._methods import (
 )
 from ._router import MethodRouter
 from .agent import _dump, _extension_method
-from .interfaces import Agent, Client
 from .meta import AGENT_METHODS
 
 __all__ = ["ClientSideConnection", "connect_to_agent"]
 
-ClientFactory = Callable[[Agent], Client]
-
 
 class _ClientRouter:
-    def __init__(self, client: Client, state: InitializationState) -> None:
+    def __init__(self, client: object, state: InitializationState) -> None:
         self._router = MethodRouter(client, CLIENT_REQUESTS, CLIENT_NOTIFICATIONS)
         self._state = state
 
@@ -39,20 +35,16 @@ class ClientSideConnection:
 
     def __init__(
         self,
-        to_client: ClientFactory | Client,
+        client: object,
         input_stream: Any,
         output_stream: Any = None,
         **connection_kwargs: Any,
     ) -> None:
         self._state = InitializationState()
-        client = to_client(self) if callable(to_client) else to_client
-        router = _ClientRouter(cast(Client, client), self._state)
+        router = _ClientRouter(client, self._state)
         self._conn = open_connection(router, input_stream, output_stream, **connection_kwargs)
         if on_connect := getattr(client, "on_connect", None):
             on_connect(self)
-
-    async def wait_until_initialized(self) -> Initialization:
-        return await self._state.initialized()
 
     async def initialize(self, request: schema.InitializeRequest) -> schema.InitializeResponse:
         self._state.begin(request)
@@ -105,10 +97,10 @@ class ClientSideConnection:
     async def prompt(self, request: schema.PromptRequest) -> schema.PromptResponse:
         return await self._request(AGENT_METHODS["session_prompt"], request)
 
-    async def cancel(self, notification: schema.CancelSessionNotification) -> None:
+    async def cancel_session(self, notification: schema.CancelSessionNotification) -> None:
         await self._notify(AGENT_METHODS["session_cancel"], notification)
 
-    async def message_mcp(self, message: schema.MessageMcpRequest) -> Any:
+    async def mcp_message(self, message: schema.MessageMcpRequest) -> Any:
         return await self._request(AGENT_METHODS["mcp_message"], message)
 
     async def notify_mcp(self, notification: schema.MessageMcpNotification) -> None:
@@ -144,11 +136,11 @@ class ClientSideConnection:
     async def did_focus(self, notification: schema.DidFocusDocumentNotification) -> None:
         await self._notify(AGENT_METHODS["document_did_focus"], notification)
 
-    async def ext_method(self, method: str, params: Any = None) -> Any:
+    async def send_extension_request(self, method: str, params: Any = None) -> Any:
         await self._state.require(method)
         return await self._conn.send_request(_extension_method(method), params)
 
-    async def ext_notification(self, method: str, params: Any = None) -> None:
+    async def send_extension_notification(self, method: str, params: Any = None) -> None:
         await self._state.require(method)
         await self._conn.send_notification(_extension_method(method), params)
 
@@ -175,7 +167,7 @@ class ClientSideConnection:
 
 
 def connect_to_agent(
-    client: ClientFactory | Client,
+    client: object,
     input_stream: Any,
     output_stream: Any = None,
     **connection_kwargs: Any,
