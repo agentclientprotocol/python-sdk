@@ -1,14 +1,12 @@
-# Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.21.0
+# Generated from schema/v2/meta.json. Do not edit by hand.
+# Schema ref: refs/tags/schema-v2.0.0-alpha.3
 AGENT_METHODS = {
     "initialize": "initialize",
-    "authenticate": "authenticate",
+    "auth_login": "auth/login",
     "providers_list": "providers/list",
     "providers_set": "providers/set",
     "providers_disable": "providers/disable",
     "session_new": "session/new",
-    "session_load": "session/load",
-    "session_set_mode": "session/set_mode",
     "session_set_config_option": "session/set_config_option",
     "session_prompt": "session/prompt",
     "session_cancel": "session/cancel",
@@ -18,7 +16,7 @@ AGENT_METHODS = {
     "session_fork": "session/fork",
     "session_resume": "session/resume",
     "session_close": "session/close",
-    "logout": "logout",
+    "auth_logout": "auth/logout",
     "nes_start": "nes/start",
     "nes_suggest": "nes/suggest",
     "nes_accept": "nes/accept",
@@ -33,13 +31,6 @@ AGENT_METHODS = {
 CLIENT_METHODS = {
     "session_request_permission": "session/request_permission",
     "session_update": "session/update",
-    "fs_write_text_file": "fs/write_text_file",
-    "fs_read_text_file": "fs/read_text_file",
-    "terminal_create": "terminal/create",
-    "terminal_output": "terminal/output",
-    "terminal_release": "terminal/release",
-    "terminal_wait_for_exit": "terminal/wait_for_exit",
-    "terminal_kill": "terminal/kill",
     "mcp_connect": "mcp/connect",
     "mcp_message": "mcp/message",
     "mcp_disconnect": "mcp/disconnect",
@@ -47,4 +38,4 @@ CLIENT_METHODS = {
     "elicitation_complete": "elicitation/complete",
 }
 PROTOCOL_METHODS = {"cancel_request": "$/cancel_request"}
-PROTOCOL_VERSION = 1
+PROTOCOL_VERSION = 2

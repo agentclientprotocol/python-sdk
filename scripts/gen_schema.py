@@ -26,8 +26,10 @@ if str(ROOT) not in sys.path:
     sys.path.append(str(ROOT))
 
 from scripts._schema_semantics import (  # noqa: E402
+    DEFAULT_PROTOCOL_VERSION,
+    SUPPORTED_PROTOCOL_VERSIONS,
     SchemaSemantics,
-    get_default_schema_semantics,
+    get_schema_semantics,
 )
 
 UNSIGNED_TYPE_MAPPINGS = (
@@ -40,17 +42,23 @@ UNSIGNED_TYPE_MAPPINGS = (
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Generate ACP schema bindings.")
     parser.add_argument("--check", action="store_true", help="Fail if the committed bindings are stale.")
+    parser.add_argument(
+        "--protocol-version",
+        type=int,
+        choices=SUPPORTED_PROTOCOL_VERSIONS,
+        default=DEFAULT_PROTOCOL_VERSION,
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
-    if not generate_schema(check=args.check):
+    if not generate_schema(check=args.check, protocol_version=args.protocol_version):
         raise SystemExit(1)
 
 
-def generate_schema(*, check: bool = False) -> bool:
-    semantics = get_default_schema_semantics()
+def generate_schema(*, check: bool = False, protocol_version: int = DEFAULT_PROTOCOL_VERSION) -> bool:
+    semantics = get_schema_semantics(protocol_version)
     candidate = render_schema(semantics)
     schema_out = semantics.schema_out
     current = schema_out.read_text(encoding="utf-8") if schema_out.exists() else ""
@@ -89,7 +97,7 @@ def render_schema(semantics: SchemaSemantics) -> str:
         collapse_root_models=True,
         skip_root_model=True,
         output_model_type=DataModelType.PydanticV2BaseModel,
-        base_class="acp._schema_base.BaseModel",
+        base_class=semantics.base_class,
         use_specialized_enum=False,
         use_standard_collections=False,
         use_union_operator=False,

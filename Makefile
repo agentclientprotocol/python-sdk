@@ -11,10 +11,18 @@ gen-all: ## Generate all code from schema
 	@uv run ruff check --fix
 	@uv run ruff format .
 
+.PHONY: gen-v2
+gen-v2: ## Generate experimental v2 schema bindings
+	@echo "🚀 Generating experimental v2 schema bindings"
+	@uv run scripts/gen_all.py --protocol-version 2
+
 .PHONY: gen-check
 gen-check: ## Verify generated schema bindings without changing the worktree
 	@echo "🚀 Checking generated schema bindings"
 	@uv run --frozen python -m scripts.gen_schema --check
+	@uv run --frozen python -m scripts.gen_meta --check
+	@uv run --frozen python -m scripts.gen_schema --protocol-version 2 --check
+	@uv run --frozen python -m scripts.gen_meta --protocol-version 2 --check
 
 .PHONY: check
 check: ## Run code quality tools.
@@ -23,7 +31,7 @@ check: ## Run code quality tools.
 	@echo "🚀 Linting code: Running pre-commit via prek"
 	@uv run prek run -a
 	@echo "🚀 Static type checking: Running ty"
-	@uv run ty check --exclude "src/acp/meta.py" --exclude "src/acp/schema.py" --exclude "examples/*.py"
+	@uv run ty check --exclude "src/acp/meta.py" --exclude "src/acp/schema.py" --exclude "src/acp/experimental/v2/meta.py" --exclude "src/acp/experimental/v2/schema.py" --exclude "examples/*.py"
 	@echo "🚀 Checking for obsolete dependencies: Running deptry"
 	@uv run deptry src
 
