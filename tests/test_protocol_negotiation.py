@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, cast
+from typing import Any
 
 import pytest
 
@@ -13,6 +13,10 @@ from acp.experimental.v2.meta import AGENT_METHODS
 
 
 class Client:
+    pass
+
+
+class V1Client(acp.Client):
     pass
 
 
@@ -103,7 +107,7 @@ async def test_agent_protocol_router_selects_v1() -> None:
     v2_agent = V2Agent()
     wire: list[StreamEvent] = []
     agent_connection = AgentProtocolRouter(v1=lambda _: v1_agent, v2=lambda _: v2_agent).connect(agent_transport)
-    client_connection = acp.connect_to_agent(cast(acp.Client, Client()), client_transport, observers=[wire.append])
+    client_connection = acp.connect_to_agent(V1Client(), client_transport, observers=[wire.append])
 
     try:
         initialized = await client_connection.initialize(

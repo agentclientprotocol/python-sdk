@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -37,10 +37,10 @@ class _AgentRouter:
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
         initialize = self._router.request_spec("initialize")
         if not is_notification and initialize is not None and method == initialize.method:
-            request = cast(schema.InitializeRequest, initialize.request.validate_python(params))
+            request: schema.InitializeRequest = initialize.request.validate_python(params)
             self._state.begin(request)
             try:
-                response = cast(schema.InitializeResponse, await self._router.handle_request(initialize, params))
+                response: schema.InitializeResponse = await self._router.handle_request(initialize, params)
                 self._state.complete(response)
             except BaseException as error:
                 self._state.fail(error)

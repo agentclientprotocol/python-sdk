@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast
+from typing import Any
 
 from pydantic import BaseModel
 
@@ -97,15 +97,28 @@ class _AgentNegotiationHandler:
         if is_notification or method != V2_AGENT_METHODS["initialize"]:
             raise RequestError.invalid_request({"details": "The first ACP request must be initialize"})
         requested = _read_protocol_version(params)
-        selected = self._select(requested)
         connection = self._connection
         if connection is None:
             raise RuntimeError("Protocol router is not connected")
 
-        if selected == v2.PROTOCOL_VERSION:
-            endpoint, handler = V2AgentSideConnection._attach(cast(Any, self._v2_agent), connection)
+        if self._v2_agent is not None and requested >= v2.PROTOCOL_VERSION:
+            selected = v2.PROTOCOL_VERSION
+            endpoint, handler = V2AgentSideConnection._attach(self._v2_agent, connection)
+        elif self._v1_agent is not None and requested >= v1_meta.PROTOCOL_VERSION:
+            selected = v1_meta.PROTOCOL_VERSION
+            endpoint, handler = V1AgentSideConnection._attach(self._v1_agent, connection)
         else:
-            endpoint, handler = V1AgentSideConnection._attach(cast(Any, self._v1_agent), connection)
+            supported = [
+                version
+                for version, implementation in (
+                    (v1_meta.PROTOCOL_VERSION, self._v1_agent),
+                    (v2.PROTOCOL_VERSION, self._v2_agent),
+                )
+                if implementation is not None
+            ]
+            raise RequestError.invalid_request({
+                "details": f"Unsupported ACP protocol {requested}; configured versions are {supported}"
+            })
         self._endpoint = endpoint
         self._selected = handler
         normalized = _normalize_initialize(params, selected)
@@ -116,23 +129,6 @@ class _AgentNegotiationHandler:
                 "details": f"initialize response selected protocol {parsed_version}, expected {selected}"
             })
         return response
-
-    def _select(self, requested: int) -> int:
-        if self._v2_agent is not None and requested >= v2.PROTOCOL_VERSION:
-            return v2.PROTOCOL_VERSION
-        if self._v1_agent is not None and requested >= v1_meta.PROTOCOL_VERSION:
-            return v1_meta.PROTOCOL_VERSION
-        supported = [
-            version
-            for version, implementation in (
-                (v1_meta.PROTOCOL_VERSION, self._v1_agent),
-                (v2.PROTOCOL_VERSION, self._v2_agent),
-            )
-            if implementation is not None
-        ]
-        raise RequestError.invalid_request({
-            "details": f"Unsupported ACP protocol {requested}; configured versions are {supported}"
-        })
 
 
 class AgentProtocolConnection:
