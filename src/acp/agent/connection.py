@@ -102,13 +102,14 @@ class AgentSideConnection:
         self._notify_connected(agent)
 
     @classmethod
-    def _attach(
+    def attach(
         cls,
         to_agent: Callable[[Client], Agent] | Agent,
         connection: Connection,
         *,
         use_unstable_protocol: bool = False,
     ) -> tuple[AgentSideConnection, MethodHandler]:
+        """Attach an agent-side wrapper to an existing connection."""
         self = cls.__new__(cls)
         agent, handler = self._prepare(to_agent, use_unstable_protocol=use_unstable_protocol)
         self._conn = connection

@@ -6,7 +6,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from acp.connection import Connection
+from acp.connection import Connection, MethodHandler
 
 from . import schema
 from ._connection import open_connection
@@ -75,11 +75,12 @@ class AgentSideConnection:
             on_connect(self)
 
     @classmethod
-    def _attach(
+    def attach(
         cls,
         agent_factory: Callable[[AgentSideConnection], object],
         connection: Connection,
-    ) -> tuple[AgentSideConnection, _AgentRouter]:
+    ) -> tuple[AgentSideConnection, MethodHandler]:
+        """Attach an agent-side wrapper to an existing connection."""
         self = cls.__new__(cls)
         self._state = InitializationState()
         self._conn = connection

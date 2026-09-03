@@ -6,7 +6,7 @@ from contextvars import ContextVar
 from typing import Any, cast, final
 
 from .._transport import Transport
-from ..connection import Connection, MethodHandler
+from ..connection import Connection
 from ..exceptions import RequestError
 from ..interfaces import Agent, Client
 from ..meta import AGENT_METHODS, CLIENT_METHODS
@@ -122,7 +122,9 @@ class ClientSideConnection:
         use_unstable_protocol: bool = False,
         **connection_kwargs: Any,
     ) -> None:
-        client, handler = self._prepare(to_client, use_unstable_protocol=use_unstable_protocol)
+        client = to_client(self) if callable(to_client) else to_client
+        self._session_updates = _SessionUpdateTracker(cast(Client, client))
+        handler = build_client_router(cast(Client, self._session_updates), use_unstable_protocol=use_unstable_protocol)
 
         if isinstance(input_stream, Transport):
             if output_stream is not None:
@@ -134,34 +136,6 @@ class ClientSideConnection:
             ):
                 raise TypeError(_CLIENT_CONNECTION_ERROR)
             self._conn = Connection(handler, input_stream, output_stream, **connection_kwargs)
-        self._notify_connected(client)
-
-    @classmethod
-    def _attach(
-        cls,
-        to_client: Callable[[Agent], Client] | Client,
-        connection: Connection,
-        *,
-        use_unstable_protocol: bool = False,
-    ) -> tuple[ClientSideConnection, MethodHandler]:
-        self = cls.__new__(cls)
-        client, handler = self._prepare(to_client, use_unstable_protocol=use_unstable_protocol)
-        self._conn = connection
-        self._notify_connected(client)
-        return self, handler
-
-    def _prepare(
-        self,
-        to_client: Callable[[Agent], Client] | Client,
-        *,
-        use_unstable_protocol: bool,
-    ) -> tuple[Client, MethodHandler]:
-        client = cast(Client, to_client(self) if callable(to_client) else to_client)
-        self._session_updates = _SessionUpdateTracker(client)
-        handler = build_client_router(cast(Client, self._session_updates), use_unstable_protocol=use_unstable_protocol)
-        return client, handler
-
-    def _notify_connected(self, client: Client) -> None:
         if on_connect := getattr(client, "on_connect", None):
             on_connect(self)
 

@@ -78,7 +78,6 @@ class _AgentNegotiationHandler:
         self._v2_agent = v2_agent
         self._connection: Connection | None = None
         self._selected: MethodHandler | None = None
-        self._endpoint: V1AgentSideConnection | V2AgentSideConnection | None = None
         self._lock = asyncio.Lock()
 
     def bind_connection(self, connection: Connection) -> None:
@@ -103,10 +102,10 @@ class _AgentNegotiationHandler:
 
         if self._v2_agent is not None and requested >= v2.PROTOCOL_VERSION:
             selected = v2.PROTOCOL_VERSION
-            endpoint, handler = V2AgentSideConnection._attach(self._v2_agent, connection)
+            _, handler = V2AgentSideConnection.attach(self._v2_agent, connection)
         elif self._v1_agent is not None and requested >= v1_meta.PROTOCOL_VERSION:
             selected = v1_meta.PROTOCOL_VERSION
-            endpoint, handler = V1AgentSideConnection._attach(self._v1_agent, connection)
+            _, handler = V1AgentSideConnection.attach(self._v1_agent, connection)
         else:
             supported = [
                 version
@@ -119,7 +118,6 @@ class _AgentNegotiationHandler:
             raise RequestError.invalid_request({
                 "details": f"Unsupported ACP protocol {requested}; configured versions are {supported}"
             })
-        self._endpoint = endpoint
         self._selected = handler
         normalized = _normalize_initialize(params, selected)
         response = await handler(method, normalized, False)
