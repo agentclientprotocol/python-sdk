@@ -5,8 +5,6 @@ from typing import Any, cast
 
 from pydantic import BaseModel
 
-from acp.connection import Connection
-
 from . import schema
 from ._connection import open_connection
 from ._initialization import Initialization, InitializationState
@@ -19,8 +17,7 @@ from ._methods import (
 from ._router import MethodRouter
 from .agent import _dump, _extension_method
 from .interfaces import Agent, Client
-from .meta import AGENT_METHODS, PROTOCOL_METHODS
-from .session import ActiveSession, SessionUpdateBroker
+from .meta import AGENT_METHODS
 
 __all__ = ["ClientSideConnection", "connect_to_agent"]
 
@@ -33,10 +30,6 @@ class _ClientRouter:
         self._state = state
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
-        if is_notification and method == PROTOCOL_METHODS["cancel_request"]:
-            if self._state.phase not in {"initializing", "initialized"}:
-                await self._state.require(method)
-            return None
         await self._state.require(method)
         return await self._router(method, params, is_notification)
 
@@ -53,35 +46,10 @@ class ClientSideConnection:
     ) -> None:
         self._state = InitializationState()
         client = to_client(self) if callable(to_client) else to_client
-        self._session_updates = SessionUpdateBroker(cast(Client, client))
-        router = _ClientRouter(cast(Client, self._session_updates), self._state)
+        router = _ClientRouter(cast(Client, client), self._state)
         self._conn = open_connection(router, input_stream, output_stream, **connection_kwargs)
         if on_connect := getattr(client, "on_connect", None):
             on_connect(self)
-
-    @classmethod
-    def _attach(
-        cls,
-        to_client: ClientFactory | Client,
-        connection: Connection,
-    ) -> tuple[ClientSideConnection, _ClientRouter]:
-        self = cls.__new__(cls)
-        self._state = InitializationState()
-        self._conn = connection
-        client = to_client(self) if callable(to_client) else to_client
-        self._session_updates = SessionUpdateBroker(cast(Client, client))
-        router = _ClientRouter(cast(Client, self._session_updates), self._state)
-        if on_connect := getattr(client, "on_connect", None):
-            on_connect(self)
-        return self, router
-
-    def _complete_initialization(
-        self,
-        request: schema.InitializeRequest,
-        response: schema.InitializeResponse,
-    ) -> Initialization:
-        self._state.begin(request)
-        return self._state.complete(response)
 
     async def wait_until_initialized(self) -> Initialization:
         return await self._state.initialized()
@@ -115,14 +83,6 @@ class ClientSideConnection:
 
     async def new_session(self, request: schema.NewSessionRequest) -> schema.NewSessionResponse:
         return await self._request(AGENT_METHODS["session_new"], request)
-
-    async def open_session(self, request: schema.NewSessionRequest) -> ActiveSession:
-        self._session_updates.begin_capture()
-        try:
-            response = await self.new_session(request)
-            return ActiveSession(self, response, self._session_updates)
-        finally:
-            self._session_updates.end_capture()
 
     async def list_sessions(self, request: schema.ListSessionsRequest) -> schema.ListSessionsResponse:
         return await self._request(AGENT_METHODS["session_list"], request)

@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from dataclasses import dataclass
 from typing import Any, cast
 
 from pydantic import BaseModel
@@ -10,7 +9,6 @@ from pydantic import BaseModel
 from acp import meta as v1_meta
 from acp import schema as v1_schema
 from acp.agent.connection import AgentSideConnection as V1AgentSideConnection
-from acp.client.connection import ClientSideConnection as V1ClientSideConnection
 from acp.connection import Connection, MethodHandler
 from acp.exceptions import RequestError
 from acp.interfaces import Agent as V1Agent
@@ -20,23 +18,13 @@ from . import v2
 from .v2._connection import open_connection
 from .v2.agent import AgentFactory as V2AgentFactory
 from .v2.agent import AgentSideConnection as V2AgentSideConnection
-from .v2.client import ClientFactory as V2ClientFactory
-from .v2.client import ClientSideConnection as V2ClientSideConnection
 
 __all__ = [
     "AgentProtocolConnection",
     "AgentProtocolRouter",
-    "ClientNegotiator",
-    "NegotiatedClient",
-    "NegotiatedV1",
-    "NegotiatedV2",
-    "UnsupportedProtocolVersionError",
-    "V1ClientConfig",
-    "V2ClientConfig",
 ]
 
 V1AgentFactory = Callable[[V1Client], V1Agent]
-V1ClientFactory = Callable[[V1Agent], V1Client]
 
 
 def _dump(model: BaseModel) -> dict[str, Any]:
@@ -78,33 +66,6 @@ def _normalize_initialize(params: Any, selected_version: int) -> dict[str, Any]:
     request = v1_schema.InitializeRequest.model_validate(params)
     request.protocol_version = v1_meta.PROTOCOL_VERSION
     return _dump(request)
-
-
-class _SwitchingHandler:
-    def __init__(self) -> None:
-        self._handler: MethodHandler | None = None
-        self._failure: BaseException | None = None
-        self._ready = asyncio.Event()
-
-    def bind(self, handler: MethodHandler) -> None:
-        if self._handler is not None or self._failure is not None:
-            raise RuntimeError("Protocol handler has already been resolved")
-        self._handler = handler
-        self._ready.set()
-
-    def fail(self, error: BaseException) -> None:
-        if self._handler is not None:
-            return
-        self._failure = error
-        self._ready.set()
-
-    async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
-        await self._ready.wait()
-        if self._failure is not None:
-            raise self._failure
-        if self._handler is None:
-            raise RuntimeError("Protocol handler was not resolved")
-        return await self._handler(method, params, is_notification)
 
 
 class _AgentNegotiationHandler:
@@ -246,130 +207,3 @@ class AgentProtocolRouter:
             await connection.listen()
         finally:
             await asyncio.shield(connection.close())
-
-
-@dataclass(frozen=True, slots=True)
-class V1ClientConfig:
-    client: V1ClientFactory | V1Client
-    initialize: v1_schema.InitializeRequest
-
-    def __post_init__(self) -> None:
-        if self.initialize.protocol_version != v1_meta.PROTOCOL_VERSION:
-            raise ValueError(f"V1ClientConfig requires protocol version {v1_meta.PROTOCOL_VERSION}")
-
-
-@dataclass(frozen=True, slots=True)
-class V2ClientConfig:
-    client: V2ClientFactory | v2.Client
-    initialize: v2.schema.InitializeRequest
-
-    def __post_init__(self) -> None:
-        if self.initialize.protocol_version != v2.PROTOCOL_VERSION:
-            raise ValueError(f"V2ClientConfig requires protocol version {v2.PROTOCOL_VERSION}")
-
-
-@dataclass(frozen=True, slots=True)
-class NegotiatedV1:
-    connection: V1ClientSideConnection
-    initialize: v1_schema.InitializeResponse
-    protocol_version: int = v1_meta.PROTOCOL_VERSION
-
-
-@dataclass(frozen=True, slots=True)
-class NegotiatedV2:
-    connection: V2ClientSideConnection
-    initialize: v2.schema.InitializeResponse
-    protocol_version: int = v2.PROTOCOL_VERSION
-
-
-NegotiatedClient = NegotiatedV1 | NegotiatedV2
-
-
-class UnsupportedProtocolVersionError(ValueError):
-    def __init__(self, requested: int, offered: int, supported: frozenset[int]) -> None:
-        self.requested = requested
-        self.offered = offered
-        self.supported = supported
-        super().__init__(f"Agent selected ACP protocol {offered}; requested {requested}, supported {sorted(supported)}")
-
-
-class ClientNegotiator:
-    """Send one initialize request and return the selected typed client."""
-
-    def __init__(
-        self,
-        input_stream: Any,
-        output_stream: Any = None,
-        *,
-        v1: V1ClientConfig | None = None,
-        v2: V2ClientConfig | None = None,
-        **connection_kwargs: Any,
-    ) -> None:
-        if v1 is None and v2 is None:
-            raise ValueError("Configure at least one ACP client version")
-        self._v1 = v1
-        self._v2 = v2
-        self._handler = _SwitchingHandler()
-        self._connection = open_connection(
-            self._handler,
-            input_stream,
-            output_stream,
-            **connection_kwargs,
-        )
-        self._lock = asyncio.Lock()
-        self._resolved: NegotiatedClient | None = None
-        self._failure: BaseException | None = None
-
-    async def negotiate(self) -> NegotiatedClient:
-        async with self._lock:
-            if self._resolved is not None:
-                return self._resolved
-            if self._failure is not None:
-                raise self._failure
-            try:
-                self._resolved = await self._negotiate_once()
-            except BaseException as error:
-                self._failure = error
-                self._handler.fail(error)
-                await self._connection.close()
-                raise
-            return self._resolved
-
-    async def _negotiate_once(self) -> NegotiatedClient:
-        offered_request: BaseModel = (
-            self._v2.initialize if self._v2 is not None else cast(V1ClientConfig, self._v1).initialize
-        )
-
-        response = await self._connection.send_request(v2.AGENT_METHODS["initialize"], _dump(offered_request))
-        offered = _read_protocol_version(response)
-        requested = offered_request.protocol_version
-
-        if offered == v2.PROTOCOL_VERSION and self._v2 is not None:
-            initialize = v2.schema.InitializeResponse.model_validate(response)
-            connection, handler = V2ClientSideConnection._attach(self._v2.client, self._connection)
-            connection._complete_initialization(self._v2.initialize, initialize)
-            self._handler.bind(handler)
-            return NegotiatedV2(connection, initialize)
-        if offered == v1_meta.PROTOCOL_VERSION and self._v1 is not None:
-            initialize = v1_schema.InitializeResponse.model_validate(response)
-            connection, handler = V1ClientSideConnection._attach(self._v1.client, self._connection)
-            self._handler.bind(handler)
-            return NegotiatedV1(connection, initialize)
-        supported = frozenset(
-            version
-            for version, config in (
-                (v1_meta.PROTOCOL_VERSION, self._v1),
-                (v2.PROTOCOL_VERSION, self._v2),
-            )
-            if config is not None
-        )
-        raise UnsupportedProtocolVersionError(requested, offered, supported)
-
-    async def close(self) -> None:
-        await self._connection.close()
-
-    async def __aenter__(self) -> ClientNegotiator:
-        return self
-
-    async def __aexit__(self, exc_type: Any, exc: Any, tb: Any) -> None:
-        await self.close()

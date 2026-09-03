@@ -20,7 +20,7 @@ from ._methods import (
 )
 from ._router import MethodRouter
 from .interfaces import Agent, Client
-from .meta import CLIENT_METHODS, PROTOCOL_METHODS
+from .meta import CLIENT_METHODS
 
 __all__ = ["AgentSideConnection", "run_agent"]
 
@@ -37,11 +37,6 @@ class _AgentRouter:
         self._state = state
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
-        if is_notification and method == PROTOCOL_METHODS["cancel_request"]:
-            if self._state.phase not in {"initializing", "initialized"}:
-                await self._state.require(method)
-            return None
-
         initialize = self._router.request_spec("initialize")
         if not is_notification and initialize is not None and method == initialize.method:
             request = cast(schema.InitializeRequest, initialize.request.validate_python(params))

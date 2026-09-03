@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from typing import Any
 
 import pytest
@@ -11,6 +12,14 @@ from acp.experimental import v2
 
 class Client:
     pass
+
+
+class SessionClient:
+    def __init__(self) -> None:
+        self.updates: asyncio.Queue[v2.schema.UpdateSessionNotification] = asyncio.Queue()
+
+    async def session_update(self, notification: v2.schema.UpdateSessionNotification) -> None:
+        await self.updates.put(notification)
 
 
 class Agent:
@@ -138,32 +147,30 @@ async def test_v2_runtime_rejects_a_mismatched_initialize_response() -> None:
 
 
 @pytest.mark.asyncio
-async def test_active_session_completes_only_after_running_then_idle() -> None:
+async def test_session_updates_are_delivered_independently_from_prompt() -> None:
     client_transport, agent_transport = memory_transport_pair()
+    client = SessionClient()
     agent_connection = v2.AgentSideConnection(SessionAgent(), agent_transport)
-    client_connection = v2.ClientSideConnection(Client(), client_transport)
+    client_connection = v2.ClientSideConnection(client, client_transport)
 
     try:
         await client_connection.initialize(initialize_request())
-        session = await client_connection.open_session(v2.schema.NewSessionRequest(cwd="/workspace"))
-        await session.prompt(
+        session = await client_connection.new_session(v2.schema.NewSessionRequest(cwd="/workspace"))
+        await client_connection.prompt(
             v2.schema.PromptRequest(
                 session_id=session.session_id,
                 prompt=[v2.schema.TextContentBlock(text="hello")],
             )
         )
 
-        ready = await session.next_update()
-        running = await session.next_update()
-        stopped = await session.next_update()
+        ready = await asyncio.wait_for(client.updates.get(), timeout=1)
+        running = await asyncio.wait_for(client.updates.get(), timeout=1)
+        stopped = await asyncio.wait_for(client.updates.get(), timeout=1)
 
-        assert isinstance(ready, v2.SessionUpdate)
         assert isinstance(ready.update, v2.schema.IdleSessionStateUpdate)
-        assert isinstance(running, v2.SessionUpdate)
         assert isinstance(running.update, v2.schema.RunningSessionStateUpdate)
-        assert isinstance(stopped, v2.SessionStop)
-        assert stopped.stop_reason == "end_turn"
-        session.dispose()
+        assert isinstance(stopped.update, v2.schema.IdleSessionStateUpdate)
+        assert stopped.update.stop_reason == "end_turn"
     finally:
         await client_connection.close()
         await agent_connection.close()

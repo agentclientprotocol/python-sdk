@@ -1,21 +1,13 @@
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
 import acp
 from acp._transport import memory_transport_pair
-from acp.connection import StreamDirection, StreamEvent
-from acp.experimental import (
-    AgentProtocolRouter,
-    ClientNegotiator,
-    NegotiatedV1,
-    NegotiatedV2,
-    V1ClientConfig,
-    V2ClientConfig,
-    v2,
-)
+from acp.connection import Connection, StreamDirection, StreamEvent
+from acp.experimental import AgentProtocolRouter, v2
 
 
 class Client:
@@ -38,15 +30,6 @@ class V1Agent:
         self.client_name = client_info.name if client_info is not None else None
         return acp.InitializeResponse(protocol_version=protocol_version)
 
-    async def new_session(
-        self,
-        cwd: str,
-        additional_directories: list[str] | None = None,
-        mcp_servers: list[Any] | None = None,
-        **kwargs: Any,
-    ) -> acp.NewSessionResponse:
-        return acp.NewSessionResponse(session_id=f"v1:{cwd}")
-
 
 class V2Agent:
     def __init__(self) -> None:
@@ -60,83 +43,83 @@ class V2Agent:
         )
 
 
-def v1_config() -> V1ClientConfig:
-    return V1ClientConfig(
-        client=Client(),
-        initialize=acp.InitializeRequest(
-            protocol_version=acp.PROTOCOL_VERSION,
-            client_info=acp.schema.Implementation(name="v1-client", version="1.0.0"),
-        ),
-    )
-
-
-def v2_config() -> V2ClientConfig:
-    return V2ClientConfig(
-        client=Client(),
-        initialize=v2.schema.InitializeRequest(
-            protocol_version=v2.PROTOCOL_VERSION,
-            info=v2.schema.Implementation(name="v2-client", version="2.0.0"),
-        ),
+def v2_initialize() -> v2.schema.InitializeRequest:
+    return v2.schema.InitializeRequest(
+        protocol_version=v2.PROTOCOL_VERSION,
+        info=v2.schema.Implementation(name="v2-client", version="2.0.0"),
     )
 
 
 @pytest.mark.asyncio
-async def test_negotiation_selects_v2_with_one_initialize() -> None:
+async def test_agent_protocol_router_selects_v2() -> None:
     client_transport, agent_transport = memory_transport_pair()
     v1_agent = V1Agent()
     v2_agent = V2Agent()
     wire: list[StreamEvent] = []
-    router = AgentProtocolRouter(v1=v1_agent, v2=v2_agent)
-    agent_connection = router.connect(agent_transport)
-    negotiator = ClientNegotiator(
-        client_transport,
-        v1=v1_config(),
-        v2=v2_config(),
-        observers=[wire.append],
-    )
+    agent_connection = AgentProtocolRouter(v1=v1_agent, v2=v2_agent).connect(agent_transport)
+    client_connection = v2.ClientSideConnection(Client(), client_transport, observers=[wire.append])
 
     try:
-        negotiated = await negotiator.negotiate()
-        repeated = await negotiator.negotiate()
+        initialized = await client_connection.initialize(v2_initialize())
 
-        assert isinstance(negotiated, NegotiatedV2)
-        assert repeated is negotiated
-        assert negotiated.initialize.info.name == "v2-agent"
+        assert initialized.info.name == "v2-agent"
         assert v1_agent.initialize_calls == 0
         assert v2_agent.initialize_calls == 1
         assert _initialize_count(wire) == 1
     finally:
-        await negotiator.close()
+        await client_connection.close()
         await agent_connection.close()
 
 
 @pytest.mark.asyncio
-async def test_negotiation_downgrades_v2_initialize_without_repeating_it() -> None:
+async def test_agent_protocol_router_selects_v1() -> None:
+    client_transport, agent_transport = memory_transport_pair()
+    v1_agent = V1Agent()
+    v2_agent = V2Agent()
+    wire: list[StreamEvent] = []
+    agent_connection = AgentProtocolRouter(v1=v1_agent, v2=v2_agent).connect(agent_transport)
+    client_connection = acp.connect_to_agent(cast(acp.Client, Client()), client_transport, observers=[wire.append])
+
+    try:
+        initialized = await client_connection.initialize(
+            protocol_version=acp.PROTOCOL_VERSION,
+            client_info=acp.schema.Implementation(name="v1-client", version="1.0.0"),
+        )
+
+        assert initialized.protocol_version == acp.PROTOCOL_VERSION
+        assert v1_agent.initialize_calls == 1
+        assert v1_agent.client_name == "v1-client"
+        assert v2_agent.initialize_calls == 0
+        assert _initialize_count(wire) == 1
+    finally:
+        await client_connection.close()
+        await agent_connection.close()
+
+
+@pytest.mark.asyncio
+async def test_agent_protocol_router_normalizes_v2_initialize_for_v1() -> None:
     client_transport, agent_transport = memory_transport_pair()
     agent = V1Agent()
     wire: list[StreamEvent] = []
-    router = AgentProtocolRouter(v1=agent)
-    agent_connection = router.connect(agent_transport)
-    negotiator = ClientNegotiator(
-        client_transport,
-        v1=v1_config(),
-        v2=v2_config(),
-        observers=[wire.append],
-    )
+    agent_connection = AgentProtocolRouter(v1=agent).connect(agent_transport)
+
+    async def ignore_incoming(method: str, params: Any, is_notification: bool) -> None:
+        pass
+
+    client_connection = Connection(ignore_incoming, client_transport, observers=[wire.append])
 
     try:
-        negotiated = await negotiator.negotiate()
+        response = await client_connection.send_request(
+            v2.AGENT_METHODS["initialize"],
+            v2_initialize().model_dump(mode="json", by_alias=True, exclude_none=True),
+        )
 
-        assert isinstance(negotiated, NegotiatedV1)
-        assert negotiated.initialize.protocol_version == acp.PROTOCOL_VERSION
+        assert response["protocolVersion"] == acp.PROTOCOL_VERSION
         assert agent.initialize_calls == 1
         assert agent.client_name == "v2-client"
         assert _initialize_count(wire) == 1
-
-        session = await negotiated.connection.new_session(cwd="/workspace")
-        assert session.session_id == "v1:/workspace"
     finally:
-        await negotiator.close()
+        await client_connection.close()
         await agent_connection.close()
 
 
