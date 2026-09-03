@@ -54,8 +54,8 @@ router = AgentProtocolRouter(
 await router.run()
 ```
 
-The factories create a fresh agent for each connection, so connection state is
-never shared accidentally.
+The selected factory is called once per connection. Return a fresh agent from
+each call to avoid sharing connection state.
 
 Extension method names are explicit and must include the protocol-required `_`
 prefix:

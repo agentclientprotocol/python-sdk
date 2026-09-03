@@ -231,7 +231,6 @@ def test_v2_public_entry_point_is_explicit() -> None:
     assert exported["PROTOCOL_VERSION"] == 2
     assert exported["schema"] is v2.schema
     assert set(exported) == {
-        "Agent",
         "AgentSideConnection",
         "ClientSideConnection",
         "PROTOCOL_VERSION",

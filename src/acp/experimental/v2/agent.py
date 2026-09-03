@@ -19,7 +19,6 @@ from ._methods import (
     CreateElicitationResponse,
 )
 from ._router import MethodRouter
-from .interfaces import Agent
 from .meta import CLIENT_METHODS
 
 __all__ = ["AgentSideConnection", "run_agent"]
@@ -30,7 +29,7 @@ def _dump(model: BaseModel) -> dict[str, Any]:
 
 
 class _AgentRouter:
-    def __init__(self, agent: Agent, state: InitializationState) -> None:
+    def __init__(self, agent: object, state: InitializationState) -> None:
         self._router = MethodRouter(agent, AGENT_REQUESTS, AGENT_NOTIFICATIONS)
         self._state = state
 
@@ -56,7 +55,7 @@ class AgentSideConnection:
 
     def __init__(
         self,
-        agent: Agent,
+        agent: object,
         input_stream: Any,
         output_stream: Any = None,
         *,
@@ -78,7 +77,7 @@ class AgentSideConnection:
     @classmethod
     def _attach(
         cls,
-        agent_factory: Callable[[AgentSideConnection], Agent],
+        agent_factory: Callable[[AgentSideConnection], object],
         connection: Connection,
     ) -> tuple[AgentSideConnection, _AgentRouter]:
         self = cls.__new__(cls)
@@ -161,7 +160,7 @@ def _extension_method(method: str) -> str:
 
 
 async def run_agent(
-    agent: Agent,
+    agent: object,
     input_stream: Any = None,
     output_stream: Any = None,
     *,

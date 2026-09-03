@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 V1AgentFactory = Callable[[V1AgentSideConnection], V1Agent]
-V2AgentFactory = Callable[[V2AgentSideConnection], v2.Agent]
+V2AgentFactory = Callable[[V2AgentSideConnection], object]
 
 
 def _dump(model: BaseModel) -> dict[str, Any]:
