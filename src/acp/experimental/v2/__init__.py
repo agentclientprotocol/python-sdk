@@ -1,5 +1,15 @@
-"""Experimental ACP protocol v2 bindings."""
+"""Experimental ACP protocol v2 API."""
 
-from .meta import AGENT_METHODS, CLIENT_METHODS, PROTOCOL_METHODS, PROTOCOL_VERSION
+from . import schema
+from .agent import AgentSideConnection, run_agent
+from .client import ClientSideConnection, connect_to_agent
+from .meta import PROTOCOL_VERSION
 
-__all__ = ["AGENT_METHODS", "CLIENT_METHODS", "PROTOCOL_METHODS", "PROTOCOL_VERSION"]
+__all__ = [
+    "PROTOCOL_VERSION",
+    "AgentSideConnection",
+    "ClientSideConnection",
+    "connect_to_agent",
+    "run_agent",
+    "schema",
+]

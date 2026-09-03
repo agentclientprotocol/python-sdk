@@ -7,7 +7,7 @@ from typing import Any, cast, final
 from pydantic import TypeAdapter
 
 from .._transport import Transport
-from ..connection import Connection
+from ..connection import Connection, MethodHandler
 from ..interfaces import Agent, Client
 from ..meta import CLIENT_METHODS
 from ..schema import (
@@ -88,8 +88,7 @@ class AgentSideConnection:
         use_unstable_protocol: bool = False,
         **connection_kwargs: Any,
     ) -> None:
-        agent = to_agent(self) if callable(to_agent) else to_agent
-        handler = build_agent_router(cast(Agent, agent), use_unstable_protocol=use_unstable_protocol)
+        agent, handler = self._prepare(to_agent, use_unstable_protocol=use_unstable_protocol)
         if isinstance(input_stream, Transport):
             if output_stream is not None:
                 raise TypeError(_AGENT_CONNECTION_ERROR)
@@ -100,6 +99,32 @@ class AgentSideConnection:
             ):
                 raise TypeError(_AGENT_CONNECTION_ERROR)
             self._conn = Connection(handler, input_stream, output_stream, listening=listening, **connection_kwargs)
+        self._notify_connected(agent)
+
+    @classmethod
+    def _attach(
+        cls,
+        to_agent: Callable[[Client], Agent] | Agent,
+        connection: Connection,
+        *,
+        use_unstable_protocol: bool = False,
+    ) -> tuple[AgentSideConnection, MethodHandler]:
+        self = cls.__new__(cls)
+        agent, handler = self._prepare(to_agent, use_unstable_protocol=use_unstable_protocol)
+        self._conn = connection
+        self._notify_connected(agent)
+        return self, handler
+
+    def _prepare(
+        self,
+        to_agent: Callable[[Client], Agent] | Agent,
+        *,
+        use_unstable_protocol: bool,
+    ) -> tuple[Agent, MethodHandler]:
+        agent = cast(Agent, to_agent(self) if callable(to_agent) else to_agent)
+        return agent, build_agent_router(agent, use_unstable_protocol=use_unstable_protocol)
+
+    def _notify_connected(self, agent: Agent) -> None:
         if on_connect := getattr(agent, "on_connect", None):
             on_connect(self)
 
