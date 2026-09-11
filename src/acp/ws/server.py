@@ -1,79 +1,59 @@
-"""WebSocket server handling for the ASGI adapter (port of #155 ws-server.ts).
-
-On upgrade we create a fresh :class:`~acp.http.server.ConnectionState` (bound to
-its own ``AgentSideConnection``), accept the socket with an ``Acp-Connection-Id``
-header, then pump JSON-RPC text frames both directions.  All server→client
-traffic (across the connection- and every session-scoped stream) is multiplexed
-onto the single socket.  On disconnect the connection and its sessions are torn
-down.
-"""
+"""Bind a Starlette WebSocket to an ACP agent connection."""
 
 from __future__ import annotations
 
-import asyncio
-import contextlib
 import json
-from collections.abc import Callable
+import uuid
 from typing import TYPE_CHECKING, Any
 
+from starlette.websockets import WebSocket, WebSocketState
+
+from ..agent.connection import AgentSideConnection
 from ..http.protocol import CONNECTION_ID_HEADER
 
 if TYPE_CHECKING:
-    from ..http.server import AcpServer, ConnectionState
+    from ..http.server import AgentFactory
 
-__all__ = ["handle_asgi_websocket"]
+__all__ = ["handle_websocket"]
 
 
-async def handle_asgi_websocket(
-    server: AcpServer,
-    scope: dict[str, Any],
-    receive: Callable,
-    send: Callable,
-) -> None:
-    """Handle an ASGI ``websocket`` scope by bridging it to a new ACP connection."""
-    # Wait for the connect message.
-    message = await receive()
-    if message["type"] != "websocket.connect":
-        return
+class _WebSocketTransport:
+    """Adapt Starlette's WebSocket to the message-level Transport interface."""
 
-    state = server.create_websocket_connection()
-    await send({
-        "type": "websocket.accept",
-        "headers": [(CONNECTION_ID_HEADER.lower().encode(), state.connection_id.encode())],
-    })
+    def __init__(self, websocket: WebSocket) -> None:
+        self._ws = websocket
 
-    outbound_task = asyncio.ensure_future(_pump_outbound(state, send))
+    async def send(self, message: dict[str, Any]) -> None:
+        if self._ws.client_state == WebSocketState.DISCONNECTED:
+            raise ConnectionError("Transport closed")
+        await self._ws.send_json(message)
+
+    async def receive(self) -> dict[str, Any] | None:
+        while self._ws.client_state != WebSocketState.DISCONNECTED:
+            event = await self._ws.receive()
+            if event["type"] == "websocket.disconnect":
+                return None
+            if event.get("text") is None:
+                continue
+            try:
+                message = json.loads(event["text"])
+            except json.JSONDecodeError:
+                continue
+            if isinstance(message, dict):
+                return message
+        return None
+
+    async def close(self) -> None:
+        if self._ws.client_state == self._ws.application_state == WebSocketState.CONNECTED:
+            await self._ws.close()
+
+
+async def handle_websocket(agent_factory: AgentFactory, websocket: WebSocket) -> None:
+    """Run one agent for the lifetime of the socket; disconnect cancels its work."""
+    await websocket.accept(headers=[(CONNECTION_ID_HEADER.lower().encode(), uuid.uuid4().hex.encode())])
+    transport = _WebSocketTransport(websocket)
+    conn = AgentSideConnection(agent_factory, transport, listening=False)
     try:
-        await _pump_inbound(state, receive)
+        await conn.listen()
     finally:
-        outbound_task.cancel()
-        with contextlib.suppress(asyncio.CancelledError, Exception):
-            await outbound_task
-        await server.registry.remove(state.connection_id)
-
-
-async def _pump_inbound(state: ConnectionState, receive: Callable) -> None:
-    """Read client→server text frames and deliver them to the agent."""
-    while True:
-        message = await receive()
-        msg_type = message["type"]
-        if msg_type == "websocket.disconnect":
-            return
-        if msg_type != "websocket.receive":
-            continue
-        text = message.get("text")
-        if text is None:
-            # Ignore binary frames.
-            continue
-        try:
-            payload = json.loads(text)
-        except json.JSONDecodeError:
-            continue
-        if isinstance(payload, dict):
-            await state.deliver_to_agent(payload)
-
-
-async def _pump_outbound(state: ConnectionState, send: Callable) -> None:
-    """Forward all agent→client messages onto the socket as text frames."""
-    async for message in state.iter_all_outbound():
-        await send({"type": "websocket.send", "text": json.dumps(message, separators=(",", ":"))})
+        await conn.close()

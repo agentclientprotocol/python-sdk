@@ -17,6 +17,7 @@ __all__ = [
     "CONTENT_TYPE_JSON",
     "CONTENT_TYPE_SSE",
     "INITIALIZE_METHOD",
+    "LOAD_SESSION_METHOD",
     "SESSION_ID_HEADER",
     "is_initialize_request",
     "is_response_message",
@@ -35,10 +36,11 @@ SESSION_ID_HEADER = "Acp-Session-Id"
 CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_SSE = "text/event-stream"
 
-# Endpoint path used by docs/examples (the adapter itself is path-agnostic).
+# Default endpoint path for the server and docs/examples.
 ACP_ENDPOINT_PATH = "/acp"
 
 INITIALIZE_METHOD = AGENT_METHODS["initialize"]
+LOAD_SESSION_METHOD = AGENT_METHODS["session_load"]
 
 # Agent methods that operate on an *already-established* session and therefore
 # require the ``Acp-Session-Id`` header on POST + session-scoped routing of their

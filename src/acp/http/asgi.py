@@ -1,175 +1,91 @@
-"""Thin ASGI adapter bridging Starlette/FastAPI/Hypercorn to :class:`AcpServer`.
+"""Starlette application for ACP over Streamable HTTP and WebSocket.
 
-``create_asgi_app(agent_factory)`` returns an ASGI 3.0 application callable that
-handles POST/GET/DELETE (and WebSocket upgrades) on the ACP endpoint.  Users can
-mount it directly or wrap it in their framework of choice.
-
-Note: for a spec-compliant Streamable HTTP server, run this under an
-HTTP/2-capable ASGI server (Hypercorn, Daphne, Granian) or terminate HTTP/2 at a
-proxy.  Uvicorn does not serve HTTP/2 (WebSocket still works).
+Run the application directly or mount it under another ASGI application.
+Use an HTTP/2-capable ASGI server for Streamable HTTP.
 """
 
 from __future__ import annotations
 
 import json
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from collections.abc import AsyncIterator
+from contextlib import asynccontextmanager
+from functools import partial
 
-from .protocol import CONNECTION_ID_HEADER, CONTENT_TYPE_SSE, SESSION_ID_HEADER
-from .server import AcpServer
+from starlette.applications import Starlette
+from starlette.requests import Request
+from starlette.responses import JSONResponse, Response, StreamingResponse
+from starlette.routing import Route, WebSocketRoute
+from starlette.websockets import WebSocket
 
-if TYPE_CHECKING:
-    from .server import AgentFactory
+from ..ws.server import handle_websocket
+from .protocol import ACP_ENDPOINT_PATH, CONNECTION_ID_HEADER, CONTENT_TYPE_SSE, SESSION_ID_HEADER
+from .server import AcpServer, AgentFactory
 
-__all__ = ["AcpAsgiApp", "create_asgi_app"]
-
-_JSON_HEADERS = [(b"content-type", b"application/json")]
-
-
-def _header_lookup(scope_headers: list[tuple[bytes, bytes]], name: str) -> str | None:
-    target = name.lower().encode()
-    for key, value in scope_headers:
-        if key.lower() == target:
-            return value.decode("latin-1")
-    return None
+__all__ = ["create_asgi_app"]
 
 
-class AcpAsgiApp:
-    """ASGI application wrapping an :class:`AcpServer`."""
+def create_asgi_app(agent_factory: AgentFactory, *, path: str = ACP_ENDPOINT_PATH) -> Starlette:
+    """Create a Starlette app with one agent instance per connection.
 
-    def __init__(self, server: AcpServer) -> None:
-        self._server = server
-
-    async def __call__(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
-        scope_type = scope["type"]
-        if scope_type == "lifespan":
-            await self._handle_lifespan(receive, send)
-            return
-        if scope_type == "websocket":
-            await self._handle_websocket(scope, receive, send)
-            return
-        if scope_type != "http":
-            return
-
-        method = scope["method"]
-        if method == "POST":
-            await self._handle_post(scope, receive, send)
-        elif method == "GET":
-            await self._handle_get(scope, receive, send)
-        elif method == "DELETE":
-            await self._handle_delete(scope, send)
-        else:
-            await self._send_json(send, 405, {"error": "Method not allowed"})
-
-    async def _handle_lifespan(self, receive: Callable, send: Callable) -> None:
-        while True:
-            message = await receive()
-            if message["type"] == "lifespan.startup":
-                await send({"type": "lifespan.startup.complete"})
-            elif message["type"] == "lifespan.shutdown":
-                await self._server.close()
-                await send({"type": "lifespan.shutdown.complete"})
-                return
-
-    async def _read_body(self, receive: Callable) -> bytes:
-        chunks: list[bytes] = []
-        while True:
-            message = await receive()
-            if message["type"] == "http.request":
-                chunks.append(message.get("body", b""))
-                if not message.get("more_body", False):
-                    break
-            elif message["type"] == "http.disconnect":
-                break
-        return b"".join(chunks)
-
-    async def _handle_post(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
-        headers = scope["headers"]
-        content_type = _header_lookup(headers, "content-type")
-        connection_id = _header_lookup(headers, CONNECTION_ID_HEADER)
-        session_id = _header_lookup(headers, SESSION_ID_HEADER)
-        raw = await self._read_body(receive)
-        try:
-            message = json.loads(raw) if raw else None
-        except json.JSONDecodeError:
-            await self._send_json(send, 400, {"error": "Invalid JSON"})
-            return
-        result = await self._server.handle_post(
-            message,
-            content_type=content_type,
-            connection_id=connection_id,
-            session_id=session_id,
-        )
-        await self._send_json(send, result.status, result.body, extra_headers=result.headers)
-
-    async def _handle_get(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
-        headers = scope["headers"]
-        upgrade = _header_lookup(headers, "upgrade")
-        if upgrade is not None and upgrade.lower() == "websocket":
-            # WebSocket upgrades arrive as scope type "websocket" in ASGI; a GET
-            # http scope with Upgrade is non-standard, so reject clearly.
-            await self._send_json(send, 400, {"error": "WebSocket upgrade must use the ws scope"})
-            return
-        accept = _header_lookup(headers, "accept") or ""
-        if CONTENT_TYPE_SSE not in accept and "*/*" not in accept:
-            await self._send_json(send, 406, {"error": "Accept must include text/event-stream"})
-            return
-        connection_id = _header_lookup(headers, CONNECTION_ID_HEADER)
-        session_id = _header_lookup(headers, SESSION_ID_HEADER)
-        error = self._server.validate_stream(connection_id=connection_id, session_id=session_id)
-        if error is not None:
-            await self._send_json(send, error.status, error.body)
-            return
-        if connection_id is None:  # validated above, narrow for type-checker
-            await self._send_json(send, 400, {"error": "Missing connection id"})
-            return
-        await send({
-            "type": "http.response.start",
-            "status": 200,
-            "headers": [
-                (b"content-type", CONTENT_TYPE_SSE.encode()),
-                (b"cache-control", b"no-cache"),
-                (b"connection", b"keep-alive"),
-            ],
-        })
-        async for frame in self._server.open_stream(connection_id=connection_id, session_id=session_id):
-            await send({"type": "http.response.body", "body": frame, "more_body": True})
-        await send({"type": "http.response.body", "body": b"", "more_body": False})
-
-    async def _handle_delete(self, scope: dict[str, Any], send: Callable) -> None:
-        connection_id = _header_lookup(scope["headers"], CONNECTION_ID_HEADER)
-        result = await self._server.handle_delete(connection_id=connection_id)
-        await self._send_json(send, result.status, result.body, extra_headers=result.headers)
-
-    async def _handle_websocket(self, scope: dict[str, Any], receive: Callable, send: Callable) -> None:
-        from ..ws.server import handle_asgi_websocket
-
-        await handle_asgi_websocket(self._server, scope, receive, send)
-
-    async def _send_json(
-        self,
-        send: Callable,
-        status: int,
-        body: dict[str, Any] | None,
-        *,
-        extra_headers: dict[str, str] | None = None,
-    ) -> None:
-        payload = json.dumps(body).encode() if body is not None else b""
-        headers = list(_JSON_HEADERS)
-        if extra_headers:
-            headers.extend((k.encode("latin-1"), v.encode("latin-1")) for k, v in extra_headers.items())
-        await send({"type": "http.response.start", "status": status, "headers": headers})
-        await send({"type": "http.response.body", "body": payload})
-
-
-def create_asgi_app(agent_factory: AgentFactory) -> AcpAsgiApp:
-    """Create an ASGI app serving an ACP agent over Streamable HTTP + WebSocket.
-
-    Args:
-        agent_factory: Called once per connection with the bound
-            ``AgentSideConnection`` to produce a per-connection ``Agent``.
-
-    Returns:
-        An :class:`AcpAsgiApp` ASGI 3.0 application.
+    The app handles POST/GET/DELETE and WebSocket at ``path`` (default: /acp).
+    The path is relative to any parent mount. When mounting the app, enter its
+    lifespan from the parent lifespan too.
     """
-    return AcpAsgiApp(AcpServer(agent_factory))
+    server = AcpServer(agent_factory)
+
+    @asynccontextmanager
+    async def lifespan(app: Starlette) -> AsyncIterator[None]:
+        try:
+            yield
+        finally:
+            await server.close()
+
+    async def websocket(websocket: WebSocket) -> None:
+        await handle_websocket(agent_factory, websocket)
+
+    return Starlette(
+        routes=[
+            Route(path, partial(_post, server), methods=["POST"]),
+            Route(path, partial(_get, server), methods=["GET"]),
+            Route(path, partial(_delete, server), methods=["DELETE"]),
+            WebSocketRoute(path, websocket),
+        ],
+        lifespan=lifespan,
+    )
+
+
+async def _post(server: AcpServer, request: Request) -> Response:
+    try:
+        message = await request.json()
+    except (json.JSONDecodeError, UnicodeDecodeError):
+        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+    return await server.handle_post(
+        message,
+        content_type=request.headers.get("content-type"),
+        connection_id=request.headers.get(CONNECTION_ID_HEADER),
+        session_id=request.headers.get(SESSION_ID_HEADER),
+    )
+
+
+async def _get(server: AcpServer, request: Request) -> Response:
+    if request.headers.get("upgrade", "").lower() == "websocket":
+        return JSONResponse({"error": "WebSocket upgrade must use the ws scope"}, status_code=400)
+    accept = request.headers.get("accept", "")
+    if CONTENT_TYPE_SSE not in accept and "*/*" not in accept:
+        return JSONResponse({"error": "Accept must include text/event-stream"}, status_code=406)
+    connection_id = request.headers.get(CONNECTION_ID_HEADER)
+    if connection_id is None:
+        return JSONResponse({"error": "Missing connection id"}, status_code=400)
+    session_id = request.headers.get(SESSION_ID_HEADER)
+    error = server.validate_stream(connection_id=connection_id, session_id=session_id)
+    if error is not None:
+        return error
+    return StreamingResponse(
+        server.open_stream(connection_id=connection_id, session_id=session_id),
+        media_type=CONTENT_TYPE_SSE,
+        headers={"Cache-Control": "no-cache"},
+    )
+
+
+async def _delete(server: AcpServer, request: Request) -> Response:
+    return await server.handle_delete(connection_id=request.headers.get(CONNECTION_ID_HEADER))

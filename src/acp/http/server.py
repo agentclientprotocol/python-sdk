@@ -1,19 +1,19 @@
-"""Framework-agnostic Streamable HTTP server core (port of #155 server.ts + connection.ts).
+"""Streamable HTTP connection management and ACP message routing.
 
-:class:`AcpServer` owns an in-memory :class:`ConnectionRegistry`.  For each
+:class:`AcpServer` owns a dictionary of active HTTP connections. For each
 ``initialize`` POST it mints a connection, binds an ``AgentSideConnection`` to an
-in-memory transport pair, and returns an ``Acp-Connection-Id``.  Subsequent
+HTTP transport, and returns an ``Acp-Connection-Id``. Subsequent
 server→client messages produced by the agent are fanned out to the correct SSE
 stream (connection-scoped or session-scoped) based on their ``sessionId`` /
 correlated request id.
 
-The core exposes small, transport-neutral entry points:
+HTTP handlers return Starlette responses directly:
 
-* :meth:`AcpServer.handle_post` — returns a :class:`PostResult` (status + body).
+* :meth:`AcpServer.handle_post` — returns a Starlette response.
 * :meth:`AcpServer.open_stream` — returns an async byte iterator of SSE frames.
 * :meth:`AcpServer.handle_delete` — terminates a connection.
 
-The ASGI adapter in :mod:`acp.http.asgi` maps these onto ASGI messages.
+The Starlette application in :mod:`acp.http.asgi` supplies requests and streams.
 """
 
 from __future__ import annotations
@@ -22,14 +22,18 @@ import asyncio
 import contextlib
 import uuid
 from collections.abc import Callable
-from dataclasses import dataclass, field
 from typing import TYPE_CHECKING, Any
 
+try:
+    from starlette.responses import JSONResponse, Response
+except ImportError as exc:
+    raise ImportError("The HTTP server requires the 'http' extra: pip install agent-client-protocol[http]") from exc
+
 from .._sse import serialize_sse_event, serialize_sse_keepalive
-from .._transport import memory_transport_pair
 from ..agent.connection import AgentSideConnection
 from .protocol import (
     CONNECTION_ID_HEADER,
+    LOAD_SESSION_METHOD,
     is_initialize_request,
     is_response_message,
     message_id_key,
@@ -39,17 +43,14 @@ from .protocol import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import AsyncIterator
+    from collections.abc import AsyncGenerator
 
     from ..interfaces import Agent
 
 __all__ = [
     "AcpServer",
     "AgentFactory",
-    "ConnectionRegistry",
-    "ConnectionState",
     "OutboundStream",
-    "PostResult",
 ]
 
 AgentFactory = Callable[[AgentSideConnection], "Agent"]
@@ -65,15 +66,6 @@ SSE_KEEPALIVE_INTERVAL_SECONDS = 15.0
 INITIALIZE_TIMEOUT_SECONDS = 30.0
 
 
-@dataclass
-class PostResult:
-    """Outcome of a POST request."""
-
-    status: int
-    body: dict[str, Any] | None = None
-    headers: dict[str, str] = field(default_factory=dict)
-
-
 class OutboundStream:
     """A backpressure-aware buffer for server→client messages.
 
@@ -82,7 +74,7 @@ class OutboundStream:
     :meth:`push` *awaits* until the consumer drains rather than dropping the
     message — dropping a JSON-RPC response would permanently hang the peer's
     pending request. Awaiting propagates backpressure up to the agent's message
-    pump, mirroring the ``ReadableStream`` backpressure in the TypeScript SDK.
+    handlers, mirroring the ``ReadableStream`` backpressure in the TypeScript SDK.
     """
 
     def __init__(self, *, capacity: int = 1024) -> None:
@@ -123,7 +115,7 @@ class OutboundStream:
             return False
         return True
 
-    async def iterate(self) -> AsyncIterator[dict[str, Any]]:
+    async def iterate(self) -> AsyncGenerator[dict[str, Any], None]:
         while True:
             message = await self._queue.get()
             if message is None:
@@ -131,198 +123,100 @@ class OutboundStream:
             yield message
 
 
-class ConnectionState:
-    """Owns an ``AgentSideConnection`` bound to an in-memory transport pair.
+class _HttpTransport:
+    """Receive POST messages and route agent output directly to HTTP/SSE.
 
-    The agent writes server→client messages onto the server end of the pair; a
-    pump task reads them and routes each to the connection-scoped stream or the
-    right session-scoped stream.
+    Only initialize returns in a POST body. New-session responses use the
+    connection stream; later responses follow their request's session route.
+    Requests and notifications from the agent carry their own sessionId.
     """
 
-    def __init__(self, connection_id: str, agent_factory: AgentFactory, *, multiplex: bool = False) -> None:
-        self.connection_id = connection_id
-        # ``server_side`` is what the AgentSideConnection talks over; ``pump_side``
-        # is what we read agent→client traffic from and inject client→agent on.
-        server_side, pump_side = memory_transport_pair()
-        self._pump_side = pump_side
-        self._agent_conn = AgentSideConnection(agent_factory, server_side, listening=True)
+    def __init__(self, initialize_id: Any) -> None:
+        self._initialize_id = message_id_key(initialize_id)
+        self.initialize_response: asyncio.Future[dict[str, Any]] = asyncio.get_running_loop().create_future()
+        self._incoming: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+        self._closed = False
         self.connection_stream = OutboundStream()
         self.session_streams: dict[str, OutboundStream] = {}
-        # WebSocket mode: multiplex *all* agent→client traffic onto one stream
-        # (the single socket) instead of splitting across SSE streams.
-        self._multiplex: OutboundStream | None = OutboundStream() if multiplex else None
-        # Maps a request id -> sessionId, so responses to session-scoped client
-        # requests route back onto the right session stream.
         self._pending_routes: dict[str, str] = {}
-        # Request ids whose response should be captured (e.g. initialize) instead
-        # of being pushed to a stream.
-        self._response_waiters: dict[str, asyncio.Future[dict[str, Any]]] = {}
-        self._pump_task: asyncio.Task[None] | None = None
+        self._pending_loads: dict[str, str] = {}
+        self._provisional_sessions: set[str] = set()
 
-    def start(self) -> None:
-        self._pump_task = asyncio.ensure_future(self._pump())
+    async def receive(self) -> dict[str, Any] | None:
+        return await self._incoming.get()
 
-    async def _pump(self) -> None:
-        try:
-            while True:
-                message = await self._pump_side.receive()
-                if message is None:
-                    return
-                await self._route_outbound(message)
-        except asyncio.CancelledError:
-            return
-
-    async def _route_outbound(self, message: dict[str, Any]) -> None:
-        """Route an agent→client message to the correct SSE stream.
-
-        Rules (matching the RFD):
-
-        * A response to a session-*establishing* request (``session/new`` /
-          ``session/load`` — result carries a ``sessionId``) goes on the
-          **connection-scoped** stream, because the client does not yet have the
-          session-scoped stream open.  We register the session so its stream can
-          be opened on the next GET.
-        * A response to an already-session-scoped client request routes onto that
-          session's stream (looked up via ``_pending_routes`` by request id).
-        * A server→client message carrying a ``sessionId`` in params (a
-          notification or request) routes onto that session's stream.
-        * Everything else goes on the connection-scoped stream.
-        """
-        if is_response_message(message):
-            await self._route_response(message)
-            return
-        # Requests/notifications: route by sessionId in params if present.
-        if self._multiplex is not None:
-            await self._multiplex.push(message)
-            return
+    async def send(self, message: dict[str, Any]) -> None:
+        if self._closed:
+            raise ConnectionError("Transport closed")
         session_id = session_id_from_params(message.get("params"))
-        if session_id is not None and session_id in self.session_streams:
-            await self.session_streams[session_id].push(message)
-            return
-        await self.connection_stream.push(message)
+        if is_response_message(message):
+            key = message_id_key(message.get("id"))
+            if key == self._initialize_id and not self.initialize_response.done():
+                self.initialize_response.set_result(message)
+                return
+            session_id = self._route_response(message, key)
+        # Replay and load responses share the connection stream, including on
+        # reload. This preserves replay order and never waits for a session GET.
+        if session_id in self._pending_loads.values():
+            session_id = None
+        stream = (
+            self.session_streams.get(session_id, self.connection_stream)
+            if session_id is not None
+            else self.connection_stream
+        )
+        await stream.push(message)
 
-    async def _route_response(self, message: dict[str, Any]) -> None:
-        key = message_id_key(message.get("id"))
-        # A captured response (e.g. initialize) resolves its waiter instead of
-        # being pushed to any stream.
-        if key is not None and key in self._response_waiters:
-            waiter = self._response_waiters.pop(key)
-            if not waiter.done():
-                waiter.set_result(message)
-            return
-        # Register any newly-established session so unknown-session validation
-        # succeeds regardless of transport.
+    def _route_response(self, message: dict[str, Any], key: str | None) -> str | None:
+        loaded = self._pending_loads.pop(key, None) if key is not None else None
+        if loaded is not None:
+            if "result" in message:
+                self._provisional_sessions.discard(loaded)
+            elif loaded in self._provisional_sessions and loaded not in self._pending_loads.values():
+                self._provisional_sessions.remove(loaded)
+                self.session_streams.pop(loaded).close()
+            return None
+        session_id = self._pending_routes.pop(key, None) if key is not None else None
         established = session_id_from_result(message.get("result"))
         if established is not None:
-            self.ensure_session_stream(established)
-        routed = self._pending_routes.pop(key, None) if key is not None else None
-        if self._multiplex is not None:
-            await self._multiplex.push(message)
-            return
-        # session/new | session/load results (``established``) go on the
-        # connection-scoped stream; already-session-scoped responses route to the
-        # session stream recorded when the request came in.
-        if established is None and routed is not None and routed in self.session_streams:
-            await self.session_streams[routed].push(message)
-            return
-        await self.connection_stream.push(message)
+            self.session_streams.setdefault(established, OutboundStream())
+            self._provisional_sessions.discard(established)
+            # The client must learn the session ID before opening its stream.
+            return None
+        return session_id
 
     async def deliver_to_agent(self, message: dict[str, Any]) -> None:
-        """Inject a client→server message into the agent connection."""
-        # Track session-scoped client requests so their responses route back.
+        if self._closed:
+            raise ConnectionError("Transport closed")
         if "id" in message and "method" in message:
             session_id = session_id_from_params(message.get("params"))
-            if session_id is not None:
-                key = message_id_key(message["id"])
-                if key is not None:
+            key = message_id_key(message["id"])
+            if session_id is not None and key is not None:
+                if message["method"] == LOAD_SESSION_METHOD:
+                    self._pending_loads[key] = session_id
+                    if session_id not in self.session_streams:
+                        # Allow clients to open a GET as soon as replay starts.
+                        self.session_streams[session_id] = OutboundStream()
+                        self._provisional_sessions.add(session_id)
+                else:
                     self._pending_routes[key] = session_id
-        await self._pump_side.send(message)
-
-    async def request_response(self, message: dict[str, Any]) -> dict[str, Any]:
-        """Send a request to the agent and await its correlated response.
-
-        Used for the ``initialize`` POST, which is the one request whose response
-        is returned synchronously in the HTTP body rather than over an SSE stream.
-        """
-        key = message_id_key(message.get("id"))
-        loop = asyncio.get_running_loop()
-        future: asyncio.Future[dict[str, Any]] = loop.create_future()
-        if key is not None:
-            self._response_waiters[key] = future
-        await self.deliver_to_agent(message)
-        return await asyncio.wait_for(future, timeout=INITIALIZE_TIMEOUT_SECONDS)
-
-    def ensure_session_stream(self, session_id: str) -> OutboundStream:
-        stream = self.session_streams.get(session_id)
-        if stream is None:
-            stream = OutboundStream()
-            self.session_streams[session_id] = stream
-        return stream
-
-    def has_session(self, session_id: str) -> bool:
-        return session_id in self.session_streams
-
-    async def iter_all_outbound(self) -> AsyncIterator[dict[str, Any]]:
-        """Iterate every agent→client message (WebSocket multiplex mode)."""
-        if self._multiplex is None:
-            msg = "iter_all_outbound requires a multiplex connection (WebSocket)"
-            raise RuntimeError(msg)
-        async for message in self._multiplex.iterate():
-            yield message
+        self._incoming.put_nowait(dict(message))
 
     async def close(self) -> None:
-        if self._pump_task is not None:
-            self._pump_task.cancel()
-            with contextlib.suppress(asyncio.CancelledError, Exception):
-                await self._pump_task
+        if self._closed:
+            return
+        self._closed = True
+        self._incoming.put_nowait(None)
+        self.initialize_response.cancel()
+        self._pending_routes.clear()
+        self._pending_loads.clear()
+        self._provisional_sessions.clear()
         self.connection_stream.close()
         for stream in self.session_streams.values():
             stream.close()
-        if self._multiplex is not None:
-            self._multiplex.close()
-        with contextlib.suppress(Exception):
-            await self._pump_side.close()
-        with contextlib.suppress(Exception):
-            await self._agent_conn.close()
-
-
-class ConnectionRegistry:
-    """In-memory ``connectionId -> ConnectionState`` registry."""
-
-    def __init__(self) -> None:
-        self._connections: dict[str, ConnectionState] = {}
-
-    def create(self, agent_factory: AgentFactory) -> ConnectionState:
-        connection_id = uuid.uuid4().hex
-        state = ConnectionState(connection_id, agent_factory)
-        state.start()
-        self._connections[connection_id] = state
-        return state
-
-    def create_multiplex(self, agent_factory: AgentFactory) -> ConnectionState:
-        """Create a connection whose agent→client traffic is multiplexed onto one
-        stream (used by the WebSocket transport)."""
-        connection_id = uuid.uuid4().hex
-        state = ConnectionState(connection_id, agent_factory, multiplex=True)
-        state.start()
-        self._connections[connection_id] = state
-        return state
-
-    def get(self, connection_id: str) -> ConnectionState | None:
-        return self._connections.get(connection_id)
-
-    async def remove(self, connection_id: str) -> None:
-        state = self._connections.pop(connection_id, None)
-        if state is not None:
-            await state.close()
-
-    async def close_all(self) -> None:
-        for connection_id in list(self._connections):
-            await self.remove(connection_id)
 
 
 class AcpServer:
-    """Framework-agnostic Streamable HTTP + WebSocket server core.
+    """Manage ACP HTTP connections and return Starlette responses.
 
     Args:
         agent_factory: Called once per connection with the bound
@@ -330,16 +224,8 @@ class AcpServer:
     """
 
     def __init__(self, agent_factory: AgentFactory) -> None:
-        self._agent_factory = agent_factory
-        self._registry = ConnectionRegistry()
-
-    @property
-    def registry(self) -> ConnectionRegistry:
-        return self._registry
-
-    def create_websocket_connection(self) -> ConnectionState:
-        """Create a new multiplexed connection for a WebSocket upgrade."""
-        return self._registry.create_multiplex(self._agent_factory)
+        self.agent_factory = agent_factory
+        self._connections: dict[str, tuple[AgentSideConnection, _HttpTransport]] = {}
 
     # -- POST ---------------------------------------------------------------
 
@@ -350,60 +236,69 @@ class AcpServer:
         content_type: str | None,
         connection_id: str | None,
         session_id: str | None,
-    ) -> PostResult:
+    ) -> Response:
         if content_type is None or not content_type.lower().startswith("application/json"):
-            return PostResult(415, {"error": "Content-Type must be application/json"})
+            return JSONResponse({"error": "Content-Type must be application/json"}, status_code=415)
         if isinstance(message, list):
-            return PostResult(501, {"error": "Batch requests are not supported"})
+            return JSONResponse({"error": "Batch requests are not supported"}, status_code=501)
         if not isinstance(message, dict):
-            return PostResult(400, {"error": "Invalid JSON-RPC message"})
+            return JSONResponse({"error": "Invalid JSON-RPC message"}, status_code=400)
 
         if is_initialize_request(message):
             return await self._handle_initialize(message)
 
         if connection_id is None:
-            return PostResult(400, {"error": "Missing connection id"})
-        state = self._registry.get(connection_id)
-        if state is None:
-            return PostResult(404, {"error": "Unknown connection id"})
+            return JSONResponse({"error": "Missing connection id"}, status_code=400)
+        connection = self._connections.get(connection_id)
+        if connection is None:
+            return JSONResponse({"error": "Unknown connection id"}, status_code=404)
+        _, transport = connection
 
         method = message.get("method")
         if method_requires_session_header(method) and session_id is None:
-            return PostResult(400, {"error": "Missing session id header"})
-        if session_id is not None and not state.has_session(session_id):
+            return JSONResponse({"error": "Missing session id header"}, status_code=400)
+        if session_id is not None and session_id not in transport.session_streams:
             # A session-scoped POST references an unknown session.
-            return PostResult(404, {"error": "Unknown session id"})
+            return JSONResponse({"error": "Unknown session id"}, status_code=404)
 
-        await state.deliver_to_agent(message)
-        return PostResult(202)
+        await transport.deliver_to_agent(message)
+        return Response(status_code=202)
 
-    async def _handle_initialize(self, message: dict[str, Any]) -> PostResult:
-        state = self._registry.create(self._agent_factory)
+    async def _handle_initialize(self, message: dict[str, Any]) -> Response:
+        connection_id = uuid.uuid4().hex
+        transport = _HttpTransport(message.get("id"))
+        conn = AgentSideConnection(self.agent_factory, transport)
+        self._connections[connection_id] = (conn, transport)
         # Deliver initialize to the agent and await its response so we can return
         # the 200 body synchronously (initialize is the one blocking POST). If the
         # agent never responds (timeout) or errors, tear the just-created
-        # connection down instead of leaking its pump task + agent connection.
+        # connection down instead of leaking its agent connection.
         try:
-            response = await state.request_response(message)
-        except TimeoutError:
-            await self._registry.remove(state.connection_id)
-            return PostResult(504, {"error": "initialize timed out"})
+            await transport.deliver_to_agent(message)
+            response = await asyncio.wait_for(transport.initialize_response, timeout=INITIALIZE_TIMEOUT_SECONDS)
+        except asyncio.TimeoutError:
+            await self.handle_delete(connection_id=connection_id)
+            return JSONResponse({"error": "initialize timed out"}, status_code=504)
         except Exception:
-            await self._registry.remove(state.connection_id)
-            return PostResult(500, {"error": "initialize failed"})
-        return PostResult(200, response, {CONNECTION_ID_HEADER: state.connection_id})
+            await self.handle_delete(connection_id=connection_id)
+            return JSONResponse({"error": "initialize failed"}, status_code=500)
+        except asyncio.CancelledError:
+            await self.handle_delete(connection_id=connection_id)
+            raise
+        return JSONResponse(response, headers={CONNECTION_ID_HEADER: connection_id})
 
     # -- GET / SSE ----------------------------------------------------------
 
-    def validate_stream(self, *, connection_id: str | None, session_id: str | None) -> PostResult | None:
-        """Validate a GET SSE request. Returns an error PostResult, or None if OK."""
+    def validate_stream(self, *, connection_id: str | None, session_id: str | None) -> Response | None:
+        """Validate a GET SSE request. Returns an error response, or None if OK."""
         if connection_id is None:
-            return PostResult(400, {"error": "Missing connection id"})
-        state = self._registry.get(connection_id)
-        if state is None:
-            return PostResult(404, {"error": "Unknown connection id"})
-        if session_id is not None and not state.has_session(session_id):
-            return PostResult(404, {"error": "Unknown session id"})
+            return JSONResponse({"error": "Missing connection id"}, status_code=400)
+        connection = self._connections.get(connection_id)
+        if connection is None:
+            return JSONResponse({"error": "Unknown connection id"}, status_code=404)
+        _, transport = connection
+        if session_id is not None and session_id not in transport.session_streams:
+            return JSONResponse({"error": "Unknown session id"}, status_code=404)
         return None
 
     async def open_stream(
@@ -411,17 +306,18 @@ class AcpServer:
         *,
         connection_id: str,
         session_id: str | None,
-    ) -> AsyncIterator[bytes]:
+    ) -> AsyncGenerator[bytes, None]:
         """Yield SSE byte frames for a connection- or session-scoped stream.
 
         Emits a keepalive comment whenever the stream is idle for longer than
         :data:`SSE_KEEPALIVE_INTERVAL_SECONDS` so that idle-timeout intermediaries
         (proxies, load balancers) do not close an otherwise-healthy stream.
         """
-        state = self._registry.get(connection_id)
-        if state is None:
+        connection = self._connections.get(connection_id)
+        if connection is None:
             return
-        stream = state.ensure_session_stream(session_id) if session_id is not None else state.connection_stream
+        _, transport = connection
+        stream = transport.session_streams[session_id] if session_id is not None else transport.connection_stream
         messages = stream.iterate()
         pending: asyncio.Task[dict[str, Any]] | None = None
         try:
@@ -449,13 +345,16 @@ class AcpServer:
 
     # -- DELETE -------------------------------------------------------------
 
-    async def handle_delete(self, *, connection_id: str | None) -> PostResult:
+    async def handle_delete(self, *, connection_id: str | None) -> Response:
         if connection_id is None:
-            return PostResult(400, {"error": "Missing connection id"})
-        if self._registry.get(connection_id) is None:
-            return PostResult(404, {"error": "Unknown connection id"})
-        await self._registry.remove(connection_id)
-        return PostResult(202)
+            return JSONResponse({"error": "Missing connection id"}, status_code=400)
+        connection = self._connections.pop(connection_id, None)
+        if connection is None:
+            return JSONResponse({"error": "Unknown connection id"}, status_code=404)
+        conn, _ = connection
+        await conn.close()
+        return Response(status_code=202)
 
     async def close(self) -> None:
-        await self._registry.close_all()
+        for connection_id in list(self._connections):
+            await self.handle_delete(connection_id=connection_id)

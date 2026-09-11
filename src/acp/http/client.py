@@ -28,8 +28,11 @@ from .protocol import (
     CONNECTION_ID_HEADER,
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_SSE,
+    LOAD_SESSION_METHOD,
     SESSION_ID_HEADER,
     is_initialize_request,
+    is_response_message,
+    message_id_key,
     method_requires_session_header,
     session_id_from_message,
 )
@@ -78,6 +81,7 @@ class _HttpStreamTransport:
         self._inbox: asyncio.Queue[Any] = asyncio.Queue()
         self._stream_tasks: set[asyncio.Task[None]] = set()
         self._session_streams: set[str] = set()
+        self._pending_loads: dict[str, str] = {}
 
     # -- Transport protocol -------------------------------------------------
 
@@ -87,7 +91,16 @@ class _HttpStreamTransport:
         if is_initialize_request(message):
             await self._send_initialize(message)
             return
-        await self._send_post(message)
+        key = message_id_key(message.get("id"))
+        session_id = session_id_from_message(message)
+        if message.get("method") == LOAD_SESSION_METHOD and key is not None and session_id is not None:
+            self._pending_loads[key] = session_id
+        try:
+            await self._send_post(message)
+        except BaseException:
+            if key is not None:
+                self._pending_loads.pop(key, None)
+            raise
 
     async def receive(self) -> dict[str, Any] | None:
         item = await self._inbox.get()
@@ -99,6 +112,7 @@ class _HttpStreamTransport:
         if self._closed:
             return
         self._closed = True
+        self._pending_loads.clear()
         for task in list(self._stream_tasks):
             task.cancel()
         for task in list(self._stream_tasks):
@@ -148,7 +162,7 @@ class _HttpStreamTransport:
         # Some servers may answer initialize-like 200 bodies; for 200 with a body enqueue it.
         if response.status_code == 200 and response.content:
             with contextlib.suppress(Exception):
-                self._inbox.put_nowait(response.json())
+                self._handle_incoming(response.json())
 
     def _open_stream(self, *, session_id: str | None) -> None:
         if self._closed:
@@ -197,13 +211,20 @@ class _HttpStreamTransport:
             self._session_streams.discard(session_id)
             return
         if not self._closed:
+            self._pending_loads.clear()
             self._inbox.put_nowait(_EOF)
 
     def _handle_incoming(self, message: dict[str, Any]) -> None:
-        # Open a session-scoped stream when any message carries a new sessionId
-        # (e.g. a session/new or session/load result on the connection stream).
+        # Load responses may be empty or null; the session ID is in the request.
+        if is_response_message(message):
+            key = message_id_key(message.get("id"))
+            loaded = self._pending_loads.pop(key, None) if key is not None else None
+            if loaded is not None and "result" in message:
+                self._open_stream(session_id=loaded)
         session_id = session_id_from_message(message)
-        if session_id is not None and session_id not in self._session_streams:
+        # Replay stays on the connection stream until load succeeds. Avoid
+        # opening a session GET that a failed load would immediately tear down.
+        if session_id is not None and session_id not in self._pending_loads.values():
             self._open_stream(session_id=session_id)
         self._inbox.put_nowait(message)
 

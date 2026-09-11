@@ -69,6 +69,18 @@ async def test_outbound_stream_push_blocks_when_full() -> None:
 
 
 @pytest.mark.asyncio
+async def test_outbound_stream_close_unblocks_full_buffer() -> None:
+    stream = OutboundStream(capacity=1)
+    await stream.push({"n": 0})
+    blocked = asyncio.create_task(stream.push({"n": 1}))
+    await asyncio.sleep(0)
+    assert not blocked.done()
+    stream.close()
+    await asyncio.wait_for(blocked, timeout=1)
+    assert [message async for message in stream.iterate()] == []
+
+
+@pytest.mark.asyncio
 async def test_open_stream_emits_keepalive_when_idle(monkeypatch: pytest.MonkeyPatch) -> None:
     """An idle connection-scoped stream must emit periodic SSE keepalive frames."""
     monkeypatch.setattr(server_mod, "SSE_KEEPALIVE_INTERVAL_SECONDS", 0.05)
@@ -113,11 +125,48 @@ async def test_initialize_timeout_cleans_up_connection(monkeypatch: pytest.Monke
         connection_id=None,
         session_id=None,
     )
-    assert result.status >= 500
+    assert result.status_code >= 500
     # No connection should remain registered after a failed initialize.
-    assert server.registry.get(result.headers.get(CONNECTION_ID_HEADER, "")) is None
-    assert _registry_size(server) == 0
+    assert not server._connections
     await server.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("shutdown", [False, True])
+async def test_interrupted_initialize_cleans_up_agent(shutdown: bool) -> None:
+    started = asyncio.Event()
+    stopped = asyncio.Event()
+
+    class Agent(_SilentInitAgent):
+        async def initialize(self, protocol_version: int = 1, **kwargs: Any) -> Any:
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                stopped.set()
+
+    server = AcpServer(lambda conn: Agent())
+    request = asyncio.create_task(
+        server.handle_post(
+            {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": 1}},
+            content_type=CT_JSON,
+            connection_id=None,
+            session_id=None,
+        )
+    )
+    try:
+        await asyncio.wait_for(started.wait(), timeout=1)
+        if shutdown:
+            await asyncio.wait_for(server.close(), timeout=1)
+        else:
+            request.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await asyncio.wait_for(request, timeout=1)
+        assert stopped.is_set()
+        assert not server._connections
+    finally:
+        request.cancel()
+        await server.close()
 
 
 # -- Finding 4: HTTP client surfaces disconnect on stream EOF ------------------
@@ -157,10 +206,6 @@ async def test_http_client_surfaces_eof_when_connection_stream_ends() -> None:
 
 
 # -- Helpers -------------------------------------------------------------------
-
-
-def _registry_size(server: AcpServer) -> int:
-    return len(server.registry._connections)  # type: ignore[attr-defined]
 
 
 class _NoopAgent:

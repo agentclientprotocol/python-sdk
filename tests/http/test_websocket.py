@@ -7,13 +7,13 @@ import json
 from typing import Any
 
 import pytest
+from starlette.websockets import WebSocket
 from websockets.asyncio.server import serve
 
 from acp.http.protocol import CONNECTION_ID_HEADER
-from acp.http.server import AcpServer
 from acp.schema import NewSessionResponse, PromptResponse
 from acp.ws.client import create_websocket_stream
-from acp.ws.server import handle_asgi_websocket
+from acp.ws.server import handle_websocket
 from tests.conftest import TestAgent
 
 
@@ -92,7 +92,7 @@ async def test_client_transport_ignores_binary_frames() -> None:
 
 
 class _FakeAsgiSocket:
-    """In-memory ASGI websocket double driving handle_asgi_websocket."""
+    """In-memory ASGI websocket double driving handle_websocket."""
 
     def __init__(self) -> None:
         self._incoming: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
@@ -133,24 +133,82 @@ class _FakeAsgiSocket:
 
 @pytest.mark.asyncio
 async def test_asgi_websocket_handshake_returns_connection_id() -> None:
-    server = AcpServer(lambda conn: _Agent())
     socket = _FakeAsgiSocket()
     socket.client_connect()
-    handler = asyncio.ensure_future(handle_asgi_websocket(server, {"type": "websocket"}, socket.receive, socket.send))
+    handler = asyncio.ensure_future(
+        handle_websocket(lambda conn: _Agent(), WebSocket({"type": "websocket"}, socket.receive, socket.send))
+    )
     await asyncio.sleep(0.05)
     header_names = [k for k, _ in socket.accepted_headers]
     assert CONNECTION_ID_HEADER.lower().encode() in header_names
     socket.client_disconnect()
     await asyncio.wait_for(handler, timeout=1)
-    await server.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("disconnect", [False, True])
+async def test_asgi_websocket_cleans_up_running_prompt(disconnect: bool) -> None:
+    started = asyncio.Event()
+    stopped = asyncio.Event()
+
+    class Agent(_Agent):
+        async def prompt(self, session_id: str, prompt: Any = None, **kwargs: Any) -> PromptResponse:
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            finally:
+                stopped.set()
+            return PromptResponse(stop_reason="end_turn")
+
+    socket = _FakeAsgiSocket()
+    socket.client_connect()
+    handler = asyncio.create_task(
+        handle_websocket(lambda conn: Agent(), WebSocket({"type": "websocket"}, socket.receive, socket.send))
+    )
+    try:
+        socket.client_send_text({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "session/prompt",
+            "params": {"sessionId": "sess-ws", "prompt": []},
+        })
+        await asyncio.wait_for(started.wait(), timeout=1)
+        if disconnect:
+            socket.client_disconnect()
+        else:
+            handler.cancel()
+        await asyncio.wait_for(handler, timeout=1)
+        assert stopped.is_set()
+    finally:
+        socket.client_disconnect()
+        await asyncio.wait_for(handler, timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_asgi_websocket_ignores_non_message_frames() -> None:
+    socket = _FakeAsgiSocket()
+    socket.client_connect()
+    for frame in ({"bytes": b"binary"}, {"text": "invalid json"}, {"text": "[]"}, {"text": "null"}):
+        socket._incoming.put_nowait({"type": "websocket.receive", **frame})
+    handler = asyncio.create_task(
+        handle_websocket(lambda conn: _Agent(), WebSocket({"type": "websocket"}, socket.receive, socket.send))
+    )
+    try:
+        socket.client_send_text({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": 1}})
+        response = await socket.wait_for_send(lambda m: m.get("id") == 0)
+        assert "result" in response
+    finally:
+        socket.client_disconnect()
+        await asyncio.wait_for(handler, timeout=1)
 
 
 @pytest.mark.asyncio
 async def test_asgi_websocket_full_flow() -> None:
-    server = AcpServer(lambda conn: _Agent())
     socket = _FakeAsgiSocket()
     socket.client_connect()
-    handler = asyncio.ensure_future(handle_asgi_websocket(server, {"type": "websocket"}, socket.receive, socket.send))
+    handler = asyncio.ensure_future(
+        handle_websocket(lambda conn: _Agent(), WebSocket({"type": "websocket"}, socket.receive, socket.send))
+    )
     await asyncio.sleep(0.05)
 
     socket.client_send_text({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": 1}})
@@ -179,4 +237,3 @@ async def test_asgi_websocket_full_flow() -> None:
 
     socket.client_disconnect()
     await asyncio.wait_for(handler, timeout=1)
-    await server.close()

@@ -59,7 +59,7 @@ class EchoAgent(Agent):
         return PromptResponse(stop_reason="end_turn")
 
 
-# One agent instance per connection.
+# A Starlette application with one agent instance per connection.
 app = create_asgi_app(lambda conn: EchoAgent())
 
 
