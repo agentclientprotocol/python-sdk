@@ -1,6 +1,6 @@
 """In-memory cookie store for the WebSocket handshake.
 
-The HTTP client relies on ``httpx``'s built-in cookie jar for session affinity,
+The HTTP client relies on ``httpx2``'s built-in cookie jar for session affinity,
 but the WebSocket handshake needs a small, explicit store to collect
 ``Set-Cookie`` headers from the upgrade response and echo them back as a
 ``Cookie`` request header for the socket lifetime.

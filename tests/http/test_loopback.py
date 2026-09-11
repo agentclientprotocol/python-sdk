@@ -1,6 +1,6 @@
 """End-to-end in-process loopback tests: Python client transport <-> ASGI server.
 
-Boots the ASGI app under a real uvicorn server (httpx's ASGITransport buffers
+Boots the ASGI app under a real uvicorn server (httpx2's ASGITransport buffers
 whole responses and cannot consume infinite SSE streams), then drives the full
 ACP flow over both the Streamable HTTP and WebSocket transports.
 """

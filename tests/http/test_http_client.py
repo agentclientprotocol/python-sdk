@@ -6,7 +6,7 @@ import asyncio
 import json
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 
 from acp._sse import serialize_sse_event
@@ -17,7 +17,7 @@ CONN_ID = "conn-123"
 
 
 class FakeServer:
-    """A minimal in-memory Streamable HTTP server backed by httpx.MockTransport."""
+    """A minimal in-memory Streamable HTTP server backed by httpx2.MockTransport."""
 
     def __init__(self) -> None:
         self.posts: list[dict[str, Any]] = []
@@ -26,28 +26,28 @@ class FakeServer:
         self.conn_stream: asyncio.Queue[bytes | None] = asyncio.Queue()
         self.session_streams: dict[str, asyncio.Queue[bytes | None]] = {}
 
-    def handler(self, request: httpx.Request) -> httpx.Response:
+    def handler(self, request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
             return self._handle_post(request)
         if request.method == "GET":
             return self._handle_get(request)
         if request.method == "DELETE":
             self.deleted = True
-            return httpx.Response(202)
-        return httpx.Response(405)
+            return httpx2.Response(202)
+        return httpx2.Response(405)
 
-    def _handle_post(self, request: httpx.Request) -> httpx.Response:
+    def _handle_post(self, request: httpx2.Request) -> httpx2.Response:
         body = json.loads(request.content)
         self.posts.append(body)
         if body.get("method") == "initialize":
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 headers={CONNECTION_ID_HEADER: CONN_ID, "Content-Type": CONTENT_TYPE_JSON},
                 json={"jsonrpc": "2.0", "id": body["id"], "result": {"protocolVersion": 1}},
             )
-        return httpx.Response(202)
+        return httpx2.Response(202)
 
-    def _handle_get(self, request: httpx.Request) -> httpx.Response:
+    def _handle_get(self, request: httpx2.Request) -> httpx2.Response:
         session_id = request.headers.get(SESSION_ID_HEADER)
         if session_id is not None:
             queue = self.session_streams.setdefault(session_id, asyncio.Queue())
@@ -61,7 +61,7 @@ class FakeServer:
                     return
                 yield chunk
 
-        return httpx.Response(200, headers={"Content-Type": "text/event-stream"}, stream=_AsyncByteStream(body()))
+        return httpx2.Response(200, headers={"Content-Type": "text/event-stream"}, stream=_AsyncByteStream(body()))
 
     def push_conn(self, message: dict[str, Any]) -> None:
         self.conn_stream.put_nowait(serialize_sse_event(message))
@@ -71,7 +71,7 @@ class FakeServer:
         queue.put_nowait(serialize_sse_event(message))
 
 
-class _AsyncByteStream(httpx.AsyncByteStream):
+class _AsyncByteStream(httpx2.AsyncByteStream):
     def __init__(self, iterator: Any) -> None:
         self._iterator = iterator
 
@@ -81,7 +81,7 @@ class _AsyncByteStream(httpx.AsyncByteStream):
 
 
 def _make_transport(server: FakeServer):
-    client = httpx.AsyncClient(transport=httpx.MockTransport(server.handler))
+    client = httpx2.AsyncClient(transport=httpx2.MockTransport(server.handler))
     return create_http_stream("http://testserver/acp", client=client), client
 
 
@@ -102,10 +102,10 @@ async def test_initialize_posts_and_reads_connection_id() -> None:
 
 @pytest.mark.asyncio
 async def test_initialize_failure_raises() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
-        return httpx.Response(500)
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        return httpx2.Response(500)
 
-    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
     transport = create_http_stream("http://testserver/acp", client=client)
     try:
         with pytest.raises(AcpHttpStatusError) as exc:
@@ -188,19 +188,19 @@ async def test_close_deletes_connection() -> None:
 
 @pytest.mark.asyncio
 async def test_post_error_status_raises() -> None:
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
             body = json.loads(request.content)
             if body.get("method") == "initialize":
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     headers={CONNECTION_ID_HEADER: CONN_ID},
                     json={"jsonrpc": "2.0", "id": body["id"], "result": {}},
                 )
-            return httpx.Response(404)
-        return httpx.Response(200, headers={"Content-Type": "text/event-stream"})
+            return httpx2.Response(404)
+        return httpx2.Response(200, headers={"Content-Type": "text/event-stream"})
 
-    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
     transport = create_http_stream("http://testserver/acp", client=client)
     try:
         await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})

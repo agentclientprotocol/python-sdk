@@ -7,7 +7,7 @@ import json
 from contextlib import asynccontextmanager
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 from starlette.applications import Starlette
 from starlette.routing import Mount
@@ -40,7 +40,7 @@ async def test_http_errors(method: str, headers: dict[str, str], body: str, stat
     app = create_asgi_app(lambda conn: TestAgent())
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client,
+        httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://test") as client,
     ):
         response = await client.request(method, "/acp", headers=headers, content=body)
         assert response.status_code == status
@@ -53,7 +53,7 @@ async def test_unsupported_methods_do_not_open_a_stream(method: str) -> None:
     app = create_asgi_app(lambda conn: TestAgent())
     async with (
         app.router.lifespan_context(app),
-        httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client,
+        httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://test") as client,
     ):
         response = await client.request(method, "/acp")
         assert response.status_code == 405
@@ -82,7 +82,7 @@ async def test_direct_and_mounted_app_support_http_and_websocket(
     prefix = "/agents" if mounted else ""
     path = prefix + (endpoint or "/acp")
     server = await serve_asgi(app)
-    async with httpx.AsyncClient(base_url=f"http://{server.host}:{server.port}") as client:
+    async with httpx2.AsyncClient(base_url=f"http://{server.host}:{server.port}") as client:
         response = await client.post(path, json=INITIALIZE)
         assert response.status_code == 200
         assert response.json()["id"] == 0
@@ -111,7 +111,7 @@ async def test_direct_and_mounted_app_support_http_and_websocket(
 @pytest.mark.asyncio
 async def test_lifespan_closes_http_connections() -> None:
     app = create_asgi_app(lambda conn: TestAgent())
-    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+    async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://test") as client:
         async with app.router.lifespan_context(app):
             response = await client.post("/acp", json=INITIALIZE)
             connection_id = response.headers[CONNECTION_ID_HEADER]
@@ -130,7 +130,7 @@ async def test_sse_disconnect_releases_reader_before_reopening(path: str) -> Non
 
     app = create_asgi_app(factory, path=path)
     async with app.router.lifespan_context(app):
-        async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://test") as client:
+        async with httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(path, json=INITIALIZE)
         connection_id = response.headers[CONNECTION_ID_HEADER]
         scope = {
