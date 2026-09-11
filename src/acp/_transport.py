@@ -8,8 +8,7 @@ JSON-RPC *messages* (already-decoded ``dict`` payloads) instead of bytes.
 The existing stdio path is re-expressed on top of this seam via
 :class:`NdjsonTransport`, which wraps the current byte-stream framing so there
 is **zero behaviour change** for stdio users.  :func:`memory_transport_pair`
-gives two linked in-memory transports, used by the HTTP/WS server to bind an
-``AgentSideConnection`` to its message pump.
+gives two linked in-memory transports for in-process connections and tests.
 """
 
 from __future__ import annotations
@@ -140,9 +139,7 @@ def memory_transport_pair() -> tuple[Transport, Transport]:
     """Return two linked in-memory transports.
 
     A message ``send`` on one end becomes available via ``receive`` on the
-    other.  Closing an end enqueues an EOF (``None``) for its peer.  This mirrors
-    the ``TransformStream`` pair the TypeScript SDK uses to bind a server-side
-    connection to its HTTP/WS message pump.
+    other. Closing an end enqueues an EOF (``None``) for its peer.
     """
     a_to_b: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
     b_to_a: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()

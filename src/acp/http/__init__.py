@@ -1,7 +1,7 @@
 """Streamable HTTP transport for ACP (experimental).
 
 Public exports are import-guarded: the heavy client/server implementations pull
-in optional dependencies (``httpx[http2]``).  Importing a symbol without the
+in optional dependencies (``httpx[http2]`` and ``starlette``). Importing a symbol without the
 extra installed raises a friendly ``ImportError`` pointing at
 ``pip install agent-client-protocol[http]``.
 """

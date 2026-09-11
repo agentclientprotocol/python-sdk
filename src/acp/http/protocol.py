@@ -35,7 +35,7 @@ SESSION_ID_HEADER = "Acp-Session-Id"
 CONTENT_TYPE_JSON = "application/json"
 CONTENT_TYPE_SSE = "text/event-stream"
 
-# Endpoint path used by docs/examples (the adapter itself is path-agnostic).
+# Default endpoint path for the server and docs/examples.
 ACP_ENDPOINT_PATH = "/acp"
 
 INITIALIZE_METHOD = AGENT_METHODS["initialize"]
