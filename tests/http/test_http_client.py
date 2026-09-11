@@ -211,3 +211,35 @@ async def test_post_error_status_raises() -> None:
     finally:
         await transport.close()
         await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("result", [{}, None])
+async def test_load_opens_session_stream_from_request_id(result: Any) -> None:
+    server = FakeServer()
+    transport, client = _make_transport(server)
+    try:
+        await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
+        await asyncio.wait_for(transport.receive(), timeout=1)
+        await transport.send({
+            "jsonrpc": "2.0",
+            "id": "load-1",
+            "method": "session/load",
+            "params": {"sessionId": "saved", "cwd": "/", "mcpServers": []},
+        })
+        replay = {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "saved"}}
+        server.push_conn(replay)
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == replay
+        await asyncio.sleep(0)
+        assert "saved" not in server.session_streams
+
+        # A standard load response carries no sessionId, including null results.
+        response = {"jsonrpc": "2.0", "id": "load-1", "result": result}
+        server.push_conn(response)
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == response
+        live = {"jsonrpc": "2.0", "id": 2, "result": {"stopReason": "end_turn"}}
+        server.push_session("saved", live)
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == live
+    finally:
+        await transport.close()
+        await client.aclose()

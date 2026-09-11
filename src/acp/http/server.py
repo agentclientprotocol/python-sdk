@@ -33,6 +33,7 @@ from .._sse import serialize_sse_event, serialize_sse_keepalive
 from ..agent.connection import AgentSideConnection
 from .protocol import (
     CONNECTION_ID_HEADER,
+    LOAD_SESSION_METHOD,
     is_initialize_request,
     is_response_message,
     message_id_key,
@@ -138,6 +139,8 @@ class _HttpTransport:
         self.connection_stream = OutboundStream()
         self.session_streams: dict[str, OutboundStream] = {}
         self._pending_routes: dict[str, str] = {}
+        self._pending_loads: dict[str, str] = {}
+        self._provisional_sessions: set[str] = set()
 
     async def receive(self) -> dict[str, Any] | None:
         return await self._incoming.get()
@@ -151,18 +154,35 @@ class _HttpTransport:
             if key == self._initialize_id and not self.initialize_response.done():
                 self.initialize_response.set_result(message)
                 return
-            session_id = self._pending_routes.pop(key, None) if key is not None else None
-            established = session_id_from_result(message.get("result"))
-            if established is not None:
-                self.session_streams.setdefault(established, OutboundStream())
-                # The client must learn the session ID before opening its stream.
-                session_id = None
+            session_id = self._route_response(message, key)
+        # Replay and load responses share the connection stream, including on
+        # reload. This preserves replay order and never waits for a session GET.
+        if session_id in self._pending_loads.values():
+            session_id = None
         stream = (
             self.session_streams.get(session_id, self.connection_stream)
             if session_id is not None
             else self.connection_stream
         )
         await stream.push(message)
+
+    def _route_response(self, message: dict[str, Any], key: str | None) -> str | None:
+        loaded = self._pending_loads.pop(key, None) if key is not None else None
+        if loaded is not None:
+            if "result" in message:
+                self._provisional_sessions.discard(loaded)
+            elif loaded in self._provisional_sessions and loaded not in self._pending_loads.values():
+                self._provisional_sessions.remove(loaded)
+                self.session_streams.pop(loaded).close()
+            return None
+        session_id = self._pending_routes.pop(key, None) if key is not None else None
+        established = session_id_from_result(message.get("result"))
+        if established is not None:
+            self.session_streams.setdefault(established, OutboundStream())
+            self._provisional_sessions.discard(established)
+            # The client must learn the session ID before opening its stream.
+            return None
+        return session_id
 
     async def deliver_to_agent(self, message: dict[str, Any]) -> None:
         if self._closed:
@@ -171,7 +191,14 @@ class _HttpTransport:
             session_id = session_id_from_params(message.get("params"))
             key = message_id_key(message["id"])
             if session_id is not None and key is not None:
-                self._pending_routes[key] = session_id
+                if message["method"] == LOAD_SESSION_METHOD:
+                    self._pending_loads[key] = session_id
+                    if session_id not in self.session_streams:
+                        # Allow clients to open a GET as soon as replay starts.
+                        self.session_streams[session_id] = OutboundStream()
+                        self._provisional_sessions.add(session_id)
+                else:
+                    self._pending_routes[key] = session_id
         self._incoming.put_nowait(dict(message))
 
     async def close(self) -> None:
@@ -181,6 +208,8 @@ class _HttpTransport:
         self._incoming.put_nowait(None)
         self.initialize_response.cancel()
         self._pending_routes.clear()
+        self._pending_loads.clear()
+        self._provisional_sessions.clear()
         self.connection_stream.close()
         for stream in self.session_streams.values():
             stream.close()

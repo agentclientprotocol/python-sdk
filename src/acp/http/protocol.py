@@ -17,6 +17,7 @@ __all__ = [
     "CONTENT_TYPE_JSON",
     "CONTENT_TYPE_SSE",
     "INITIALIZE_METHOD",
+    "LOAD_SESSION_METHOD",
     "SESSION_ID_HEADER",
     "is_initialize_request",
     "is_response_message",
@@ -39,6 +40,7 @@ CONTENT_TYPE_SSE = "text/event-stream"
 ACP_ENDPOINT_PATH = "/acp"
 
 INITIALIZE_METHOD = AGENT_METHODS["initialize"]
+LOAD_SESSION_METHOD = AGENT_METHODS["session_load"]
 
 # Agent methods that operate on an *already-established* session and therefore
 # require the ``Acp-Session-Id`` header on POST + session-scoped routing of their

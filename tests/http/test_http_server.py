@@ -10,7 +10,7 @@ import pytest
 
 from acp.exceptions import RequestError
 from acp.http.protocol import CONNECTION_ID_HEADER
-from acp.http.server import AcpServer
+from acp.http.server import AcpServer, _HttpTransport
 from acp.schema import NewSessionResponse, PromptResponse
 from tests.conftest import TestAgent
 
@@ -297,3 +297,44 @@ async def test_concurrent_session_results_and_errors_stay_on_their_streams() -> 
     finally:
         await connection_stream.aclose()
         await server.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("first_succeeds", [False, True])
+@pytest.mark.parametrize("second_succeeds", [False, True])
+async def test_overlapping_loads_preserve_successful_session_streams(
+    first_succeeds: bool, second_succeeds: bool
+) -> None:
+    transport = _HttpTransport(0)
+    connection_stream = transport.connection_stream.iterate()
+    try:
+        for request_id in (1, 2):
+            await transport.deliver_to_agent({
+                "jsonrpc": "2.0",
+                "id": request_id,
+                "method": "session/load",
+                "params": {"sessionId": "saved", "cwd": "/", "mcpServers": []},
+            })
+        # A client may attach its session GET before load completes.
+        session_stream = transport.session_streams["saved"]
+        for request_id, succeeds in enumerate((first_succeeds, second_succeeds), start=1):
+            response = {"jsonrpc": "2.0", "id": request_id}
+            response.update({"result": {}} if succeeds else {"error": {"code": -32000, "message": "load failed"}})
+            await transport.send(response)
+            assert await asyncio.wait_for(anext(connection_stream), timeout=1) == response
+            if request_id == 1:
+                assert transport.session_streams["saved"] is session_stream
+
+        if first_succeeds or second_succeeds:
+            assert transport.session_streams["saved"] is session_stream
+            live = {"jsonrpc": "2.0", "method": "session/update", "params": {"sessionId": "saved"}}
+            await transport.send(live)
+            messages = session_stream.iterate()
+            assert await asyncio.wait_for(anext(messages), timeout=1) == live
+            await messages.aclose()
+        else:
+            assert "saved" not in transport.session_streams
+            assert [message async for message in session_stream.iterate()] == []
+    finally:
+        await connection_stream.aclose()
+        await transport.close()

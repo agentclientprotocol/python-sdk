@@ -55,6 +55,31 @@ header, then opens the connection-scoped SSE stream. When a new `sessionId`
 appears it opens that session-scoped stream too. A single SSE attempt is made per
 stream; reconnect/retry is the caller's responsibility (v1 of the RFD).
 
+### Loading an existing session
+
+Both HTTP and WebSocket support `load_session()` when the agent advertises
+`loadSession` and implements session persistence:
+
+```python
+init = await conn.initialize(protocol_version=1)
+if init.agent_capabilities.load_session:
+    await conn.load_session(session_id="saved-session-id", cwd="/workspace", mcp_servers=[])
+    await conn.prompt(session_id="saved-session-id", prompt=[...])
+```
+
+For HTTP, history replay and the load response use the connection SSE stream.
+The client correlates the response with the session ID from the load request,
+then opens the session SSE stream for further prompts and agent callbacks. This
+also works with an empty history: a load response need not contain `sessionId`.
+Replay is consumed as it arrives, so histories larger than the SSE buffer do not
+wait for a session stream to open. WebSocket uses its existing bidirectional
+connection for both replay and subsequent messages.
+
+A failed load returns its JSON-RPC error on the connection stream and can be
+retried. The server removes streams provisioned only for failed loads, while
+preserving established sessions and overlapping loads. It does not change the
+agent's load response or automatically enable the agent's `loadSession` capability.
+
 ## Server
 
 The server uses Starlette for HTTP requests, responses, routing, streaming,
@@ -122,12 +147,13 @@ has one incoming queue and one SSE buffer per stream. The incoming queue lets
 POST return `202` while the agent handles the request. Output goes directly to
 the relevant SSE buffer; there is no intermediate transport pair or pump task.
 
-HTTP output needs three routing rules:
+HTTP output follows these routing rules:
 
 | Message | Destination | Why |
 | --- | --- | --- |
 | `initialize` response | POST body, via one Future | Establishes the connection before GET streams open |
 | Response containing a new `sessionId` | Connection SSE stream | The client needs the ID before it can open the session stream |
+| `session/load` replay and response | Connection SSE stream | Replay precedes the response; the client gets the session ID from the original request |
 | Other messages | Session SSE stream when known, otherwise connection stream | Responses use their request's recorded session; requests/notifications carry `sessionId` |
 
 `OutboundStream` retains a bounded buffer, backpressure, and close handling.
