@@ -5,8 +5,9 @@ but the WebSocket handshake needs a small, explicit store to collect
 ``Set-Cookie`` headers from the upgrade response and echo them back as a
 ``Cookie`` request header for the socket lifetime.
 
-This is intentionally minimal: it stores name→value pairs without attribute
-parsing (domain/path/expiry), matching the affinity-only use case in the RFD.
+This is intentionally minimal: it stores name→value pairs and only honors
+expiration attributes that remove a cookie, matching the affinity-only use case
+in the RFD.
 """
 
 from __future__ import annotations
@@ -23,16 +24,23 @@ class MemoryAcpCookieStore:
     def store_set_cookie(self, header_value: str) -> None:
         """Ingest a single ``Set-Cookie`` header value.
 
-        Only the leading ``name=value`` pair is retained; cookie attributes
-        (``; Path=/``, ``; HttpOnly`` etc.) are ignored.
+        Only the leading ``name=value`` pair is retained; most cookie attributes
+        (``; Path=/``, ``; HttpOnly`` etc.) are ignored. Expiration attributes
+        that explicitly clear a cookie (``Max-Age=0`` or an epoch ``Expires``
+        value) remove any stored cookie with the same name.
         """
-        first = header_value.split(";", 1)[0].strip()
+        parts = [part.strip() for part in header_value.split(";")]
+        first = parts[0]
         if not first or "=" not in first:
             return
         name, _, value = first.partition("=")
         name = name.strip()
-        if name:
-            self._cookies[name] = value.strip()
+        if not name:
+            return
+        if _is_deletion_cookie(parts[1:]):
+            self._cookies.pop(name, None)
+            return
+        self._cookies[name] = value.strip()
 
     def store_set_cookies(self, header_values: list[str]) -> None:
         """Ingest multiple ``Set-Cookie`` header values."""
@@ -51,3 +59,17 @@ class MemoryAcpCookieStore:
 
     def __len__(self) -> int:
         return len(self._cookies)
+
+
+def _is_deletion_cookie(attributes: list[str]) -> bool:
+    for attribute in attributes:
+        key, separator, value = attribute.partition("=")
+        if not separator:
+            continue
+        key = key.strip().lower()
+        value = value.strip().lower()
+        if key == "max-age" and value == "0":
+            return True
+        if key == "expires" and value in {"thu, 01 jan 1970 00:00:00 gmt", "0"}:
+            return True
+    return False
