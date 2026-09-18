@@ -23,6 +23,21 @@ def test_later_value_overwrites_same_name() -> None:
     assert len(store) == 1
 
 
+def test_expiring_cookie_removes_stored_value() -> None:
+    store = MemoryAcpCookieStore()
+    store.store_set_cookie("affinity=abc123; Path=/")
+    store.store_set_cookie("affinity=; Max-Age=0; Path=/")
+    assert store.cookie_header() is None
+    assert len(store) == 0
+
+
+def test_epoch_expires_cookie_removes_stored_value() -> None:
+    store = MemoryAcpCookieStore()
+    store.store_set_cookie("affinity=abc123; Path=/")
+    store.store_set_cookie("affinity=deleted; Expires=Thu, 01 Jan 1970 00:00:00 GMT")
+    assert store.cookie_header() is None
+
+
 def test_empty_store_returns_none() -> None:
     store = MemoryAcpCookieStore()
     assert store.cookie_header() is None
