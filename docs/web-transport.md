@@ -21,7 +21,7 @@ Both reuse the existing JSON-RPC message format and ACP lifecycle
 pip install "agent-client-protocol[http]"
 ```
 
-This pulls in `httpx[http2]` (HTTP/2 + SSE consumption), `websockets`, and
+This pulls in `httpx2[http2]` (HTTP/2 + SSE consumption), `websockets`, and
 `starlette` (the server application). The core SDK and stdio transport do not
 require these optional dependencies.
 

@@ -38,7 +38,7 @@ from .protocol import (
 )
 
 try:
-    import httpx
+    import httpx2
 except ImportError as exc:  # pragma: no cover - exercised via import guard message
     msg = "The Streamable HTTP transport requires the 'http' extra: pip install agent-client-protocol[http]"
     raise ImportError(msg) from exc
@@ -68,7 +68,7 @@ class _HttpStreamTransport:
         self,
         url: str,
         *,
-        client: httpx.AsyncClient,
+        client: httpx2.AsyncClient,
         owns_client: bool,
         headers: dict[str, str] | None = None,
     ) -> None:
@@ -191,7 +191,7 @@ class _HttpStreamTransport:
                     return
                 async for event in parse_sse_stream(_aiter_raw(response)):
                     self._handle_incoming(event)
-        except (httpx.HTTPError, asyncio.CancelledError):
+        except (httpx2.HTTPError, asyncio.CancelledError):
             return
         finally:
             self._on_stream_closed(session_id)
@@ -229,7 +229,7 @@ class _HttpStreamTransport:
         self._inbox.put_nowait(message)
 
 
-async def _aiter_raw(response: httpx.Response) -> AsyncIterator[bytes]:
+async def _aiter_raw(response: httpx2.Response) -> AsyncIterator[bytes]:
     async for chunk in response.aiter_bytes():
         yield chunk
 
@@ -237,14 +237,14 @@ async def _aiter_raw(response: httpx.Response) -> AsyncIterator[bytes]:
 def create_http_stream(
     url: str,
     *,
-    client: httpx.AsyncClient | None = None,
+    client: httpx2.AsyncClient | None = None,
     headers: dict[str, str] | None = None,
 ) -> Transport:
     """Create a Streamable HTTP client :class:`Transport`.
 
     Args:
         url: The ACP endpoint URL (e.g. ``https://host/acp``).
-        client: An optional pre-configured ``httpx.AsyncClient``.  If omitted, an
+        client: An optional pre-configured ``httpx2.AsyncClient``.  If omitted, an
             HTTP/2-enabled client with a cookie jar is created and owned by the
             transport (closed on ``close()``).
         headers: Extra headers sent on every request.
@@ -255,5 +255,5 @@ def create_http_stream(
     owns_client = client is None
     if client is None:
         # SSE GET streams are long-lived, so disable read timeouts by default.
-        client = httpx.AsyncClient(http2=True, timeout=httpx.Timeout(None))
+        client = httpx2.AsyncClient(http2=True, timeout=httpx2.Timeout(None))
     return _HttpStreamTransport(url, client=client, owns_client=owns_client, headers=headers)

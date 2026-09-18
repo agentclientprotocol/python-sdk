@@ -14,7 +14,7 @@ import asyncio
 import json
 from typing import Any
 
-import httpx
+import httpx2
 import pytest
 
 import acp.http.server as server_mod
@@ -177,22 +177,22 @@ async def test_http_client_surfaces_eof_when_connection_stream_ends() -> None:
     """When the connection-scoped SSE stream ends, receive() must return None."""
     conn_id = "conn-eof"
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         if request.method == "POST":
             body = json.loads(request.content)
             if body.get("method") == "initialize":
-                return httpx.Response(
+                return httpx2.Response(
                     200,
                     headers={CONNECTION_ID_HEADER: conn_id, "Content-Type": CONTENT_TYPE_JSON},
                     json={"jsonrpc": "2.0", "id": body["id"], "result": {}},
                 )
-            return httpx.Response(202)
+            return httpx2.Response(202)
         if request.method == "GET":
             # SSE stream that immediately ends (empty body -> EOF).
-            return httpx.Response(200, headers={"Content-Type": "text/event-stream"}, content=b"")
-        return httpx.Response(202)
+            return httpx2.Response(200, headers={"Content-Type": "text/event-stream"}, content=b"")
+        return httpx2.Response(202)
 
-    client = httpx.AsyncClient(transport=httpx.MockTransport(handler))
+    client = httpx2.AsyncClient(transport=httpx2.MockTransport(handler))
     transport = create_http_stream("http://testserver/acp", client=client)
     try:
         await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
