@@ -15,6 +15,8 @@ from pydantic.alias_generators import to_snake
 
 from ._deserialize import use_default_on_error
 
+ElicitationContent = dict[str, str | int | float | bool | list[str]]
+
 
 class BaseModel(pydantic.BaseModel):
     """Runtime behavior shared by generated ACP schema models."""

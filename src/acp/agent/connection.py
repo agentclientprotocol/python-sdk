@@ -51,6 +51,7 @@ from ..schema import (
     SessionNotification,
     SessionUpdateCompactionSummaryChunk,
     SessionUpdateCompactionUpdate,
+    SessionUpdateNotice,
     TerminalOutputRequest,
     TerminalOutputResponse,
     ToolCallProgress,
@@ -150,6 +151,7 @@ class AgentSideConnection:
         | ConfigOptionUpdate
         | SessionInfoUpdate
         | UsageUpdate
+        | SessionUpdateNotice
         | SessionUpdateCompactionUpdate
         | SessionUpdateCompactionSummaryChunk,
         **kwargs: Any,

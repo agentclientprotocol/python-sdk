@@ -491,7 +491,7 @@
           "x-deserialize-default-on-error": true
         },
         "name": {
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nUpdate the programmatic name of the tool being invoked.\n\nThis field is optional. Omitting it or sending `null` both mean that\nthe existing name is left unchanged.",
+          "description": "Update the programmatic name of the tool being invoked.\n\nThis field is optional. Omitting it or sending `null` both mean that\nthe existing name is left unchanged.",
           "type": [
             "string",
             "null"
@@ -6013,6 +6013,24 @@
           ]
         },
         {
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nAdvisory information for the user that is not part of session history.\n\nAgents MUST only send this update when the Client advertised\n[`ClientSessionCapabilities::notices`].",
+          "type": "object",
+          "properties": {
+            "sessionUpdate": {
+              "type": "string",
+              "const": "notice"
+            }
+          },
+          "required": [
+            "sessionUpdate"
+          ],
+          "allOf": [
+            {
+              "$ref": "#/$defs/Notice"
+            }
+          ]
+        },
+        {
           "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nA context compaction has been created or updated.\n\nAgents MUST only send this update when the Client advertised\n[`ClientSessionCapabilities::compaction`].",
           "type": "object",
           "properties": {
@@ -6112,7 +6130,7 @@
           "type": "string"
         },
         "name": {
-          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nProgrammatic name of the tool being invoked.\n\nThis field is optional. Omitting it or sending `null` both mean that no\ntool name is available.",
+          "description": "Programmatic name of the tool being invoked.\n\nThis field is optional. Omitting it or sending `null` both mean that no\ntool name is available.",
           "type": [
             "string",
             "null"
@@ -6758,6 +6776,71 @@
         "size"
       ]
     },
+    "NoticeSeverity": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nSeverity hint for a session notice.",
+      "anyOf": [
+        {
+          "description": "Informational notice.",
+          "type": "string",
+          "const": "info"
+        },
+        {
+          "description": "Warning notice.",
+          "type": "string",
+          "const": "warning"
+        },
+        {
+          "description": "Error notice.",
+          "type": "string",
+          "const": "error"
+        },
+        {
+          "title": "other",
+          "description": "Custom or future notice severity.\n\nValues beginning with `_` are reserved for implementation-specific\nextensions. Other unknown values are reserved for future ACP severities.",
+          "type": "string"
+        }
+      ]
+    },
+    "Notice": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nFire-and-forget advisory information for the user.\n\nNotices are live events rather than session history. Agents must not rely on\na notice being received, displayed, or seen by the user.\nAgents MUST only send notices when the Client advertised\n[`ClientSessionCapabilities::notices`]. Otherwise, Agents may use an agent\nmessage when the information should still be surfaced to the user.\n\nSee RFD: [Session Notices](https://agentclientprotocol.com/rfds/session-notices)",
+      "type": "object",
+      "properties": {
+        "severity": {
+          "description": "Presentation severity hint.",
+          "allOf": [
+            {
+              "$ref": "#/$defs/NoticeSeverity"
+            }
+          ]
+        },
+        "title": {
+          "description": "Required non-empty plain-text title that can stand alone.",
+          "type": "string",
+          "minLength": 1
+        },
+        "description": {
+          "description": "Optional plain-text detail or guidance.\n\nOmitted and `null` are equivalent and mean no description was supplied.",
+          "type": [
+            "string",
+            "null"
+          ],
+          "x-deserialize-default-on-error": true
+        },
+        "_meta": {
+          "description": "Metadata scoped to this notice.\n\nOmitted and `null` are equivalent and mean no metadata was supplied.",
+          "type": [
+            "object",
+            "null"
+          ],
+          "x-deserialize-default-on-error": true,
+          "additionalProperties": true
+        }
+      },
+      "required": [
+        "severity",
+        "title"
+      ]
+    },
     "CompactionId": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nUnique identifier for a context compaction within a session.",
       "type": "string"
@@ -7397,6 +7480,18 @@
           ],
           "x-deserialize-default-on-error": true
         },
+        "notices": {
+          "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nSupport for live advisory `notice` session updates.\n\nOptional. Omitted or `null` both mean the client does not advertise support.\nSupplying `{}` means the client can present notices to the user.",
+          "anyOf": [
+            {
+              "$ref": "#/$defs/NoticeCapabilities"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "x-deserialize-default-on-error": true
+        },
         "_meta": {
           "description": "The _meta property is reserved by ACP to allow clients and agents to attach additional\nmetadata to their interactions. Implementations MUST NOT make assumptions about values at\nthese keys.\n\nSee protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)",
           "type": [
@@ -7453,6 +7548,10 @@
           "additionalProperties": true
         }
       }
+    },
+    "NoticeCapabilities": {
+      "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nClient support for presenting live advisory notices to the user.",
+      "type": "object"
     },
     "PlanCapabilities": {
       "description": "**UNSTABLE**\n\nThis capability is not part of the spec yet, and may be removed or changed at any point.\n\nCapabilities for receiving `plan_update` and `plan_removed` session updates.",

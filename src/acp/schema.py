@@ -1,5 +1,5 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.21.0
+# Schema ref: refs/tags/schema-v1.23.0
 
 from __future__ import annotations
 
@@ -7,7 +7,7 @@ from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
-from acp._schema_base import BaseModel
+from acp._schema_base import BaseModel, ElicitationContent
 from pydantic import AnyUrl, ConfigDict, Field, RootModel, ValidationInfo, ValidatorFunctionWrapHandler, field_validator
 
 
@@ -1573,6 +1573,34 @@ class UsageUpdateBase(BaseModel):
     """
 
 
+class Notice(BaseModel):
+    severity: Union[Literal["info"], Literal["warning"], Literal["error"], str]
+    """
+    Presentation severity hint.
+    """
+    title: Annotated[str, Field(min_length=1)]
+    """
+    Required non-empty plain-text title that can stand alone.
+    """
+    description: Optional[str] = None
+    """
+    Optional plain-text detail or guidance.
+
+    Omitted and `null` are equivalent and mean no description was supplied.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Metadata scoped to this notice.
+
+    Omitted and `null` are equivalent and mean no metadata was supplied.
+    """
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
 class CompleteElicitationNotification(BaseModel):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
@@ -1657,6 +1685,10 @@ class BooleanConfigOptionCapabilities(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
+
+
+class NoticeCapabilities(BaseModel):
+    pass
 
 
 class PlanCapabilities(BaseModel):
@@ -2405,7 +2437,7 @@ class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]
 
 
 class ElicitationAcceptAction(BaseModel):
-    content: Optional[Dict[str, Any]] = None
+    content: Optional[ElicitationContent] = None
     """
     The user-provided content, if any, as an object matching the requested schema.
     """
@@ -3226,7 +3258,7 @@ class NesContextCapabilities(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class EnvVarAuthMethod(AuthMethodTerminal):
+class TerminalAuthMethod(AuthMethodTerminal):
     type: Literal["terminal"] = "terminal"
 
 
@@ -3496,6 +3528,10 @@ class UsageUpdate(UsageUpdateBase):
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
+
+
+class SessionUpdateNotice(Notice):
+    session_update: Annotated[Literal["notice"], Field(alias="sessionUpdate")] = "notice"
 
 
 class PlanEntry(BaseModel):
@@ -4390,6 +4426,17 @@ class ClientSessionCapabilities(BaseModel):
     Omitted or `null` both mean the client does not advertise support for any
     config option extensions.
     """
+    notices: Optional[NoticeCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Support for live advisory `notice` session updates.
+
+    Optional. Omitted or `null` both mean the client does not advertise support.
+    Supplying `{}` means the client can present notices to the user.
+    """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
@@ -4399,7 +4446,7 @@ class ClientSessionCapabilities(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("compaction", "config_options", mode="wrap")
+    @field_validator("compaction", "config_options", "notices", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -4884,10 +4931,6 @@ class ToolCall(BaseModel):
     """
     name: Optional[str] = None
     """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
     Programmatic name of the tool being invoked.
 
     This field is optional. Omitting it or sending `null` both mean that no
@@ -5169,10 +5212,6 @@ class ToolCallUpdate(BaseModel):
     """
     name: Optional[str] = None
     """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
     Update the programmatic name of the tool being invoked.
 
     This field is optional. Omitting it or sending `null` both mean that
@@ -5551,6 +5590,7 @@ class SessionNotification(BaseModel):
             ConfigOptionUpdate,
             SessionInfoUpdate,
             UsageUpdate,
+            SessionUpdateNotice,
             SessionUpdateCompactionUpdate,
             SessionUpdateCompactionSummaryChunk,
         ],
@@ -5664,7 +5704,7 @@ class InitializeResponse(BaseModel):
     Capabilities supported by the agent.
     """
     auth_methods: Annotated[
-        Optional[List[Union[EnvVarAuthMethod, AuthMethodAgent]]], Field(alias="authMethods", validate_default=True)
+        Optional[List[Union[TerminalAuthMethod, AuthMethodAgent]]], Field(alias="authMethods", validate_default=True)
     ] = []
     """
     Authentication methods supported by the agent.
