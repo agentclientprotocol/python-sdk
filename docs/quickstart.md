@@ -157,6 +157,36 @@ update = AgentMessageChunk(
 )
 ```
 
+## Session notices (unstable)
+
+The v1 bindings use `schema-v1.23.0`. Clients that can display live advisory
+notices advertise `ClientCapabilities(session=ClientSessionCapabilities(notices=NoticeCapabilities()))`
+in `initialize`; these models are available from `acp.schema`.
+
+After checking that capability, agents can send a notice:
+
+```python
+from acp.schema import SessionUpdateNotice
+
+await client.session_update(
+    session_id=session_id,
+    update=SessionUpdateNotice(
+        severity="warning",
+        title="Context is nearly full",
+        description="Start a new session soon.",
+    ),
+)
+```
+
+Notices are live events, outside session history. The title must be non-empty;
+severity accepts `info`, `warning`, `error`, and custom or future strings.
+Agents must only send notices to clients that advertise support.
+
+Tool calls now expose the stable `name` field. Terminal authentication methods
+are available as `TerminalAuthMethod`, replacing the incorrect `EnvVarAuthMethod`
+name. Accepted elicitation content validates scalar values and string lists;
+nested objects are not valid form values.
+
 ## Optional — Talk to the Gemini CLI
 
 _Have the Gemini CLI installed? Run the bridge to exercise permission flows._

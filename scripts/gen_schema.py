@@ -109,6 +109,7 @@ def render_schema(semantics: SchemaSemantics) -> str:
         infer_union_variant_names=True,
         naming_strategy=NamingStrategy.PrimaryFirst,
         model_name_map=semantics.model_name_map,
+        type_overrides=semantics.field_type_overrides,
         strict_refs=True,
         schema_version="2020-12",
         schema_version_mode=VersionMode.Strict,

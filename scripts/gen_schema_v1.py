@@ -20,7 +20,7 @@ MODEL_NAME_MAP = {
 for variant_names in (
     variant_model_map("AgentResponse", "anyOf", "object", ("AgentResponseMessage", "AgentErrorMessage")),
     variant_model_map("ClientResponse", "anyOf", "object", ("ClientResponseMessage", "ClientErrorMessage")),
-    variant_model_map("AuthMethod", "anyOf", "allOf", ("EnvVarAuthMethod", "TerminalAuthMethod")),
+    variant_model_map("AuthMethod", "anyOf", "allOf", ("TerminalAuthMethod", "AgentAuthMethod")),
     variant_model_map("McpServer", "anyOf", "allOf", ("HttpMcpServer", "SseMcpServer", "AcpMcpServer")),
     variant_model_map(
         "SetSessionConfigOptionRequest",
@@ -230,4 +230,6 @@ SEMANTICS = SchemaSemantics(
     base_class="acp._schema_base.BaseModel",
     model_name_map=MODEL_NAME_MAP,
     compatibility_aliases=COMPATIBILITY_ALIASES,
+    # The generator loses additionalProperties types on nullable objects.
+    field_type_overrides={"ElicitationAcceptAction.content": "acp._schema_base.ElicitationContent"},
 )
