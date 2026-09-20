@@ -127,6 +127,7 @@ for variant_names in (
             "ConfigOptionUpdate",
             "SessionInfoUpdate",
             "UsageUpdate",
+            "SessionNotice",
             "SessionCompactionUpdate",
             "SessionCompactionSummaryChunk",
         ),
@@ -161,7 +162,7 @@ MODEL_NAME_MAP.update({
     inline_model_ref("NesSuggestion", ("anyOf", 4), ("object", None)): "OtherNesSuggestion",
     inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
     inline_model_ref("MultiSelectItems", ("anyOf", 1), ("object", None)): "OtherMultiSelectItems",
-    inline_model_ref("SessionUpdate", ("anyOf", 19), ("object", None)): "OtherSessionUpdate",
+    inline_model_ref("SessionUpdate", ("anyOf", 20), ("object", None)): "OtherSessionUpdate",
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 0), ("allOf", None)): ("RunningSessionStateUpdateBase"),
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 1), ("allOf", None)): ("IdleSessionStateUpdateBase"),
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 2), ("allOf", None)): (
@@ -229,4 +230,6 @@ SEMANTICS = SchemaSemantics(
     schema_out=ROOT / "src" / "acp" / "experimental" / "v2" / "schema.py",
     base_class="acp.experimental.v2._schema_base.BaseModel",
     model_name_map=MODEL_NAME_MAP,
+    # The generator loses additionalProperties types on nullable objects.
+    field_type_overrides={"ElicitationAcceptAction.content": "acp._schema_base.ElicitationContent"},
 )
