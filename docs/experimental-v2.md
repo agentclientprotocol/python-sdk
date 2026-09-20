@@ -3,6 +3,8 @@
 > **Experimental.** Protocol v2 is a draft. Import it from `acp.experimental` and
 > expect its API and generated models to change with the upstream schema.
 
+The bindings use `schema-v2.0.0-alpha.5`.
+
 The v2 runtime is separate from the stable v1 API. Its methods accept and return
 generated request and response models directly. Install update handlers on the
 client before opening a session because updates are independent connection
@@ -29,7 +31,7 @@ initialized = await connection.initialize(
 session = await connection.new_session(
     v2.schema.NewSessionRequest(cwd="/workspace")
 )
-await connection.prompt(
+accepted = await connection.prompt(
     v2.schema.PromptRequest(
         session_id=session.session_id,
         prompt=[v2.schema.TextContentBlock(text="Hello")],
@@ -37,10 +39,30 @@ await connection.prompt(
 )
 ```
 
-`session/prompt` returns when the agent accepts the prompt. It does not define a
-boundary for session updates: they may arrive before, during, or after that
-request, and they do not carry a prompt identifier. Applications decide how to
-buffer or present them.
+`session/prompt` returns after the agent inserts the user message into the ACP
+conversation, without waiting for processing to finish. The response requires a
+non-null `message_id`. Agents return `v2.schema.PromptResponse(message_id=...)`
+and echo the user message in a `UserMessageUpdate` or `UserMessageChunk` carrying
+the same ID. That update may arrive before or after the response; use
+`accepted.message_id` to match it. Other session updates are independent traffic
+and do not carry a prompt identifier.
+
+Agents can send `v2.schema.SessionNotice(severity="warning", title="Context is nearly full")`
+in an `UpdateSessionNotification`. V2 notices require no client capability and
+are live advisory events, outside retained session history. Clients may ignore
+them. Titles must be non-empty, and severity also accepts custom or future strings.
+
+For patch fields in session updates, omit a field to leave its current
+value unchanged, or explicitly pass `None` to clear it. For example,
+`v2.schema.SessionToolCallUpdate(tool_call_id="tool-1", name=None)` clears the
+tool name, while omitting `name` leaves it unchanged. This also applies to
+terminal updates and patch metadata. When applying received patches, use
+`update.model_dump(by_alias=True, exclude_unset=True)` to retain that distinction.
+
+Setting `replay_from=v2.schema.ReplayFromStartVariant()` on a `ResumeSessionRequest`
+requests all retained conversation history; agents need not retain every message.
+Accepted elicitation content validates scalar values and string lists; nested
+objects are not valid form values.
 
 Agents that serve both versions use `AgentProtocolRouter`:
 

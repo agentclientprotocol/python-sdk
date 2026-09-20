@@ -69,7 +69,7 @@ class RoutedV2Agent(V2Agent):
                 update=v2.schema.IdleSessionStateUpdate(),
             )
         )
-        return v2.schema.PromptResponse()
+        return v2.schema.PromptResponse(message_id="user-message-1")
 
 
 def v2_initialize() -> v2.schema.InitializeRequest:

@@ -25,7 +25,7 @@ __all__ = ["AgentSideConnection", "run_agent"]
 
 
 def _dump(model: BaseModel) -> dict[str, Any]:
-    return model.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_unset=True)
+    return model.model_dump(mode="json", by_alias=True, exclude_unset=True)
 
 
 class _AgentRouter:

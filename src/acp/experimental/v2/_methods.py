@@ -107,7 +107,6 @@ AGENT_REQUESTS = (
         "prompt",
         schema.PromptRequest,
         schema.PromptResponse,
-        empty_response=True,
     ),
     request(AGENT_METHODS["mcp_message"], "mcp_message", schema.MessageMcpRequest, Any),
     request(AGENT_METHODS["session_list"], "list_sessions", schema.ListSessionsRequest, schema.ListSessionsResponse),

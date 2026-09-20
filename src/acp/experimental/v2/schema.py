@@ -1,5 +1,5 @@
 # Generated from schema/v2/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v2.0.0-alpha.3
+# Schema ref: refs/tags/schema-v2.0.0-alpha.5
 
 from __future__ import annotations
 
@@ -7,6 +7,7 @@ from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
+from acp._schema_base import ElicitationContent
 from acp.experimental.v2._schema_base import BaseModel
 from pydantic import (
     AnyUrl,
@@ -1163,17 +1164,6 @@ class CloseSessionResponse(BaseModel):
     """
 
 
-class PromptResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v2/draft/extensibility)
-    """
-
-
 class StartNesResponse(BaseModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
@@ -1722,6 +1712,34 @@ class UsageUpdateBase(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v2/draft/extensibility)
     """
+
+
+class Notice(BaseModel):
+    severity: Union[Literal["info"], Literal["warning"], Literal["error"], str]
+    """
+    Presentation severity hint.
+    """
+    title: Annotated[str, Field(min_length=1)]
+    """
+    Required non-empty plain-text title that can stand alone.
+    """
+    description: Optional[str] = None
+    """
+    Optional plain-text detail or guidance.
+
+    Omitted and `null` are equivalent and mean no description was supplied.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Metadata scoped to this notice.
+
+    Omitted and `null` are equivalent and mean no metadata was supplied.
+    """
+
+    @field_validator("description", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class CompleteElicitationNotification(BaseModel):
@@ -2436,7 +2454,7 @@ class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]
 
 
 class ElicitationAcceptAction(BaseModel):
-    content: Optional[Dict[str, Any]] = None
+    content: Optional[ElicitationContent] = None
     """
     The user-provided content, if any, as an object matching the requested schema.
     """
@@ -3640,6 +3658,27 @@ class ListSessionsResponse(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
+class PromptResponse(BaseModel):
+    message_id: Annotated[str, Field(alias="messageId")]
+    """
+    Identifies the user message inserted into the ACP conversation.
+
+    Required and non-null. Omission and explicit `null` are both invalid.
+
+    The corresponding user-message session update carries this same identifier and may arrive
+    before or after this response. Agents must echo the message during the live session, but are
+    not required to retain it. If retained and replayed, the message keeps this identifier.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v2/draft/extensibility)
+    """
+
+
 class NesJumpSuggestionVariant(NesJumpSuggestion):
     kind: Literal["jump"] = "jump"
 
@@ -3774,6 +3813,10 @@ class UsageUpdate(UsageUpdateBase):
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
+
+
+class SessionNotice(Notice):
+    session_update: Annotated[Literal["notice"], Field(alias="sessionUpdate")] = "notice"
 
 
 class PlanUpdateFile(PlanFile):
@@ -4844,8 +4887,8 @@ class ResumeSessionRequest(BaseModel):
     Optional. Omitted or `null` both mean the Agent should resume without
     replaying previous conversation history. Replay cursors are inclusive:
     replay includes the position identified by the cursor. Supplying
-    `{ "type": "start" }` means the Agent should replay the whole
-    conversation before responding.
+    `{ "type": "start" }` means the Agent should replay all retained
+    conversation history before responding.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -5417,10 +5460,6 @@ class ToolCallUpdate(BaseModel):
     """
     name: Optional[str] = None
     """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
     Programmatic name of the tool being invoked.
 
     This field is optional and has patch semantics. Omission means no
@@ -5786,6 +5825,7 @@ class UpdateSessionNotification(BaseModel):
         ConfigOptionUpdate,
         SessionInfoUpdate,
         UsageUpdate,
+        SessionNotice,
         SessionCompactionUpdate,
         SessionCompactionSummaryChunk,
         OtherSessionUpdate,

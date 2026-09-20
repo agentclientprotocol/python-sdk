@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path
 from typing import Protocol, cast
@@ -23,6 +23,7 @@ class SchemaSemantics:
     base_class: str
     model_name_map: dict[str, str]
     compatibility_aliases: str = ""
+    field_type_overrides: dict[str, str] = field(default_factory=dict)
 
 
 class _SemanticsModule(Protocol):

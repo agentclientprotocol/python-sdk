@@ -32,6 +32,7 @@ class BaseModel(_BaseModel):
                 "compaction_summary_chunk",
                 "compaction_update",
                 "config_option_update",
+                "notice",
                 "plan_removed",
                 "plan_update",
                 "session_info_update",

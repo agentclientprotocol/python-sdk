@@ -47,6 +47,10 @@ class CallableAgent(Agent):
 
 
 class SessionAgent(Agent):
+    def __init__(self, *, echo_before_response: bool) -> None:
+        super().__init__()
+        self.echo_before_response = echo_before_response
+
     def on_connect(self, connection: v2.AgentSideConnection) -> None:
         self.connection = connection
 
@@ -67,13 +71,17 @@ class SessionAgent(Agent):
                 update=v2.schema.RunningSessionStateUpdate(),
             )
         )
+        if self.echo_before_response:
+            await self.echo_prompt(request)
+        return v2.schema.PromptResponse(message_id="user-message-1")
+
+    async def echo_prompt(self, request: v2.schema.PromptRequest) -> None:
         await self.connection.session_update(
             v2.schema.UpdateSessionNotification(
                 session_id=request.session_id,
-                update=v2.schema.IdleSessionStateUpdate(stop_reason="end_turn"),
+                update=v2.schema.UserMessageUpdate(message_id="user-message-1", content=request.prompt),
             )
         )
-        return v2.schema.PromptResponse()
 
 
 class ExtensionClient:
@@ -196,33 +204,114 @@ async def test_v2_runtime_rejects_a_mismatched_initialize_response() -> None:
 
 
 @pytest.mark.asyncio
-async def test_session_updates_are_delivered_independently_from_prompt() -> None:
+@pytest.mark.parametrize("echo_before_response", [True, False])
+async def test_session_updates_are_delivered_independently_from_prompt(echo_before_response: bool) -> None:
     client_transport, agent_transport = memory_transport_pair()
     client = SessionClient()
-    agent_connection = v2.AgentSideConnection(SessionAgent(), agent_transport)
+    agent = SessionAgent(echo_before_response=echo_before_response)
+    agent_connection = v2.AgentSideConnection(agent, agent_transport)
     client_connection = v2.ClientSideConnection(client, client_transport)
 
     try:
         await client_connection.initialize(initialize_request())
         session = await client_connection.new_session(v2.schema.NewSessionRequest(cwd="/workspace"))
-        await client_connection.prompt(
-            v2.schema.PromptRequest(
+        request = v2.schema.PromptRequest(
+            session_id=session.session_id,
+            prompt=[v2.schema.TextContentBlock(text="hello")],
+        )
+        response = await client_connection.prompt(request)
+        if not echo_before_response:
+            await agent.echo_prompt(request)
+        # Completion is independent traffic, sent after prompt acceptance.
+        await agent_connection.session_update(
+            v2.schema.UpdateSessionNotification(
                 session_id=session.session_id,
-                prompt=[v2.schema.TextContentBlock(text="hello")],
+                update=v2.schema.IdleSessionStateUpdate(stop_reason="end_turn"),
             )
         )
 
         ready = await asyncio.wait_for(client.updates.get(), timeout=1)
         running = await asyncio.wait_for(client.updates.get(), timeout=1)
+        echoed = await asyncio.wait_for(client.updates.get(), timeout=1)
         stopped = await asyncio.wait_for(client.updates.get(), timeout=1)
 
         assert isinstance(ready.update, v2.schema.IdleSessionStateUpdate)
         assert isinstance(running.update, v2.schema.RunningSessionStateUpdate)
+        assert isinstance(echoed.update, v2.schema.UserMessageUpdate)
+        assert echoed.update.message_id == response.message_id == "user-message-1"
+        assert echoed.update.content == request.prompt
         assert isinstance(stopped.update, v2.schema.IdleSessionStateUpdate)
         assert stopped.update.stop_reason == "end_turn"
     finally:
         await client_connection.close()
         await agent_connection.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "update",
+    [
+        v2.schema.SessionNotice(
+            severity="warning",
+            title="Context is nearly full",
+            description="Start a new session soon.",
+            field_meta={"source": "context-monitor"},
+        ),
+        v2.schema.SessionCompactionUpdate(compaction_id="compact-1", status="in_progress"),
+        v2.schema.SessionCompactionSummaryChunk(
+            compaction_id="compact-1",
+            content=v2.schema.TextContentBlock(text="Summary"),
+        ),
+    ],
+)
+async def test_notice_and_compaction_updates_reach_client(update) -> None:
+    client_transport, agent_transport = memory_transport_pair()
+    client = SessionClient()
+    async with (
+        v2.AgentSideConnection(Agent(), agent_transport) as agent_connection,
+        v2.ClientSideConnection(client, client_transport) as client_connection,
+    ):
+        await client_connection.initialize(initialize_request())
+        await agent_connection.session_update(
+            v2.schema.UpdateSessionNotification(session_id="session-1", update=update)
+        )
+        received = await asyncio.wait_for(client.updates.get(), timeout=1)
+        assert received.session_id == "session-1"
+        assert received.update == update
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    "updates",
+    [
+        [
+            v2.schema.SessionToolCallUpdate(tool_call_id="tool-1", name="read_file"),
+            v2.schema.SessionToolCallUpdate(tool_call_id="tool-1"),
+            v2.schema.SessionToolCallUpdate(tool_call_id="tool-1", name=None, field_meta=None),
+        ],
+        [
+            v2.schema.SessionTerminalUpdate(terminal_id="term-1", command="ls"),
+            v2.schema.SessionTerminalUpdate(terminal_id="term-1"),
+            v2.schema.SessionTerminalUpdate(terminal_id="term-1", command=None, field_meta=None),
+        ],
+    ],
+)
+async def test_session_patches_preserve_omitted_and_cleared_fields(updates) -> None:
+    client_transport, agent_transport = memory_transport_pair()
+    client = SessionClient()
+    async with (
+        v2.AgentSideConnection(Agent(), agent_transport) as agent_connection,
+        v2.ClientSideConnection(client, client_transport) as client_connection,
+    ):
+        await client_connection.initialize(initialize_request())
+        for update in updates:
+            await agent_connection.session_update(
+                v2.schema.UpdateSessionNotification(session_id="session-1", update=update)
+            )
+            received = await asyncio.wait_for(client.updates.get(), timeout=1)
+            assert received.update.model_dump(by_alias=True, exclude_unset=True) == update.model_dump(
+                by_alias=True, exclude_unset=True
+            )
 
 
 def test_v2_public_entry_point_is_explicit() -> None:
