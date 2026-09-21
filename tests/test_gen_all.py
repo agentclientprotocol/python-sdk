@@ -177,3 +177,41 @@ def test_signature_generation_expands_single_model_types(expression) -> None:
     assert isinstance(method, ast.AsyncFunctionDef)
     assert [arg.arg for arg in method.args.args] == ["self", "session_id"]
     assert ast.unparse(method.decorator_list[0]) == f"param_model({expression}, method='session/delete')"
+
+
+def test_v2_signature_generation_uses_v2_schema_and_qualified_types() -> None:
+    import ast
+
+    from acp.experimental import v2
+    from scripts.gen_signature import NodeTransformer
+
+    tree = ast.parse(
+        "from typing import Any\n"
+        "from . import schema\n"
+        "class Methods:\n"
+        "    @param_model(schema.InitializeRequest)\n"
+        "    async def initialize(self, **kwargs: Any): ...\n"
+    )
+    NodeTransformer(v2.schema).visit(tree)
+    ast.fix_missing_locations(tree)
+    methods = tree.body[-1]
+    assert isinstance(methods, ast.ClassDef)
+    method = methods.body[0]
+    assert isinstance(method, ast.AsyncFunctionDef)
+    assert [arg.arg for arg in method.args.args] == ["self", "protocol_version", "info", "capabilities"]
+    assert method.args.args[2].annotation is not None
+    assert method.args.args[3].annotation is not None
+    assert ast.unparse(method.args.args[2].annotation) == "schema.Implementation"
+    assert ast.unparse(method.args.args[3].annotation) == "schema.ClientCapabilities | None"
+
+
+def test_v1_signature_generation_does_not_rewrite_experimental_files(tmp_path) -> None:
+    from scripts.gen_signature import gen_signature
+
+    experimental = tmp_path / "experimental" / "v2"
+    experimental.mkdir(parents=True)
+    target = experimental / "interfaces.py"
+    source = "from . import schema\n@param_model(schema.InitializeRequest)\nasync def initialize(self): ...\n"
+    target.write_text(source)
+    gen_signature(tmp_path)
+    assert target.read_text() == source

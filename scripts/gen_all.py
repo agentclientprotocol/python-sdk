@@ -94,6 +94,8 @@ def main() -> None:
     gen_meta.generate_meta(protocol_version=protocol_version)
     if protocol_version == 1:
         gen_signature.gen_signature(ROOT / "src" / "acp")
+    else:
+        gen_signature.gen_signature(ROOT / "src" / "acp" / "experimental" / "v2", protocol_version=2)
     if args.format_output:
         format_generated_files(protocol_version)
 
@@ -116,6 +118,9 @@ def format_generated_files(protocol_version: int) -> None:
         files = [
             ROOT / "src" / "acp" / "experimental" / "v2" / "schema.py",
             ROOT / "src" / "acp" / "experimental" / "v2" / "meta.py",
+            ROOT / "src" / "acp" / "experimental" / "v2" / "interfaces.py",
+            ROOT / "src" / "acp" / "experimental" / "v2" / "agent.py",
+            ROOT / "src" / "acp" / "experimental" / "v2" / "client.py",
         ]
     subprocess.check_call([sys.executable, "-m", "ruff", "check", "--fix", *(str(path) for path in files)])  # noqa: S603
     subprocess.check_call([sys.executable, "-m", "ruff", "format", *(str(path) for path in files)])  # noqa: S603

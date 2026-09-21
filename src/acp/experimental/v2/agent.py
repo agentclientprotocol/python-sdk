@@ -4,21 +4,20 @@ import asyncio
 from collections.abc import Callable
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import AnyUrl, BaseModel
 
 from acp.connection import Connection, MethodHandler
+from acp.utils import param_model
 
 from . import schema
 from ._connection import open_connection
 from ._initialization import InitializationState
 from ._methods import (
-    AGENT_NOTIFICATIONS,
-    AGENT_REQUESTS,
     CLIENT_REQUESTS_BY_METHOD,
-    CreateElicitationRequest,
-    CreateElicitationResponse,
 )
+from ._params import build_elicitation_request, build_request
 from ._router import MethodRouter
+from .interfaces import Agent, CreateElicitationRequest, CreateElicitationResponse
 from .meta import CLIENT_METHODS
 
 __all__ = ["AgentSideConnection", "run_agent"]
@@ -30,7 +29,7 @@ def _dump(model: BaseModel) -> dict[str, Any]:
 
 class _AgentRouter:
     def __init__(self, agent: object, state: InitializationState) -> None:
-        self._router = MethodRouter(agent, AGENT_REQUESTS, AGENT_NOTIFICATIONS)
+        self._router = MethodRouter(agent, Agent)
         self._state = state
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
@@ -91,38 +90,139 @@ class AgentSideConnection:
     async def _listen(self) -> None:
         await self._conn.main_loop()
 
+    @param_model(schema.RequestPermissionRequest)
     async def request_permission(
         self,
-        request: schema.RequestPermissionRequest,
+        session_id: str,
+        title: str,
+        options: list[schema.PermissionOption],
+        description: str | None = None,
+        subject: schema.ToolCallPermissionSubjectVariant
+        | schema.CommandPermissionSubjectVariant
+        | schema.OtherPermissionSubject
+        | None = None,
+        **kwargs: Any,
     ) -> schema.RequestPermissionResponse:
         return await self._request(
             CLIENT_METHODS["session_request_permission"],
-            request,
+            build_request(
+                schema.RequestPermissionRequest,
+                {
+                    "session_id": session_id,
+                    "title": title,
+                    "options": options,
+                    "description": description,
+                    "subject": subject,
+                },
+                kwargs,
+            ),
         )
 
-    async def session_update(self, notification: schema.UpdateSessionNotification) -> None:
-        await self._notify(CLIENT_METHODS["session_update"], notification)
-
-    async def connect_mcp(self, request: schema.ConnectMcpRequest) -> schema.ConnectMcpResponse:
-        return await self._request(CLIENT_METHODS["mcp_connect"], request)
-
-    async def mcp_message(self, message: schema.MessageMcpRequest) -> Any:
-        return await self._request(CLIENT_METHODS["mcp_message"], message)
-
-    async def notify_mcp(self, notification: schema.MessageMcpNotification) -> None:
-        await self._notify(CLIENT_METHODS["mcp_message"], notification)
-
-    async def disconnect_mcp(
+    @param_model(schema.UpdateSessionNotification)
+    async def session_update(
         self,
-        request: schema.DisconnectMcpRequest,
-    ) -> schema.DisconnectMcpResponse:
-        return await self._request(CLIENT_METHODS["mcp_disconnect"], request)
+        session_id: str,
+        update: schema.UserMessageChunk
+        | schema.UserMessageUpdate
+        | schema.AgentMessageChunk
+        | schema.AgentMessageUpdate
+        | schema.AgentThoughtChunk
+        | schema.AgentThoughtUpdate
+        | schema.ToolCallContentChunkUpdate
+        | schema.SessionToolCallUpdate
+        | schema.SessionTerminalUpdate
+        | schema.SessionTerminalOutputChunk
+        | schema.SessionPlanUpdate
+        | schema.SessionPlanRemovedUpdate
+        | schema.AvailableCommandsUpdate
+        | schema.ConfigOptionUpdate
+        | schema.SessionInfoUpdate
+        | schema.UsageUpdate
+        | schema.SessionNotice
+        | schema.SessionCompactionUpdate
+        | schema.SessionCompactionSummaryChunk
+        | schema.OtherSessionUpdate
+        | schema.RunningSessionStateUpdate
+        | schema.IdleSessionStateUpdate
+        | schema.RequiresActionSessionStateUpdate
+        | schema.OtherSessionStateUpdate,
+        **kwargs: Any,
+    ) -> None:
+        await self._notify(
+            CLIENT_METHODS["session_update"],
+            build_request(schema.UpdateSessionNotification, {"session_id": session_id, "update": update}, kwargs),
+        )
 
-    async def create_elicitation(self, request: CreateElicitationRequest) -> CreateElicitationResponse:
+    @param_model(schema.ConnectMcpRequest)
+    async def connect_mcp(self, server_id: str, **kwargs: Any) -> schema.ConnectMcpResponse:
+        return await self._request(
+            CLIENT_METHODS["mcp_connect"], build_request(schema.ConnectMcpRequest, {"server_id": server_id}, kwargs)
+        )
+
+    @param_model(schema.MessageMcpRequest)
+    async def mcp_message(
+        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> Any:
+        return await self._request(
+            CLIENT_METHODS["mcp_message"],
+            build_request(
+                schema.MessageMcpRequest, {"connection_id": connection_id, "method": method, "params": params}, kwargs
+            ),
+        )
+
+    @param_model(schema.MessageMcpNotification)
+    async def notify_mcp(
+        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> None:
+        await self._notify(
+            CLIENT_METHODS["mcp_message"],
+            build_request(
+                schema.MessageMcpNotification,
+                {"connection_id": connection_id, "method": method, "params": params},
+                kwargs,
+            ),
+        )
+
+    @param_model(schema.DisconnectMcpRequest)
+    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> schema.DisconnectMcpResponse:
+        return await self._request(
+            CLIENT_METHODS["mcp_disconnect"],
+            build_request(schema.DisconnectMcpRequest, {"connection_id": connection_id}, kwargs),
+        )
+
+    @param_model(CreateElicitationRequest)
+    async def create_elicitation(
+        self,
+        message: str,
+        mode: str,
+        *,
+        session_id: str | None = None,
+        request_id: int | str | None = None,
+        tool_call_id: str | None = None,
+        requested_schema: schema.ElicitationSchema | None = None,
+        elicitation_id: str | None = None,
+        url: str | AnyUrl | None = None,
+        **kwargs: Any,
+    ) -> CreateElicitationResponse:
+        request = build_elicitation_request(
+            message=message,
+            mode=mode,
+            session_id=session_id,
+            request_id=request_id,
+            tool_call_id=tool_call_id,
+            requested_schema=requested_schema,
+            elicitation_id=elicitation_id,
+            url=url,
+            meta=kwargs,
+        )
         return await self._request(CLIENT_METHODS["elicitation_create"], request)
 
-    async def complete_elicitation(self, notification: schema.CompleteElicitationNotification) -> None:
-        await self._notify(CLIENT_METHODS["elicitation_complete"], notification)
+    @param_model(schema.CompleteElicitationNotification)
+    async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None:
+        await self._notify(
+            CLIENT_METHODS["elicitation_complete"],
+            build_request(schema.CompleteElicitationNotification, {"elicitation_id": elicitation_id}, kwargs),
+        )
 
     async def send_extension_request(self, method: str, params: Any = None) -> Any:
         await self._state.require(method)

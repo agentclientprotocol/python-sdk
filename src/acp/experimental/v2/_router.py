@@ -4,8 +4,9 @@ from collections.abc import Awaitable, Callable
 from typing import Any
 
 from acp.exceptions import RequestError
+from acp.utils import model_to_kwargs
 
-from ._methods import NotificationSpec, RequestSpec
+from ._methods import NotificationSpec, RequestSpec, protocol_specs
 
 ExtensionRequest = Callable[[str, Any], Awaitable[Any]]
 ExtensionNotification = Callable[[str, Any], Awaitable[None]]
@@ -15,31 +16,39 @@ class MethodRouter:
     def __init__(
         self,
         target: Any,
-        requests: tuple[RequestSpec, ...],
-        notifications: tuple[NotificationSpec, ...],
+        protocol: type,
     ) -> None:
         self._target = target
+        self._protocol = protocol
+        requests, notifications = protocol_specs(protocol)
         self._requests = {spec.method: spec for spec in requests}
         self._notifications = {spec.method: spec for spec in notifications}
+
+    def _handler(self, name: str) -> Any:
+        handler = getattr(self._target, name, None)
+        if getattr(handler, "__func__", handler) is getattr(self._protocol, name, None):
+            return None
+        return handler
 
     def request_spec(self, method: str) -> RequestSpec | None:
         return self._requests.get(method)
 
     async def handle_request(self, spec: RequestSpec, params: Any) -> Any:
-        handler = getattr(self._target, spec.handler, None)
+        handler = self._handler(spec.handler)
         if handler is None:
             raise RequestError.method_not_found(spec.method)
         request = spec.request.validate_python(params)
-        response = await handler(request)
+        response = await handler(**model_to_kwargs(request, type(request)))
         if response is None and spec.empty_response:
             response = {}
         return spec.response.validate_python(response)
 
     async def handle_notification(self, spec: NotificationSpec, params: Any) -> None:
-        handler = getattr(self._target, spec.handler, None)
+        handler = self._handler(spec.handler)
         if handler is None:
             return
-        await handler(spec.params.validate_python(params))
+        request = spec.params.validate_python(params)
+        await handler(**model_to_kwargs(request, type(request)))
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
         if method.startswith("_"):
