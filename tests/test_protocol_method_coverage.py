@@ -82,7 +82,12 @@ NOTIFICATIONS = [
 @pytest.mark.parametrize(("name", "wire_method", "params", "response"), REQUESTS)
 async def test_agent_request_roundtrip(connect, agent, name, wire_method, params, response):
     handler = AsyncMock(return_value=response)
-    setattr(agent, name, handler)
+
+    # Python 3.10 cannot inspect the signature of a bare AsyncMock.
+    async def handle(**kwargs):
+        return await handler(**kwargs)
+
+    setattr(agent, name, handle)
     _, connection = connect(use_unstable_protocol=True)
     result = await getattr(connection, name)(**params, trace="test")
     assert result == response
@@ -204,7 +209,12 @@ def test_all_schema_methods_have_routes_and_senders(builder, methods, connection
 )
 async def test_stable_methods_work_without_unstable_flag(connect, agent, name, params, response):
     handler = AsyncMock(return_value=response)
-    setattr(agent, name, handler)
+
+    # Python 3.10 cannot inspect the signature of a bare AsyncMock.
+    async def handle(**kwargs):
+        return await handler(**kwargs)
+
+    setattr(agent, name, handle)
     _, connection = connect()
     assert await getattr(connection, name)(**params) == response
     handler.assert_awaited_once_with(**params)
