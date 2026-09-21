@@ -70,3 +70,41 @@ def test_codegen_check_is_clean_and_read_only() -> None:
     assert generate_schema(check=True, protocol_version=2)
     assert generate_meta(check=True, protocol_version=2)
     assert {output: output.read_bytes() for output in outputs} == before
+
+
+def test_signature_generation_preserves_inline_literal_values() -> None:
+    import ast
+    from typing import Literal, get_type_hints
+
+    from scripts.gen_signature import NodeTransformer
+
+    tree = ast.parse(
+        "from typing import Any\n"
+        "from schema import SetProviderRequest, SuggestNesRequest\n"
+        "class Methods:\n"
+        "    @param_model(SetProviderRequest)\n"
+        "    async def set_provider(self, **kwargs: Any): ...\n"
+        "    @param_model(SuggestNesRequest)\n"
+        "    async def suggest_nes(self, **kwargs: Any): ...\n"
+    )
+    NodeTransformer().visit(tree)
+    ast.fix_missing_locations(tree)
+    # Evaluate the annotation itself to catch unquoted literal values and ensure
+    # generation adds the required typing import.
+    typing_import = tree.body[0]
+    assert isinstance(typing_import, ast.ImportFrom)
+    assert "Literal" in {alias.name for alias in typing_import.names}
+    methods = tree.body[-1]
+    assert isinstance(methods, ast.ClassDef)
+    suggest = methods.body[-1]
+    assert isinstance(suggest, ast.AsyncFunctionDef)
+    trigger = next(arg for arg in suggest.args.args if arg.arg == "trigger_kind")
+    annotation = ast.unparse(trigger.annotation)
+
+    class Annotated:
+        __annotations__ = {"trigger": annotation}
+
+    assert (
+        get_type_hints(Annotated, globalns={"Literal": Literal})["trigger"]
+        == Literal["automatic", "diagnostic", "manual"]
+    )

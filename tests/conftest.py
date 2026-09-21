@@ -10,8 +10,10 @@ from acp import (
     AcceptElicitationResponse,
     AuthenticateResponse,
     CompleteElicitationNotification,
+    ConnectMcpResponse,
     CreateElicitationResponse,
     CreateTerminalResponse,
+    DisconnectMcpResponse,
     ElicitationMode,
     InitializeResponse,
     KillTerminalResponse,
@@ -234,6 +236,22 @@ class TestClient:
         self.completed_elicitations.append(
             CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None)
         )
+
+    async def connect_mcp(self, server_id: str, **kwargs: Any) -> ConnectMcpResponse:
+        raise RequestError.method_not_found("mcp/connect")
+
+    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> DisconnectMcpResponse:
+        raise RequestError.method_not_found("mcp/disconnect")
+
+    async def mcp_message(
+        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> Any:
+        raise RequestError.method_not_found("mcp/message")
+
+    async def notify_mcp(
+        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> None:
+        raise RequestError.method_not_found("mcp/message")
 
     async def ext_method(self, method: str, params: dict) -> dict:
         self.ext_calls.append((method, params))

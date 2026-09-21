@@ -9,19 +9,36 @@ from ..interfaces import Agent
 from ..meta import AGENT_METHODS
 from ..router import MessageRouter, Route, _resolve_handler, _warn_legacy_handler
 from ..schema import (
+    AcceptNesNotification,
     AuthenticateRequest,
     CancelNotification,
+    CloseNesRequest,
     CloseSessionRequest,
+    DeleteSessionRequest,
+    DidChangeDocumentNotification,
+    DidCloseDocumentNotification,
+    DidFocusDocumentNotification,
+    DidOpenDocumentNotification,
+    DidSaveDocumentNotification,
+    DisableProviderRequest,
     ForkSessionRequest,
     InitializeRequest,
+    ListProvidersRequest,
     ListSessionsRequest,
     LoadSessionRequest,
+    LogoutRequest,
+    MessageMcpNotification,
+    MessageMcpRequest,
     NewSessionRequest,
     PromptRequest,
+    RejectNesNotification,
     ResumeSessionRequest,
+    SetProviderRequest,
     SetSessionConfigOptionBooleanRequest,
     SetSessionConfigOptionSelectRequest,
     SetSessionModeRequest,
+    StartNesRequest,
+    SuggestNesRequest,
 )
 from ..utils import model_to_kwargs, normalize_result
 
@@ -101,6 +118,56 @@ def build_agent_router(agent: Agent, use_unstable_protocol: bool = False) -> Mes
     router.route_request(AGENT_METHODS["session_resume"], ResumeSessionRequest, agent, "resume_session", unstable=True)
 
     router.route_notification(AGENT_METHODS["session_cancel"], CancelNotification, agent, "cancel")
+
+    router.route_request(
+        AGENT_METHODS["session_delete"],
+        DeleteSessionRequest,
+        agent,
+        "delete_session",
+        adapt_result=normalize_result,
+    )
+    router.route_request(AGENT_METHODS["providers_list"], ListProvidersRequest, agent, "list_providers", unstable=True)
+    router.route_request(
+        AGENT_METHODS["providers_set"],
+        SetProviderRequest,
+        agent,
+        "set_provider",
+        unstable=True,
+        adapt_result=normalize_result,
+    )
+    router.route_request(
+        AGENT_METHODS["providers_disable"],
+        DisableProviderRequest,
+        agent,
+        "disable_provider",
+        unstable=True,
+        adapt_result=normalize_result,
+    )
+    router.route_request(AGENT_METHODS["logout"], LogoutRequest, agent, "logout", adapt_result=normalize_result)
+    router.route_request(AGENT_METHODS["mcp_message"], MessageMcpRequest, agent, "mcp_message", unstable=True)
+    router.route_notification(AGENT_METHODS["mcp_message"], MessageMcpNotification, agent, "notify_mcp", unstable=True)
+    router.route_request(AGENT_METHODS["nes_start"], StartNesRequest, agent, "start_nes", unstable=True)
+    router.route_request(AGENT_METHODS["nes_suggest"], SuggestNesRequest, agent, "suggest_nes", unstable=True)
+    router.route_request(
+        AGENT_METHODS["nes_close"], CloseNesRequest, agent, "close_nes", unstable=True, adapt_result=normalize_result
+    )
+    router.route_notification(AGENT_METHODS["nes_accept"], AcceptNesNotification, agent, "accept_nes", unstable=True)
+    router.route_notification(AGENT_METHODS["nes_reject"], RejectNesNotification, agent, "reject_nes", unstable=True)
+    router.route_notification(
+        AGENT_METHODS["document_did_open"], DidOpenDocumentNotification, agent, "did_open", unstable=True
+    )
+    router.route_notification(
+        AGENT_METHODS["document_did_change"], DidChangeDocumentNotification, agent, "did_change", unstable=True
+    )
+    router.route_notification(
+        AGENT_METHODS["document_did_close"], DidCloseDocumentNotification, agent, "did_close", unstable=True
+    )
+    router.route_notification(
+        AGENT_METHODS["document_did_save"], DidSaveDocumentNotification, agent, "did_save", unstable=True
+    )
+    router.route_notification(
+        AGENT_METHODS["document_did_focus"], DidFocusDocumentNotification, agent, "did_focus", unstable=True
+    )
 
     @router.handle_extension_request
     async def _handle_extension_request(name: str, payload: dict[str, Any]) -> Any:

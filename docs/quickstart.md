@@ -187,6 +187,47 @@ are available as `TerminalAuthMethod`, replacing the incorrect `EnvVarAuthMethod
 name. Accepted elicitation content validates scalar values and string lists;
 nested objects are not valid form values.
 
+## Additional v1 protocol methods
+
+The SDK exposes all agent and client methods in the bundled `schema-v1.23.0`
+method tables. `session/delete` and `logout` are stable and do not require
+`use_unstable_protocol=True`. The other methods in the table below are unstable;
+enable that flag on the receiving connection (or `run_agent`) to route them.
+Check the peer's advertised capabilities before calling these methods.
+
+| Wire method | Python method | Receiver |
+| --- | --- | --- |
+| `session/delete` | `delete_session(session_id=...)` | Agent |
+| `providers/list`, `providers/set`, `providers/disable` | `list_providers`, `set_provider`, `disable_provider` | Agent |
+| `logout` | `logout()` | Agent |
+| `mcp/connect`, `mcp/disconnect` | `connect_mcp`, `disconnect_mcp` | Client |
+| `mcp/message` (request) | `mcp_message` | Either peer |
+| `mcp/message` (notification) | `notify_mcp` | Either peer |
+| `nes/start`, `nes/suggest`, `nes/close` | `start_nes`, `suggest_nes`, `close_nes` | Agent |
+| `nes/accept`, `nes/reject` | `accept_nes`, `reject_nes` | Agent |
+| `document/didOpen`, `document/didChange`, `document/didClose`, `document/didSave`, `document/didFocus` | `did_open`, `did_change`, `did_close`, `did_save`, `did_focus` | Agent |
+
+For example, an agent that advertises session deletion implements:
+
+```python
+from acp import DeleteSessionResponse
+
+async def delete_session(self, session_id: str, **kwargs) -> DeleteSessionResponse:
+    await self.session_store.delete(session_id)
+    return DeleteSessionResponse()
+```
+
+A client then calls `await connection.delete_session(session_id=session_id)`.
+Deletion removes stored session data; `close_session` only closes the active
+session. The SDK dispatches these calls to your implementation; it does not
+provide session storage or provider management itself. Missing request handlers
+return the JSON-RPC method-not-found error.
+
+MCP requests return the inner JSON result unchanged, including `null`. Use
+`notify_mcp` for one-way MCP messages. Both APIs accept `connection_id`, `method`,
+and optional `params`. These methods share the same connections and routers
+across stdio, HTTP, and WebSocket transports.
+
 ## Optional — Talk to the Gemini CLI
 
 _Have the Gemini CLI installed? Run the bridge to exercise permission flows._
