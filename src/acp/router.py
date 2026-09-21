@@ -6,9 +6,9 @@ from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from typing import Any, Literal, TypeVar
 
-from pydantic import BaseModel
+from pydantic import BaseModel, TypeAdapter
 
-from acp.utils import to_camel_case
+from acp.utils import _RouteMetadata, model_to_kwargs, to_camel_case
 
 from .exceptions import RequestError
 
@@ -90,21 +90,76 @@ class MessageRouter:
         else:
             self._notifications[route.method] = route
 
-    def _make_func(self, model: type[BaseModel], obj: Any, attr: str) -> AsyncHandler | None:
+    @classmethod
+    def from_protocol(cls, protocol: type, obj: Any, *, use_unstable_protocol: bool = False) -> MessageRouter:
+        """Build routes from decorated protocol members, including inherited ones.
+
+        The protocol is the allowlist: implementation-only methods are never
+        exposed as RPC routes. Request and notification routes remain distinct
+        even when they use the same wire method (such as ``mcp/message``).
+        """
+        router = cls(use_unstable_protocol=use_unstable_protocol)
+        for attr, member in inspect.getmembers(protocol):
+            metadata = getattr(member, "__route__", None)
+            if not isinstance(metadata, _RouteMetadata):
+                continue
+            route = Route(
+                method=metadata.method,
+                func=router._make_func(
+                    metadata.request_type,
+                    obj,
+                    attr,
+                    validate_params=metadata.validate_params,
+                    adapt_params=metadata.adapt_params,
+                ),
+                kind=metadata.kind,
+                optional=metadata.optional,
+                default_result=metadata.default_result,
+                adapt_result=metadata.adapt_result,
+                warn_unstable=metadata.unstable and not use_unstable_protocol,
+            )
+            routes = router._requests if route.kind == "request" else router._notifications
+            if route.method in routes:
+                raise ValueError(f"Duplicate {route.kind} route: {route.method}")
+            router.add_route(route)
+
+        @router.handle_extension_request
+        async def _handle_extension_request(name: str, payload: dict[str, Any]) -> Any:
+            ext = getattr(obj, "ext_method", None)
+            if ext is None:
+                raise RequestError.method_not_found(f"_{name}")
+            return await ext(name, payload)
+
+        @router.handle_extension_notification
+        async def _handle_extension_notification(name: str, payload: dict[str, Any]) -> None:
+            ext = getattr(obj, "ext_notification", None)
+            if ext is not None:
+                await ext(name, payload)
+
+        return router
+
+    def _make_func(
+        self,
+        request_type: Any,
+        obj: Any,
+        attr: str,
+        *,
+        validate_params: Callable[[Any], BaseModel] | None = None,
+        adapt_params: Callable[[BaseModel], dict[str, Any]] | None = None,
+    ) -> AsyncHandler | None:
         func, attr, legacy_api = _resolve_handler(obj, attr)
         if func is None:
             return None
+        validate = validate_params or TypeAdapter(request_type).validate_python
 
         async def wrapper(params: Any) -> Any:
             if legacy_api:
                 _warn_legacy_handler(obj, attr)
-            model_obj = model.model_validate(params)
+            model_obj = validate(params)
             if legacy_api:
-                return await func(model_obj)  # type: ignore[arg-type]
-            params = {k: getattr(model_obj, k) for k in model.model_fields if k != "field_meta"}
-            if meta := getattr(model_obj, "field_meta", None):
-                params.update(meta)
-            return await func(**params)  # type: ignore[arg-type]
+                return await func(model_obj)
+            kwargs = adapt_params(model_obj) if adapt_params else model_to_kwargs(model_obj, request_type)
+            return await func(**kwargs)
 
         return wrapper
 

@@ -8,7 +8,7 @@ known values must still resolve to their specific typed variant.
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
-from acp.client.router import _mode_from_create_elicitation_request
+from acp._protocol_adapters import _mode_from_create_elicitation_request
 from acp.exceptions import RequestError
 from acp.schema import (
     AcceptElicitationResponse,

@@ -84,7 +84,6 @@ from ..utils import (
     compatible_class,
     notify_model,
     param_model,
-    param_models,
     request_model,
     request_model_from_dict,
     serialize_params,
@@ -262,7 +261,7 @@ class ClientSideConnection:
             SetSessionModeResponse,
         )
 
-    @param_models(SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest)
+    @param_model(SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest)
     async def set_config_option(
         self, config_id: str, session_id: str, value: str | bool, **kwargs: Any
     ) -> SetSessionConfigOptionResponse:

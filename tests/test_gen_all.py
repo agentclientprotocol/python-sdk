@@ -1,5 +1,7 @@
 from pathlib import Path
 
+import pytest
+
 from acp.schema import ReadTextFileRequest
 from scripts.gen_all import resolve_ref, schema_source_paths
 from scripts.gen_meta import generate_meta
@@ -82,7 +84,7 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
         "from typing import Any\n"
         "from schema import SetProviderRequest, SuggestNesRequest\n"
         "class Methods:\n"
-        "    @param_model(SetProviderRequest)\n"
+        '    @param_model(SetProviderRequest, method="providers/set", unstable=True)\n'
         "    async def set_provider(self, **kwargs: Any): ...\n"
         "    @param_model(SuggestNesRequest)\n"
         "    async def suggest_nes(self, **kwargs: Any): ...\n"
@@ -96,6 +98,14 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
     assert "Literal" in {alias.name for alias in typing_import.names}
     methods = tree.body[-1]
     assert isinstance(methods, ast.ClassDef)
+    provider = methods.body[0]
+    assert isinstance(provider, ast.AsyncFunctionDef)
+    decorator = provider.decorator_list[0]
+    assert isinstance(decorator, ast.Call)
+    assert {keyword.arg: ast.literal_eval(keyword.value) for keyword in decorator.keywords} == {
+        "method": "providers/set",
+        "unstable": True,
+    }
     suggest = methods.body[-1]
     assert isinstance(suggest, ast.AsyncFunctionDef)
     trigger = next(arg for arg in suggest.args.args if arg.arg == "trigger_kind")
@@ -108,3 +118,62 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
         get_type_hints(Annotated, globalns={"Literal": Literal})["trigger"]
         == Literal["automatic", "diagnostic", "manual"]
     )
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest",
+        "Union[SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest]",
+        "Annotated[SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest, Field(discriminator='type')]",
+        "RequestAlias",
+        "CreateElicitationRequest",
+    ],
+)
+def test_signature_generation_preserves_union_signatures(expression) -> None:
+    import ast
+
+    from scripts.gen_signature import NodeTransformer
+
+    tree = ast.parse(
+        "from typing import Annotated, Any, Union\n"
+        "from schema import SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest, CreateElicitationRequest\n"
+        "RequestAlias = SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest\n"
+        "class Methods:\n"
+        f"    @param_model({expression}, method='example/request')\n"
+        "    async def request(self, config_id: str, session_id: str, value: str | bool, **kwargs: Any): ...\n"
+    )
+    before = ast.dump(tree)
+    NodeTransformer().visit(tree)
+    assert ast.dump(tree) == before
+
+
+@pytest.mark.parametrize(
+    "expression",
+    [
+        "DeleteSessionRequest",
+        "Annotated[DeleteSessionRequest, Field(title='Delete')]",
+        "RequestAlias",
+        "schema.DeleteSessionRequest",
+    ],
+)
+def test_signature_generation_expands_single_model_types(expression) -> None:
+    import ast
+
+    from scripts.gen_signature import NodeTransformer
+
+    tree = ast.parse(
+        "from typing import Annotated, Any, TypeAlias\n"
+        "from schema import DeleteSessionRequest\n"
+        "RequestAlias: TypeAlias = Annotated[DeleteSessionRequest, Field(title='Delete')]\n"
+        "class Methods:\n"
+        f"    @param_model({expression}, method='session/delete')\n"
+        "    async def delete_session(self, **kwargs: Any): ...\n"
+    )
+    NodeTransformer().visit(tree)
+    methods = tree.body[-1]
+    assert isinstance(methods, ast.ClassDef)
+    method = methods.body[0]
+    assert isinstance(method, ast.AsyncFunctionDef)
+    assert [arg.arg for arg in method.args.args] == ["self", "session_id"]
+    assert ast.unparse(method.decorator_list[0]) == f"param_model({expression}, method='session/delete')"
