@@ -6,7 +6,7 @@ import types
 import typing as t
 from pathlib import Path
 
-from pydantic import BaseModel
+from pydantic import AnyUrl, BaseModel
 from pydantic.fields import FieldInfo
 from pydantic_core import PydanticUndefined
 
@@ -33,10 +33,14 @@ SIGNATURE_OPTIONAL_FIELDS: set[tuple[str, str]] = {
 
 
 class NodeTransformer(ast.NodeTransformer):
-    def __init__(self) -> None:
+    def __init__(self, schema_module: t.Any = None) -> None:
+        self._schema = schema_module if schema_module is not None else schema
+        self._qualified_schema: str | None = None
         self._type_import_node: ast.ImportFrom | None = None
         self._schema_import_node: ast.ImportFrom | None = None
-        self._literals = {name: value for name, value in schema.__dict__.items() if t.get_origin(value) is t.Literal}
+        self._literals = {
+            name: value for name, value in self._schema.__dict__.items() if t.get_origin(value) is t.Literal
+        }
         self._current_model_name: str | None = None
         self._type_aliases: dict[str, ast.expr] = {}
         self._schema_names: dict[str, str] = {}
@@ -92,6 +96,9 @@ class NodeTransformer(ast.NodeTransformer):
             )
         elif node.module is None:
             self._schema_modules.update(alias.asname or alias.name for alias in node.names if alias.name == "schema")
+            self._qualified_schema = next(
+                (alias.asname or alias.name for alias in node.names if alias.name == "schema"), None
+            )
         return node
 
     def _single_param_model(self, expression: ast.expr, seen: frozenset[str] = frozenset()) -> t.Any:
@@ -106,11 +113,11 @@ class NodeTransformer(ast.NodeTransformer):
                 return None
             if name in self._type_aliases:
                 return self._single_param_model(self._type_aliases[name], seen | {name})
-            model = getattr(schema, self._schema_names.get(name, name), None)
+            model = getattr(self._schema, self._schema_names.get(name, name), None)
         elif isinstance(expression, ast.Attribute) and isinstance(expression.value, ast.Name):
             if expression.value.id not in self._schema_modules:
                 return None
-            model = getattr(schema, expression.attr, None)
+            model = getattr(self._schema, expression.attr, None)
         elif isinstance(expression, ast.Subscript):
             name = ast.unparse(expression.value)
             if name not in self._annotated_names and name != "typing.Annotated":
@@ -165,7 +172,7 @@ class NodeTransformer(ast.NodeTransformer):
     def _to_param_def(self, name: str, field: FieldInfo) -> tuple[ast.arg, ast.expr | None]:
         arg = ast.arg(arg=name)
         ann = field.annotation
-        override_optional = (self._current_model_name, name) in SIGNATURE_OPTIONAL_FIELDS
+        override_optional = self._schema is schema and (self._current_model_name, name) in SIGNATURE_OPTIONAL_FIELDS
         if override_optional:
             if ann is not None:
                 ann = ann | None
@@ -196,10 +203,10 @@ class NodeTransformer(ast.NodeTransformer):
         elif (
             inspect.isclass(annotation)
             and issubclass(annotation, BaseModel)
-            and annotation.__module__ == schema.__name__
+            and annotation.__module__ == self._schema.__name__
         ):
             self._add_schema_import(annotation.__name__)
-            return ast.Name(id=annotation.__name__)
+            return self._schema_reference(annotation.__name__)
         elif args := t.get_args(annotation):
             return ast.Subscript(
                 value=self._format_annotation(origin),
@@ -208,6 +215,11 @@ class NodeTransformer(ast.NodeTransformer):
                 else self._format_annotation(args[0]),
                 ctx=ast.Load(),
             )
+        return self._format_scalar_annotation(annotation)
+
+    def _format_scalar_annotation(self, annotation: t.Any) -> ast.expr:
+        if annotation is AnyUrl:
+            return ast.parse("str | AnyUrl", mode="eval").body
         elif annotation.__module__ == "typing":
             name = annotation.__name__
             self._add_typing_import(name)
@@ -221,11 +233,16 @@ class NodeTransformer(ast.NodeTransformer):
             self._add_typing_import("Any")
             return ast.Name(id="Any")
 
+    def _schema_reference(self, name: str) -> ast.expr:
+        if self._qualified_schema:
+            return ast.Attribute(value=ast.Name(id=self._qualified_schema), attr=name)
+        return ast.Name(id=name)
+
     def _format_literal(self, annotation: t.Any) -> ast.expr:
         if annotation in self._literals.values():
             name = next(name for name, value in self._literals.items() if value is annotation)
             self._add_schema_import(name)
-            return ast.Name(id=name)
+            return self._schema_reference(name)
         self._add_typing_import("Literal")
         values = [ast.Constant(value=value) for value in t.get_args(annotation)]
         return ast.Subscript(
@@ -235,9 +252,15 @@ class NodeTransformer(ast.NodeTransformer):
         )
 
 
-def gen_signature(source_dir: Path) -> None:
+def gen_signature(source_dir: Path, *, protocol_version: int = 1) -> None:
     global schema
     schema = _load_schema_module()
+    if protocol_version == 2:
+        from acp.experimental.v2 import schema as version_schema
+    else:
+        version_schema = schema
     for source_file in source_dir.rglob("*.py"):
-        transformer = NodeTransformer()
+        if protocol_version == 1 and "experimental" in source_file.relative_to(source_dir).parts:
+            continue
+        transformer = NodeTransformer(version_schema)
         transformer.transform(source_file)

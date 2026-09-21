@@ -41,7 +41,9 @@ class V2Agent:
     def __init__(self) -> None:
         self.initialize_calls = 0
 
-    async def initialize(self, request: v2.schema.InitializeRequest) -> v2.schema.InitializeResponse:
+    async def initialize(
+        self, protocol_version: int, info: v2.schema.Implementation, **kwargs: Any
+    ) -> v2.schema.InitializeResponse:
         self.initialize_calls += 1
         return v2.schema.InitializeResponse(
             protocol_version=v2.PROTOCOL_VERSION,
@@ -53,7 +55,36 @@ class UpdateClient:
     def __init__(self) -> None:
         self.updates: asyncio.Queue[v2.schema.UpdateSessionNotification] = asyncio.Queue()
 
-    async def session_update(self, notification: v2.schema.UpdateSessionNotification) -> None:
+    async def session_update(
+        self,
+        session_id: str,
+        update: v2.schema.UserMessageChunk
+        | v2.schema.UserMessageUpdate
+        | v2.schema.AgentMessageChunk
+        | v2.schema.AgentMessageUpdate
+        | v2.schema.AgentThoughtChunk
+        | v2.schema.AgentThoughtUpdate
+        | v2.schema.ToolCallContentChunkUpdate
+        | v2.schema.SessionToolCallUpdate
+        | v2.schema.SessionTerminalUpdate
+        | v2.schema.SessionTerminalOutputChunk
+        | v2.schema.SessionPlanUpdate
+        | v2.schema.SessionPlanRemovedUpdate
+        | v2.schema.AvailableCommandsUpdate
+        | v2.schema.ConfigOptionUpdate
+        | v2.schema.SessionInfoUpdate
+        | v2.schema.UsageUpdate
+        | v2.schema.SessionNotice
+        | v2.schema.SessionCompactionUpdate
+        | v2.schema.SessionCompactionSummaryChunk
+        | v2.schema.OtherSessionUpdate
+        | v2.schema.RunningSessionStateUpdate
+        | v2.schema.IdleSessionStateUpdate
+        | v2.schema.RequiresActionSessionStateUpdate
+        | v2.schema.OtherSessionStateUpdate,
+        **kwargs: Any,
+    ) -> None:
+        notification = v2.schema.UpdateSessionNotification(session_id=session_id, update=update, **kwargs)
         await self.updates.put(notification)
 
 
@@ -62,13 +93,21 @@ class RoutedV2Agent(V2Agent):
         super().__init__()
         self.connection = connection
 
-    async def prompt(self, request: v2.schema.PromptRequest) -> v2.schema.PromptResponse:
-        await self.connection.session_update(
-            v2.schema.UpdateSessionNotification(
-                session_id=request.session_id,
-                update=v2.schema.IdleSessionStateUpdate(),
-            )
-        )
+    async def prompt(
+        self,
+        session_id: str,
+        prompt: list[
+            v2.schema.TextContentBlock
+            | v2.schema.ImageContentBlock
+            | v2.schema.AudioContentBlock
+            | v2.schema.ResourceContentBlock
+            | v2.schema.EmbeddedResourceContentBlock
+            | v2.schema.OtherContentBlock
+        ],
+        **kwargs: Any,
+    ) -> v2.schema.PromptResponse:
+        request = v2.schema.PromptRequest(session_id=session_id, prompt=prompt, **kwargs)
+        await self.connection.session_update(session_id=request.session_id, update=v2.schema.IdleSessionStateUpdate())
         return v2.schema.PromptResponse(message_id="user-message-1")
 
 
@@ -89,7 +128,9 @@ async def test_agent_protocol_router_selects_v2() -> None:
     client_connection = v2.ClientSideConnection(Client(), client_transport, observers=[wire.append])
 
     try:
-        initialized = await client_connection.initialize(v2_initialize())
+        initialized = await client_connection.initialize(
+            protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="v2-client", version="1.0.0")
+        )
 
         assert initialized.info.name == "v2-agent"
         assert v1_agent.initialize_calls == 0
@@ -172,14 +213,13 @@ async def test_agent_protocol_router_isolates_connections() -> None:
     client_connection_2 = v2.ClientSideConnection(client_2, client_2_transport)
 
     try:
-        await client_connection_1.initialize(v2_initialize())
-        await client_connection_2.initialize(v2_initialize())
-        await client_connection_1.prompt(
-            v2.schema.PromptRequest(
-                session_id="session-1",
-                prompt=[v2.schema.TextContentBlock(text="hello")],
-            )
+        await client_connection_1.initialize(
+            protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="v2-client", version="1.0.0")
         )
+        await client_connection_2.initialize(
+            protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="v2-client", version="1.0.0")
+        )
+        await client_connection_1.prompt(session_id="session-1", prompt=[v2.schema.TextContentBlock(text="hello")])
 
         update = await asyncio.wait_for(client_1.updates.get(), timeout=1)
         assert update.session_id == "session-1"
