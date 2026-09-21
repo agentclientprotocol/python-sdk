@@ -82,7 +82,7 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
         "from typing import Any\n"
         "from schema import SetProviderRequest, SuggestNesRequest\n"
         "class Methods:\n"
-        "    @param_model(SetProviderRequest)\n"
+        '    @param_model(SetProviderRequest, method="providers/set", unstable=True)\n'
         "    async def set_provider(self, **kwargs: Any): ...\n"
         "    @param_model(SuggestNesRequest)\n"
         "    async def suggest_nes(self, **kwargs: Any): ...\n"
@@ -96,6 +96,14 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
     assert "Literal" in {alias.name for alias in typing_import.names}
     methods = tree.body[-1]
     assert isinstance(methods, ast.ClassDef)
+    provider = methods.body[0]
+    assert isinstance(provider, ast.AsyncFunctionDef)
+    decorator = provider.decorator_list[0]
+    assert isinstance(decorator, ast.Call)
+    assert {keyword.arg: ast.literal_eval(keyword.value) for keyword in decorator.keywords} == {
+        "method": "providers/set",
+        "unstable": True,
+    }
     suggest = methods.body[-1]
     assert isinstance(suggest, ast.AsyncFunctionDef)
     trigger = next(arg for arg in suggest.args.args if arg.arg == "trigger_kind")

@@ -228,6 +228,34 @@ MCP requests return the inner JSON result unchanged, including `null`. Use
 and optional `params`. These methods share the same connections and routers
 across stdio, HTTP, and WebSocket transports.
 
+## Maintaining protocol routes
+
+The `Agent` and `Client` protocols in `src/acp/interfaces.py` are the source of
+truth for incoming routes. Declare routing metadata alongside each method's
+parameter model:
+
+```python
+@param_model(
+    DeleteSessionRequest,
+    method=AGENT_METHODS["session_delete"],
+    adapt_result=normalize_result,
+)
+async def delete_session(self, session_id: str, **kwargs: Any) -> DeleteSessionResponse: ...
+```
+
+`build_agent_router` and `build_client_router` read these declarations through
+`MessageRouter.from_protocol`. New protocol declarations automatically become
+routes; implementation-only methods are not exposed. Use `kind="notification"`
+for notifications and `unstable=True` for methods requiring explicit opt-in.
+Optional handlers can declare `optional=True` and `default_result`.
+
+For multiple wire models, `param_models` accepts the same routing options.
+`validate_params` and `adapt_params` provide custom validation and conversion
+when the wire representation differs from the Python signature, as with config
+options and elicitation. Legacy handlers still receive the validated request
+model. Connection methods retain model-only decorators for signature generation
+and legacy calls; they do not repeat the routing options.
+
 ## Optional — Talk to the Gemini CLI
 
 _Have the Gemini CLI installed? Run the bridge to exercise permission flows._

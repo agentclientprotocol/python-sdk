@@ -3,7 +3,8 @@ from __future__ import annotations
 import functools
 import warnings
 from collections.abc import Callable
-from typing import Any, TypeVar
+from dataclasses import dataclass
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel
 
@@ -125,25 +126,97 @@ async def notify_model(conn: Connection, method: str, params: BaseModel) -> None
     await conn.send_notification(method, serialize_params(params))
 
 
-def param_model(param_cls: type[BaseModel]) -> Callable[[MethodT], MethodT]:
-    """Decorator to map the method parameters to a Pydantic model.
-    It is just a marker and does nothing at runtime.
+@dataclass(frozen=True)
+class _RouteMetadata:
+    method: str
+    models: MultiParamModelSpec
+    kind: Literal["request", "notification"] = "request"
+    unstable: bool = False
+    optional: bool = False
+    default_result: Any = None
+    adapt_result: Callable[[Any], Any] | None = None
+    validate_params: Callable[[Any], BaseModel] | None = None
+    adapt_params: Callable[[BaseModel], dict[str, Any]] | None = None
+
+
+def param_model(
+    param_cls: type[BaseModel],
+    *,
+    method: str | None = None,
+    kind: Literal["request", "notification"] = "request",
+    unstable: bool = False,
+    optional: bool = False,
+    default_result: Any = None,
+    adapt_result: Callable[[Any], Any] | None = None,
+    validate_params: Callable[[Any], BaseModel] | None = None,
+    adapt_params: Callable[[BaseModel], dict[str, Any]] | None = None,
+) -> Callable[[MethodT], MethodT]:
+    """Mark a parameter model and optionally declare a protocol route.
+
+    Routing metadata belongs on the Agent/Client protocol declaration. Connection
+    methods can keep using the model-only form for legacy-call compatibility and
+    signature generation. The decorated function itself is never wrapped.
     """
+    decorate = param_models(
+        param_cls,
+        method=method,
+        kind=kind,
+        unstable=unstable,
+        optional=optional,
+        default_result=default_result,
+        adapt_result=adapt_result,
+        validate_params=validate_params,
+        adapt_params=adapt_params,
+    )
 
     def decorator(func: MethodT) -> MethodT:
+        decorate(func)
+        delattr(func, "__param_models__")
         func.__param_model__ = param_cls  # type: ignore[attr-defined]
         return func
 
     return decorator
 
 
-def param_models(*param_cls: type[BaseModel]) -> Callable[[MethodT], MethodT]:
-    """Decorator to mark a method as accepting multiple legacy parameter models."""
+def param_models(
+    *param_cls: type[BaseModel],
+    method: str | None = None,
+    kind: Literal["request", "notification"] = "request",
+    unstable: bool = False,
+    optional: bool = False,
+    default_result: Any = None,
+    adapt_result: Callable[[Any], Any] | None = None,
+    validate_params: Callable[[Any], BaseModel] | None = None,
+    adapt_params: Callable[[BaseModel], dict[str, Any]] | None = None,
+) -> Callable[[MethodT], MethodT]:
+    """Mark multiple parameter models, with optional protocol routing metadata.
+
+    A route validates the model union and passes fields shared by its models to
+    the handler. ``validate_params`` and ``adapt_params`` override these steps
+    for wire formats that differ from the public Python API.
+    """
     if not param_cls:
         raise ValueError("param_models() requires at least one model class")
+    metadata = (
+        None
+        if method is None
+        else _RouteMetadata(
+            method=method,
+            models=param_cls,
+            kind=kind,
+            unstable=unstable,
+            optional=optional,
+            default_result=default_result,
+            adapt_result=adapt_result,
+            validate_params=validate_params,
+            adapt_params=adapt_params,
+        )
+    )
 
     def decorator(func: MethodT) -> MethodT:
         func.__param_models__ = param_cls  # type: ignore[attr-defined]
+        if metadata is not None:
+            func.__route__ = metadata  # type: ignore[attr-defined]
         return func
 
     return decorator
