@@ -249,11 +249,18 @@ routes; implementation-only methods are not exposed. Use `kind="notification"`
 for notifications and `unstable=True` for methods requiring explicit opt-in.
 Optional handlers can declare `optional=True` and `default_result`.
 
-For multiple wire models, `param_models` accepts the same routing options.
+`param_model` takes exactly one type expression: a model, a union such as
+`ModelA | ModelB`, or `Annotated[ModelA | ModelB, Field(discriminator="type")]`.
+The router validates the original type with Pydantic's `TypeAdapter`, preserving
+`Annotated` validation metadata. Union handlers receive the fields common to all
+branches by default. The former `param_models(A, B, ...)` form is replaced by
+`param_model(A | B, ...)`.
+
 `validate_params` and `adapt_params` provide custom validation and conversion
 when the wire representation differs from the Python signature, as with config
 options and elicitation. Legacy handlers still receive the validated request
-model. Connection methods retain model-only decorators for signature generation
+model. Signature generation expands single-model fields and preserves handwritten
+union signatures. Connection methods retain model-only decorators for signature generation
 and legacy calls; they do not repeat the routing options.
 
 ## Optional — Talk to the Gemini CLI

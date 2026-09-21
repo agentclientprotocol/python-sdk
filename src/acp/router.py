@@ -4,7 +4,7 @@ import inspect
 import warnings
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
-from typing import Any, Literal, TypeVar, Union
+from typing import Any, Literal, TypeVar
 
 from pydantic import BaseModel, TypeAdapter
 
@@ -103,22 +103,14 @@ class MessageRouter:
             metadata = getattr(member, "__route__", None)
             if not isinstance(metadata, _RouteMetadata):
                 continue
-            validate = metadata.validate_params
-            if validate is None:
-                validate = (
-                    metadata.models[0].model_validate
-                    if len(metadata.models) == 1
-                    else TypeAdapter(Union[metadata.models]).validate_python  # noqa: UP007 - runtime tuple of models
-                )
             route = Route(
                 method=metadata.method,
                 func=router._make_func(
-                    metadata.models[0],
+                    metadata.request_type,
                     obj,
                     attr,
-                    validate_params=validate,
+                    validate_params=metadata.validate_params,
                     adapt_params=metadata.adapt_params,
-                    models=metadata.models,
                 ),
                 kind=metadata.kind,
                 optional=metadata.optional,
@@ -148,19 +140,17 @@ class MessageRouter:
 
     def _make_func(
         self,
-        model: type[BaseModel],
+        request_type: Any,
         obj: Any,
         attr: str,
         *,
         validate_params: Callable[[Any], BaseModel] | None = None,
         adapt_params: Callable[[BaseModel], dict[str, Any]] | None = None,
-        models: tuple[type[BaseModel], ...] | None = None,
     ) -> AsyncHandler | None:
         func, attr, legacy_api = _resolve_handler(obj, attr)
         if func is None:
             return None
-        validate = validate_params or model.model_validate
-        param_models = models or (model,)
+        validate = validate_params or TypeAdapter(request_type).validate_python
 
         async def wrapper(params: Any) -> Any:
             if legacy_api:
@@ -168,7 +158,7 @@ class MessageRouter:
             model_obj = validate(params)
             if legacy_api:
                 return await func(model_obj)
-            kwargs = adapt_params(model_obj) if adapt_params else model_to_kwargs(model_obj, param_models)
+            kwargs = adapt_params(model_obj) if adapt_params else model_to_kwargs(model_obj, request_type)
             return await func(**kwargs)
 
         return wrapper

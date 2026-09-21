@@ -123,7 +123,7 @@ from .schema import (
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
-from .utils import normalize_result, param_model, param_models
+from .utils import normalize_result, param_model
 
 __all__ = ["Agent", "Client"]
 
@@ -227,11 +227,11 @@ class Client(Protocol):
     )
     async def kill_terminal(self, session_id: str, terminal_id: str, **kwargs: Any) -> KillTerminalResponse | None: ...
 
-    @param_models(
-        CreateFormSessionElicitationRequest,
-        CreateFormRequestElicitationRequest,
-        CreateUrlSessionElicitationRequest,
-        CreateUrlRequestElicitationRequest,
+    @param_model(
+        CreateFormSessionElicitationRequest
+        | CreateFormRequestElicitationRequest
+        | CreateUrlSessionElicitationRequest
+        | CreateUrlRequestElicitationRequest,
         method=CLIENT_METHODS["elicitation_create"],
         unstable=True,
         validate_params=validate_create_elicitation_request,
@@ -408,9 +408,8 @@ class Agent(Protocol):
     @param_model(SetSessionModeRequest, method=AGENT_METHODS["session_set_mode"], adapt_result=normalize_result)
     async def set_session_mode(self, session_id: str, mode_id: str, **kwargs: Any) -> SetSessionModeResponse | None: ...
 
-    @param_models(
-        SetSessionConfigOptionBooleanRequest,
-        SetSessionConfigOptionSelectRequest,
+    @param_model(
+        SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionSelectRequest,
         method=AGENT_METHODS["session_set_config_option"],
         validate_params=validate_set_config_option_request,
         adapt_result=normalize_result,

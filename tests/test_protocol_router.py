@@ -11,7 +11,7 @@ from acp.exceptions import RequestError
 from acp.interfaces import Agent, Client
 from acp.router import MessageRouter
 from acp.schema import SetSessionConfigOptionBooleanRequest
-from acp.utils import normalize_result, param_model, param_models
+from acp.utils import normalize_result, param_model
 
 
 class Params(BaseModel):
@@ -84,7 +84,7 @@ async def test_union_route_uses_shared_fields_and_preserves_legacy_model():
         precision: int = 0
 
     class UnionProtocol(Protocol):
-        @param_models(Text, Number, method="example/union")
+        @param_model(Text | Number, method="example/union")
         async def set_value(self, value: str | int, kind: str) -> Any: ...
 
     class Modern:

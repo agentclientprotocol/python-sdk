@@ -38,6 +38,24 @@ class NodeTransformer(ast.NodeTransformer):
         self._schema_import_node: ast.ImportFrom | None = None
         self._literals = {name: value for name, value in schema.__dict__.items() if t.get_origin(value) is t.Literal}
         self._current_model_name: str | None = None
+        self._type_aliases: dict[str, ast.expr] = {}
+        self._schema_names: dict[str, str] = {}
+        self._annotated_names = {"Annotated"}
+        self._schema_modules = {"schema"}
+
+    def visit_Module(self, node: ast.Module) -> ast.AST:
+        for statement in node.body:
+            if isinstance(statement, ast.Assign):
+                for target in statement.targets:
+                    if isinstance(target, ast.Name):
+                        self._type_aliases[target.id] = statement.value
+            elif (
+                isinstance(statement, ast.AnnAssign)
+                and isinstance(statement.target, ast.Name)
+                and statement.value is not None
+            ):
+                self._type_aliases[statement.target.id] = statement.value
+        return self.generic_visit(node)
 
     def _add_typing_import(self, name: str) -> None:
         if not self._type_import_node:
@@ -66,9 +84,45 @@ class NodeTransformer(ast.NodeTransformer):
     def visit_ImportFrom(self, node: ast.ImportFrom) -> ast.AST:
         if node.module == "schema":
             self._schema_import_node = node
+            self._schema_names.update({alias.asname or alias.name: alias.name for alias in node.names})
         elif node.module == "typing":
             self._type_import_node = node
+            self._annotated_names.update(
+                alias.asname or alias.name for alias in node.names if alias.name == "Annotated"
+            )
+        elif node.module is None:
+            self._schema_modules.update(alias.asname or alias.name for alias in node.names if alias.name == "schema")
         return node
+
+    def _single_param_model(self, expression: ast.expr, seen: frozenset[str] = frozenset()) -> t.Any:
+        """Resolve single models without evaluating source code or union metadata.
+
+        Union signatures keep their handwritten parameters.
+        Annotated single models can still expand their underlying model fields.
+        """
+        if isinstance(expression, ast.Name):
+            name = expression.id
+            if name in seen:
+                return None
+            if name in self._type_aliases:
+                return self._single_param_model(self._type_aliases[name], seen | {name})
+            model = getattr(schema, self._schema_names.get(name, name), None)
+        elif isinstance(expression, ast.Attribute) and isinstance(expression.value, ast.Name):
+            if expression.value.id not in self._schema_modules:
+                return None
+            model = getattr(schema, expression.attr, None)
+        elif isinstance(expression, ast.Subscript):
+            name = ast.unparse(expression.value)
+            if name not in self._annotated_names and name != "typing.Annotated":
+                return None
+            if not isinstance(expression.slice, ast.Tuple):
+                return None
+            return self._single_param_model(expression.slice.elts[0], seen)
+        else:
+            return None
+        while t.get_origin(model) is t.Annotated:
+            model = t.get_args(model)[0]
+        return model if inspect.isclass(model) and issubclass(model, BaseModel) else None
 
     def visit_FunctionDef(self, node: ast.FunctionDef) -> ast.AST:
         return self.visit_func(node)
@@ -89,9 +143,12 @@ class NodeTransformer(ast.NodeTransformer):
         )
         if not decorator:
             return self.generic_visit(node)
-        model_name = t.cast(ast.Name, decorator.args[0]).id
-        model = t.cast(type[schema.BaseModel], getattr(schema, model_name))
-        self._current_model_name = model_name
+        if not decorator.args:
+            return self.generic_visit(node)
+        model = self._single_param_model(decorator.args[0])
+        if model is None:
+            return self.generic_visit(node)
+        self._current_model_name = model.__name__
         try:
             param_defaults = [
                 self._to_param_def(name, field) for name, field in model.model_fields.items() if name != "field_meta"
