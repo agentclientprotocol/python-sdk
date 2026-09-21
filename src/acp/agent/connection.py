@@ -21,6 +21,8 @@ from ..schema import (
     CancelElicitationResponse,
     CompleteElicitationNotification,
     ConfigOptionUpdate,
+    ConnectMcpRequest,
+    ConnectMcpResponse,
     CreateElicitationResponse,
     CreateFormElicitationRequest,
     CreateFormRequestElicitationRequest,
@@ -32,6 +34,8 @@ from ..schema import (
     CreateUrlSessionElicitationRequest,
     CurrentModeUpdate,
     DeclineElicitationResponse,
+    DisconnectMcpRequest,
+    DisconnectMcpResponse,
     ElicitationFormRequestMode,
     ElicitationFormSessionMode,
     ElicitationMode,
@@ -40,6 +44,8 @@ from ..schema import (
     EnvVariable,
     KillTerminalRequest,
     KillTerminalResponse,
+    MessageMcpNotification,
+    MessageMcpRequest,
     PermissionOption,
     ReadTextFileRequest,
     ReadTextFileResponse,
@@ -64,7 +70,15 @@ from ..schema import (
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
-from ..utils import compatible_class, notify_model, param_model, request_model, request_optional_model, serialize_params
+from ..utils import (
+    compatible_class,
+    notify_model,
+    param_model,
+    request_model,
+    request_model_from_dict,
+    request_optional_model,
+    serialize_params,
+)
 from .router import build_agent_router
 
 __all__ = ["AgentSideConnection"]
@@ -276,6 +290,47 @@ class AgentSideConnection:
             self._conn,
             CLIENT_METHODS["elicitation_complete"],
             CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None),
+        )
+
+    @param_model(ConnectMcpRequest)
+    async def connect_mcp(self, server_id: str, **kwargs: Any) -> ConnectMcpResponse:
+        return await request_model(
+            self._conn,
+            CLIENT_METHODS["mcp_connect"],
+            ConnectMcpRequest(server_id=server_id, field_meta=kwargs or None),
+            ConnectMcpResponse,
+        )
+
+    @param_model(DisconnectMcpRequest)
+    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> DisconnectMcpResponse:
+        return await request_model_from_dict(
+            self._conn,
+            CLIENT_METHODS["mcp_disconnect"],
+            DisconnectMcpRequest(connection_id=connection_id, field_meta=kwargs or None),
+            DisconnectMcpResponse,
+        )
+
+    @param_model(MessageMcpRequest)
+    async def mcp_message(
+        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> Any:
+        return await self._conn.send_request(
+            CLIENT_METHODS["mcp_message"],
+            serialize_params(
+                MessageMcpRequest(connection_id=connection_id, method=method, params=params, field_meta=kwargs or None)
+            ),
+        )
+
+    @param_model(MessageMcpNotification)
+    async def notify_mcp(
+        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> None:
+        await notify_model(
+            self._conn,
+            CLIENT_METHODS["mcp_message"],
+            MessageMcpNotification(
+                connection_id=connection_id, method=method, params=params, field_meta=kwargs or None
+            ),
         )
 
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]:

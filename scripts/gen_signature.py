@@ -134,10 +134,8 @@ class NodeTransformer(ast.NodeTransformer):
             for argument in rest:
                 formatted = ast.BinOp(left=formatted, op=ast.BitOr(), right=self._format_annotation(argument))
             return formatted
-        if origin is t.Literal and annotation in self._literals.values():
-            name = next(name for name, value in self._literals.items() if value is annotation)
-            self._add_schema_import(name)
-            return ast.Name(id=name)
+        if origin is t.Literal:
+            return self._format_literal(annotation)
         elif (
             inspect.isclass(annotation)
             and issubclass(annotation, BaseModel)
@@ -165,6 +163,19 @@ class NodeTransformer(ast.NodeTransformer):
             print(f"Warning: Unhandled annotation type: {annotation}")
             self._add_typing_import("Any")
             return ast.Name(id="Any")
+
+    def _format_literal(self, annotation: t.Any) -> ast.expr:
+        if annotation in self._literals.values():
+            name = next(name for name, value in self._literals.items() if value is annotation)
+            self._add_schema_import(name)
+            return ast.Name(id=name)
+        self._add_typing_import("Literal")
+        values = [ast.Constant(value=value) for value in t.get_args(annotation)]
+        return ast.Subscript(
+            value=ast.Name(id="Literal"),
+            slice=values[0] if len(values) == 1 else ast.Tuple(elts=values, ctx=ast.Load()),
+            ctx=ast.Load(),
+        )
 
 
 def gen_signature(source_dir: Path) -> None:

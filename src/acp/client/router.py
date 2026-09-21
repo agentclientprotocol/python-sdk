@@ -10,17 +10,21 @@ from ..meta import CLIENT_METHODS
 from ..router import MessageRouter, Route, _resolve_handler, _warn_legacy_handler
 from ..schema import (
     CompleteElicitationNotification,
+    ConnectMcpRequest,
     CreateElicitationRequest,
     CreateFormRequestElicitationRequest,
     CreateFormSessionElicitationRequest,
     CreateTerminalRequest,
     CreateUrlRequestElicitationRequest,
     CreateUrlSessionElicitationRequest,
+    DisconnectMcpRequest,
     ElicitationFormRequestMode,
     ElicitationFormSessionMode,
     ElicitationUrlRequestMode,
     ElicitationUrlSessionMode,
     KillTerminalRequest,
+    MessageMcpNotification,
+    MessageMcpRequest,
     ReadTextFileRequest,
     ReleaseTerminalRequest,
     RequestPermissionRequest,
@@ -161,6 +165,20 @@ def build_client_router(client: Client, use_unstable_protocol: bool = False) -> 
     )
 
     router.route_notification(CLIENT_METHODS["session_update"], SessionNotification, client, "session_update")
+
+    router.route_request(CLIENT_METHODS["mcp_connect"], ConnectMcpRequest, client, "connect_mcp", unstable=True)
+    router.route_request(
+        CLIENT_METHODS["mcp_disconnect"],
+        DisconnectMcpRequest,
+        client,
+        "disconnect_mcp",
+        unstable=True,
+        adapt_result=normalize_result,
+    )
+    router.route_request(CLIENT_METHODS["mcp_message"], MessageMcpRequest, client, "mcp_message", unstable=True)
+    router.route_notification(
+        CLIENT_METHODS["mcp_message"], MessageMcpNotification, client, "notify_mcp", unstable=True
+    )
 
     @router.handle_extension_request
     async def _handle_extension_request(name: str, payload: dict[str, Any]) -> Any:
