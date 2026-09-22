@@ -58,6 +58,7 @@ async def spawn_stdio_transport(
 
     This mirrors the defensive shutdown behaviour used by the MCP Python SDK:
     close stdin first, wait for graceful exit, then escalate to terminate/kill.
+    Stdin closure uses the same timeout as the waits before terminate/kill.
     """
     merged_env = dict(default_environment())
     if env:
@@ -96,16 +97,9 @@ async def spawn_stdio_transport(
     finally:
         # Attempt graceful stdin shutdown first
         if process.stdin is not None:
-            try:
-                process.stdin.write_eof()
-            except (AttributeError, OSError, RuntimeError):
-                process.stdin.close()
-            with contextlib.suppress(Exception):
-                await process.stdin.drain()
             with contextlib.suppress(Exception):
                 process.stdin.close()
-            with contextlib.suppress(Exception):
-                await process.stdin.wait_closed()
+                await asyncio.wait_for(process.stdin.wait_closed(), timeout=shutdown_timeout)
 
         try:
             await asyncio.wait_for(process.wait(), timeout=shutdown_timeout)
