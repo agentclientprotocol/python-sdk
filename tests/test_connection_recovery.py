@@ -121,3 +121,31 @@ async def test_receive_loop_does_not_swallow_unrelated_reader_error() -> None:
     with pytest.raises(ValueError, match="reader failed"):
         await conn._receive_loop()
     await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_receive_loop_ignores_frames_that_are_not_json_objects() -> None:
+    """A line can be valid JSON and still not be a JSON-RPC message.
+
+    Unparsable input is already skipped by ``NdjsonTransport.receive``. These frames parse
+    fine but are not objects: an array, a number, a string and ``null``. Without the object
+    guard they reach ``Connection._process_message`` -- which calls ``message.get(...)`` --
+    or, for ``null``, are read as the transport's EOF signal. Either way the connection dies
+    and the valid frame queued behind them is never handled.
+    """
+    conn, reader = _make_connection()
+    processed: list[str] = []
+
+    def tracking_process(message: dict[str, Any]) -> None:
+        processed.append(message["method"])
+
+    conn._process_message = tracking_process  # type: ignore[method-assign]
+    non_objects = b"\n".join([b"[]", b"123", b'"x"', b"null", b"", b"not json at all"])
+    survivor = {"jsonrpc": "2.0", "method": "survivor"}
+    reader.feed_data(non_objects + b"\n" + json.dumps(survivor).encode() + b"\n")
+    reader.feed_eof()
+
+    await conn._receive_loop()
+    await conn.close()
+
+    assert processed == ["survivor"]
