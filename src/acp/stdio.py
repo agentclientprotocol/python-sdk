@@ -185,7 +185,7 @@ async def spawn_agent_process(
 
 @asynccontextmanager
 async def spawn_client_process(
-    to_agent: Callable[[Client], Agent] | Agent,
+    to_agent: Callable[[AgentSideConnection], Agent] | Agent,
     command: str,
     *args: str,
     env: Mapping[str, str] | None = None,
