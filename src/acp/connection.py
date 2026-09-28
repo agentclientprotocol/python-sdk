@@ -5,7 +5,6 @@ import copy
 import inspect
 import json
 import logging
-import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -161,12 +160,14 @@ class Connection:
         if method is not None:  # this is a request or notification
             # {"jsonrpc": "2.0", "id": 1, "method": "foo", "params": {...}}  # request
             # {"jsonrpc": "2.0", "method": "foo", "params: {...}}  # notification
-            task = self._tasks.create(
-                self._run_request(message) if has_id else self._run_notification(message),
-                name="acp.Connection.request" if has_id else "acp.Connection.notification",
-            )
-            if has_id:
-                self._track_incoming(message["id"], task)
+            if not has_id:
+                self._tasks.create(self._run_notification(message), name="acp.Connection.notification")
+                return
+            # The handler gets its own task so ``$/cancel_request`` can cancel it, even before it
+            # starts, without also cancelling delivery of the response the peer still expects.
+            handler = self._tasks.create(self._execute_request(message), name="acp.Connection.request")
+            self._track_incoming(message["id"], handler)
+            self._tasks.create(self._run_request(message, handler), name="acp.Connection.response")
             return
         if has_id:  # this is a response, {"id", "result" | "error"}
             self._handle_response(message)
@@ -226,22 +227,19 @@ class Connection:
     def _on_cancel_request_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.debug("Failed to send %s", _CANCEL_REQUEST_METHOD, exc_info=exc)
 
-    async def _run_request(self, message: dict[str, Any]) -> None:
-        try:
-            payload = await self._execute_request(message)
-        except asyncio.CancelledError:
-            if self._closed:
-                raise
-            # Cancelled by ``$/cancel_request`` or from inside the handler; either way the
-            # protocol still requires a response for the original request.
-            task = asyncio.current_task()
-            if sys.version_info >= (3, 11) and task is not None:
-                task.uncancel()
+    async def _run_request(
+        self, message: dict[str, Any], handler: asyncio.Future[dict[str, Any]] | None = None
+    ) -> None:
+        if handler is None:
+            handler = self._tasks.create(self._execute_request(message), name="acp.Connection.request")
+        # Unlike ``await handler``, ``asyncio.wait`` does not re-raise the handler's cancellation, and
+        # ``$/cancel_request`` only targets the handler, so only ``close()`` can abandon the response.
+        await asyncio.wait({handler})
+        if handler.cancelled():
+            # Cancelled by ``$/cancel_request`` or from inside the handler.
             payload = {"jsonrpc": "2.0", "id": message["id"], "error": RequestError.request_cancelled().to_error_obj()}
-        if self._closed:
-            # The transport is gone (e.g. the handler returned a result while being
-            # cancelled by ``close()``); sending would never complete.
-            return
+        else:
+            payload = handler.result()
         await self._transport.send(payload)
         self._notify_observers(StreamDirection.OUTGOING, payload)
 

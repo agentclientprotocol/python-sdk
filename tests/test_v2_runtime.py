@@ -550,3 +550,35 @@ async def test_cancelling_a_request_cancels_the_remote_handler() -> None:
     finally:
         await client_connection.close()
         await agent_connection.close()
+
+
+@pytest.mark.asyncio
+async def test_cancel_request_before_the_handler_starts_still_replies() -> None:
+    handled: list[str] = []
+
+    class RecordingAgent(ExtensionAgent):
+        async def handle_extension_request(self, method: str, params: Any) -> Any:
+            handled.append(method)
+            return {}
+
+    peer, agent_transport = memory_transport_pair()
+    agent_connection = v2.AgentSideConnection(RecordingAgent(), agent_transport)
+
+    try:
+        await peer.send({
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "initialize",
+            "params": initialize_request().model_dump(mode="json", by_alias=True, exclude_none=True),
+        })
+        assert "result" in await asyncio.wait_for(peer.receive(), timeout=1)
+
+        # Both frames are queued before the connection runs, so the cancel precedes the handler.
+        await peer.send({"jsonrpc": "2.0", "id": 1, "method": "_vendor/slow", "params": {}})
+        await peer.send({"jsonrpc": "2.0", "method": "$/cancel_request", "params": {"requestId": 1}})
+        response = await asyncio.wait_for(peer.receive(), timeout=1)
+
+        assert (response["id"], response["error"]["code"]) == (1, -32800)
+        assert handled == []
+    finally:
+        await agent_connection.close()
