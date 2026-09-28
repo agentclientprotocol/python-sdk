@@ -445,7 +445,7 @@ class Agent(Protocol):
         **kwargs: Any,
     ) -> ForkSessionResponse: ...
 
-    @param_model(ResumeSessionRequest, method=AGENT_METHODS["session_resume"], unstable=True)
+    @param_model(ResumeSessionRequest, method=AGENT_METHODS["session_resume"])
     async def resume_session(
         self,
         session_id: str,
@@ -455,9 +455,7 @@ class Agent(Protocol):
         **kwargs: Any,
     ) -> ResumeSessionResponse: ...
 
-    @param_model(
-        CloseSessionRequest, method=AGENT_METHODS["session_close"], unstable=True, adapt_result=normalize_result
-    )
+    @param_model(CloseSessionRequest, method=AGENT_METHODS["session_close"], adapt_result=normalize_result)
     async def close_session(self, session_id: str, **kwargs: Any) -> CloseSessionResponse | None: ...
 
     @param_model(CancelNotification, method=AGENT_METHODS["session_cancel"], kind="notification")
