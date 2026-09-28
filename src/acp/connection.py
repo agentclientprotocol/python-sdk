@@ -5,6 +5,7 @@ import copy
 import inspect
 import json
 import logging
+import sys
 from collections.abc import Awaitable, Callable
 from dataclasses import dataclass
 from enum import Enum
@@ -14,6 +15,7 @@ from pydantic import BaseModel, ValidationError
 
 from ._transport import NdjsonTransport, Transport
 from .exceptions import RequestError
+from .meta import PROTOCOL_METHODS
 from .task import MessageSender, TaskSupervisor
 from .telemetry import span_context
 
@@ -37,6 +39,8 @@ class StreamEvent:
 
 StreamObserver = Callable[[StreamEvent], Awaitable[None] | None]
 
+_CANCEL_REQUEST_METHOD = PROTOCOL_METHODS["cancel_request"]
+
 
 class Connection:
     """Minimal JSON-RPC 2.0 connection over newline-delimited JSON frames."""
@@ -54,6 +58,7 @@ class Connection:
         self._handler = handler
         self._next_request_id = 0
         self._pending: dict[int, asyncio.Future[Any]] = {}
+        self._incoming: dict[Any, asyncio.Task[Any]] = {}
         self._tasks = TaskSupervisor(source="acp.Connection")
         self._tasks.add_error_handler(self._on_task_error)
         self._closed = False
@@ -117,16 +122,14 @@ class Connection:
         payload = {"jsonrpc": "2.0", "id": request_id, "method": method, "params": params}
         try:
             await self._transport.send(payload)
-        except BaseException:
-            self._pending.pop(request_id, None)
-            future.cancel()
-            raise
-        self._notify_observers(StreamDirection.OUTGOING, payload)
-        try:
+            self._notify_observers(StreamDirection.OUTGOING, payload)
             return await future
-        except asyncio.CancelledError:
-            self._pending.pop(request_id, None)
+        except BaseException as exc:
+            still_pending = self._pending.pop(request_id, None) is not None
             future.cancel()
+            if isinstance(exc, asyncio.CancelledError) and still_pending:
+                # The request may already be on the wire; ask the peer to stop working on it.
+                self._send_cancel_request(request_id)
             raise
 
     async def send_notification(self, method: str, params: JsonValue | None = None) -> None:
@@ -152,13 +155,18 @@ class Connection:
     def _process_message(self, message: dict[str, Any]) -> None:
         method = message.get("method")
         has_id = "id" in message
+        if method == _CANCEL_REQUEST_METHOD and not has_id:
+            self._cancel_incoming(message.get("params"))
+            return
         if method is not None:  # this is a request or notification
             # {"jsonrpc": "2.0", "id": 1, "method": "foo", "params": {...}}  # request
             # {"jsonrpc": "2.0", "method": "foo", "params: {...}}  # notification
-            self._tasks.create(
+            task = self._tasks.create(
                 self._run_request(message) if has_id else self._run_notification(message),
                 name="acp.Connection.request" if has_id else "acp.Connection.notification",
             )
+            if has_id:
+                self._track_incoming(message["id"], task)
             return
         if has_id:  # this is a response, {"id", "result" | "error"}
             self._handle_response(message)
@@ -184,8 +192,56 @@ class Connection:
     def _on_observer_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.exception("Stream observer coroutine failed", exc_info=exc)
 
+    def _track_incoming(self, request_id: Any, task: asyncio.Task[Any]) -> None:
+        try:
+            self._incoming[request_id] = task
+        except TypeError:  # unhashable id, nothing can refer to it
+            return
+
+        def _forget(done: asyncio.Task[Any]) -> None:
+            if self._incoming.get(request_id) is done:
+                del self._incoming[request_id]
+
+        task.add_done_callback(_forget)
+
+    def _cancel_incoming(self, params: Any) -> None:
+        request_id = params.get("requestId") if isinstance(params, dict) else None
+        try:
+            task = self._incoming.get(request_id)
+        except TypeError:
+            return
+        # Unknown or already finished requests are ignored, as the protocol allows.
+        if task is not None:
+            task.cancel()
+
+    def _send_cancel_request(self, request_id: int) -> None:
+        if self._closed or self._disconnected:
+            return
+        self._tasks.create(
+            self.send_notification(_CANCEL_REQUEST_METHOD, {"requestId": request_id}),
+            name="acp.Connection.cancel_request",
+            on_error=self._on_cancel_request_error,
+        )
+
+    def _on_cancel_request_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
+        logging.debug("Failed to send %s", _CANCEL_REQUEST_METHOD, exc_info=exc)
+
     async def _run_request(self, message: dict[str, Any]) -> None:
-        payload = await self._execute_request(message)
+        try:
+            payload = await self._execute_request(message)
+        except asyncio.CancelledError:
+            if self._closed:
+                raise
+            # Cancelled by ``$/cancel_request`` or from inside the handler; either way the
+            # protocol still requires a response for the original request.
+            task = asyncio.current_task()
+            if sys.version_info >= (3, 11) and task is not None:
+                task.uncancel()
+            payload = {"jsonrpc": "2.0", "id": message["id"], "error": RequestError.request_cancelled().to_error_obj()}
+        if self._closed:
+            # The transport is gone (e.g. the handler returned a result while being
+            # cancelled by ``close()``); sending would never complete.
+            return
         await self._transport.send(payload)
         self._notify_observers(StreamDirection.OUTGOING, payload)
 

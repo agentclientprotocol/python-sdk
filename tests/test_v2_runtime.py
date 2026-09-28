@@ -515,3 +515,38 @@ async def test_expanded_union_calls_round_trip_with_metadata() -> None:
         assert elicitations[2]["request_id"] is None
         with pytest.raises(ValueError, match="either session_id or request_id"):
             await agent_connection.create_elicitation("Input", "vendor/custom", session_id="s", request_id=7)
+
+
+@pytest.mark.asyncio
+async def test_cancelling_a_request_cancels_the_remote_handler() -> None:
+    started = asyncio.Event()
+    cancelled = asyncio.Event()
+
+    class SlowAgent(ExtensionAgent):
+        async def handle_extension_request(self, method: str, params: Any) -> Any:
+            started.set()
+            try:
+                await asyncio.Event().wait()
+            except asyncio.CancelledError:
+                cancelled.set()
+                raise
+
+    client_transport, agent_transport = memory_transport_pair()
+    agent_connection = v2.AgentSideConnection(SlowAgent(), agent_transport)
+    client_connection = v2.ClientSideConnection(ExtensionClient(), client_transport)
+
+    try:
+        await client_connection.initialize(
+            protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="test-client", version="1.0.0")
+        )
+        request = asyncio.create_task(client_connection.send_extension_request("_vendor/slow"))
+        await asyncio.wait_for(started.wait(), timeout=1)
+
+        request.cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await request
+
+        await asyncio.wait_for(cancelled.wait(), timeout=1)
+    finally:
+        await client_connection.close()
+        await agent_connection.close()

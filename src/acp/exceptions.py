@@ -42,5 +42,9 @@ class RequestError(Exception):
         data = {"uri": uri} if uri is not None else None
         return cls(-32002, "Resource not found", data)
 
+    @classmethod
+    def request_cancelled(cls, data: dict[str, Any] | None = None) -> RequestError:
+        return cls(-32800, "Request cancelled", data)
+
     def to_error_obj(self) -> dict[str, Any]:
         return {"code": self.code, "message": str(self), "data": self.data}
