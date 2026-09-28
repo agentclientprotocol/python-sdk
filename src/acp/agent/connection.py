@@ -8,7 +8,7 @@ from pydantic import TypeAdapter
 
 from .._transport import Transport
 from ..connection import Connection, MethodHandler
-from ..interfaces import Agent, Client
+from ..interfaces import Agent
 from ..meta import CLIENT_METHODS
 from ..schema import (
     AcceptElicitationResponse,
@@ -95,7 +95,7 @@ class AgentSideConnection:
 
     def __init__(
         self,
-        to_agent: Callable[[Client], Agent] | Agent,
+        to_agent: Callable[[AgentSideConnection], Agent] | Agent,
         input_stream: Any,
         output_stream: Any = None,
         listening: bool = True,
@@ -119,7 +119,7 @@ class AgentSideConnection:
     @classmethod
     def attach(
         cls,
-        to_agent: Callable[[Client], Agent] | Agent,
+        to_agent: Callable[[AgentSideConnection], Agent] | Agent,
         connection: Connection,
         *,
         use_unstable_protocol: bool = False,
@@ -133,7 +133,7 @@ class AgentSideConnection:
 
     def _prepare(
         self,
-        to_agent: Callable[[Client], Agent] | Agent,
+        to_agent: Callable[[AgentSideConnection], Agent] | Agent,
         *,
         use_unstable_protocol: bool,
     ) -> tuple[Agent, MethodHandler]:
