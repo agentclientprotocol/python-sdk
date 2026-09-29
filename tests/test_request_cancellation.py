@@ -25,7 +25,7 @@ async def _read(reader: asyncio.StreamReader) -> dict[str, Any]:
     return json.loads(await asyncio.wait_for(reader.readline(), timeout=1))
 
 
-def _prompt(request_id: int | str | None) -> dict[str, Any]:
+def _prompt(request_id: Any) -> dict[str, Any]:
     return {
         "jsonrpc": "2.0",
         "id": request_id,
@@ -34,7 +34,7 @@ def _prompt(request_id: int | str | None) -> dict[str, Any]:
     }
 
 
-def _cancel_request(request_id: int | str | None) -> dict[str, Any]:
+def _cancel_request(request_id: Any) -> dict[str, Any]:
     return {"jsonrpc": "2.0", "method": "$/cancel_request", "params": {"requestId": request_id}}
 
 
@@ -216,6 +216,78 @@ async def test_cancel_request_only_affects_the_targeted_request(server, caplog: 
         assert caplog.text == ""
         with pytest.raises(asyncio.TimeoutError):
             await asyncio.wait_for(server.client_reader.readline(), timeout=0.1)
+
+
+async def _cancel_while_pending(request_id: Any, cancel: dict[str, Any]) -> dict[str, Any]:
+    """Deliver ``cancel`` while request ``request_id`` is in flight, then let it finish and return its response."""
+    transport = _GatedTransport()
+    transport.release.set()
+    started = asyncio.Event()
+    release = asyncio.Event()
+
+    async def handler(method: str, params: Any, is_notification: bool) -> Any:
+        started.set()
+        await release.wait()
+        return {"ok": True}
+
+    async with Connection(handler, transport):
+        await transport.deliver(_prompt(request_id))
+        await asyncio.wait_for(started.wait(), timeout=1)
+        await transport.deliver(cancel)
+        release.set()
+        await asyncio.wait_for(transport.settled.wait(), timeout=1)
+
+    [response] = transport.sent
+    return response
+
+
+_CANCEL = {"jsonrpc": "2.0", "method": "$/cancel_request"}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("request_id", "cancel"),
+    [
+        (None, _CANCEL),
+        (None, {**_CANCEL, "params": None}),
+        (None, {**_CANCEL, "params": []}),
+        (None, {**_CANCEL, "params": {}}),
+        (1, _cancel_request(True)),
+        (0, _cancel_request(False)),
+        (1, _cancel_request(1.0)),
+        (1, _cancel_request([1])),
+        (1, _cancel_request("1")),
+        # Ids outside the schema's ``RequestId`` are not cancellable, not even by the integer they equal.
+        (True, _cancel_request(1)),
+        (1.0, _cancel_request(1)),
+    ],
+    ids=[
+        "no_params",
+        "null_params",
+        "list_params",
+        "no_request_id",
+        "true_vs_1",
+        "false_vs_0",
+        "float_vs_1",
+        "list_vs_1",
+        "str_vs_1",
+        "1_vs_true_id",
+        "1_vs_float_id",
+    ],
+)
+async def test_cancel_request_without_a_matching_request_id_is_ignored(request_id: Any, cancel: dict[str, Any]) -> None:
+    response = await _cancel_while_pending(request_id, cancel)
+
+    assert response == {"jsonrpc": "2.0", "id": request_id, "result": {"ok": True}}
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_id", [None, 0, 1, "1"])
+async def test_cancel_request_with_a_matching_request_id_cancels(request_id: int | str | None) -> None:
+    response = await _cancel_while_pending(request_id, _cancel_request(request_id))
+
+    assert response["id"] == request_id
+    assert response["error"]["code"] == -32800
 
 
 @pytest.mark.asyncio

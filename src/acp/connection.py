@@ -41,6 +41,11 @@ StreamObserver = Callable[[StreamEvent], Awaitable[None] | None]
 _CANCEL_REQUEST_METHOD = PROTOCOL_METHODS["cancel_request"]
 
 
+def _is_request_id(value: Any) -> bool:
+    """Whether ``value`` is a JSON-RPC ``RequestId``: ``null``, an integer or a string."""
+    return value is None or isinstance(value, str) or (isinstance(value, int) and not isinstance(value, bool))
+
+
 class Connection:
     """Minimal JSON-RPC 2.0 connection over newline-delimited JSON frames."""
 
@@ -194,10 +199,11 @@ class Connection:
         logging.exception("Stream observer coroutine failed", exc_info=exc)
 
     def _track_incoming(self, request_id: Any, task: asyncio.Task[Any]) -> None:
-        try:
-            self._incoming[request_id] = task
-        except TypeError:  # unhashable id, nothing can refer to it
+        # A ``$/cancel_request`` can only name a valid request id, and Python would alias an invalid
+        # one such as ``true`` or ``1.0`` with the integer ``1``.
+        if not _is_request_id(request_id):
             return
+        self._incoming[request_id] = task
 
         def _forget(done: asyncio.Task[Any]) -> None:
             if self._incoming.get(request_id) is done:
@@ -206,12 +212,14 @@ class Connection:
         task.add_done_callback(_forget)
 
     def _cancel_incoming(self, params: Any) -> None:
-        request_id = params.get("requestId") if isinstance(params, dict) else None
-        try:
-            task = self._incoming.get(request_id)
-        except TypeError:
+        # ``requestId`` is required and may be ``null``, so a missing one must not match a ``null`` id.
+        if not isinstance(params, dict) or "requestId" not in params:
+            return
+        request_id = params["requestId"]
+        if not _is_request_id(request_id):
             return
         # Unknown or already finished requests are ignored, as the protocol allows.
+        task = self._incoming.get(request_id)
         if task is not None:
             task.cancel()
 
