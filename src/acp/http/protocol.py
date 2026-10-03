@@ -17,7 +17,7 @@ __all__ = [
     "CONTENT_TYPE_JSON",
     "CONTENT_TYPE_SSE",
     "INITIALIZE_METHOD",
-    "LOAD_SESSION_METHOD",
+    "LOAD_SESSION_METHODS",
     "SESSION_ID_HEADER",
     "is_initialize_request",
     "is_response_message",
@@ -40,7 +40,15 @@ CONTENT_TYPE_SSE = "text/event-stream"
 ACP_ENDPOINT_PATH = "/acp"
 
 INITIALIZE_METHOD = AGENT_METHODS["initialize"]
-LOAD_SESSION_METHOD = AGENT_METHODS["session_load"]
+# Replay methods whose responses and replayed history stay on the
+# connection-scoped stream until the load completes: v1's ``session/load`` and
+# v2's ``session/resume``. The session id is in the request, so these do NOT
+# require the ``Acp-Session-Id`` header - a freshly attached client may not yet
+# have a session-scoped stream open.
+LOAD_SESSION_METHODS = frozenset({
+    AGENT_METHODS["session_load"],
+    AGENT_METHODS["session_resume"],
+})
 
 # Agent methods that operate on an *already-established* session and therefore
 # require the ``Acp-Session-Id`` header on POST + session-scoped routing of their

@@ -10,6 +10,7 @@ import json
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from functools import partial
+from typing import TYPE_CHECKING
 
 from starlette.applications import Starlette
 from starlette.requests import Request
@@ -21,10 +22,13 @@ from ..ws.server import handle_websocket
 from .protocol import ACP_ENDPOINT_PATH, CONNECTION_ID_HEADER, CONTENT_TYPE_SSE, SESSION_ID_HEADER
 from .server import AcpServer, AgentFactory
 
+if TYPE_CHECKING:
+    from ..experimental.negotiation import AgentProtocolRouter
+
 __all__ = ["create_asgi_app"]
 
 
-def create_asgi_app(agent_factory: AgentFactory, *, path: str = ACP_ENDPOINT_PATH) -> Starlette:
+def create_asgi_app(agent_factory: AgentFactory | AgentProtocolRouter, *, path: str = ACP_ENDPOINT_PATH) -> Starlette:
     """Create a Starlette app with one agent instance per connection.
 
     The app handles POST/GET/DELETE and WebSocket at ``path`` (default: /acp).
