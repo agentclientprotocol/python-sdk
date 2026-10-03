@@ -45,6 +45,7 @@ from .protocol import (
 if TYPE_CHECKING:
     from collections.abc import AsyncGenerator
 
+    from ..experimental.negotiation import AgentProtocolConnection, AgentProtocolRouter
     from ..interfaces import Agent
 
 __all__ = [
@@ -224,9 +225,17 @@ class AcpServer:
             ``AgentSideConnection`` to produce a per-connection ``Agent``.
     """
 
-    def __init__(self, agent_factory: AgentFactory) -> None:
+    def __init__(self, agent_factory: AgentFactory | AgentProtocolRouter) -> None:
         self.agent_factory = agent_factory
-        self._connections: dict[str, tuple[AgentSideConnection, _HttpTransport]] = {}
+        self._connections: dict[str, tuple[AgentSideConnection | AgentProtocolConnection, _HttpTransport]] = {}
+
+    def _connect(self, transport: _HttpTransport) -> AgentSideConnection | AgentProtocolConnection:
+        """Bind one agent (v1) or protocol router (v1/v2) to a transport."""
+        from ..experimental.negotiation import AgentProtocolRouter
+
+        if isinstance(self.agent_factory, AgentProtocolRouter):
+            return self.agent_factory.connect(transport)
+        return AgentSideConnection(self.agent_factory, transport)
 
     # -- POST ---------------------------------------------------------------
 
@@ -268,7 +277,7 @@ class AcpServer:
     async def _handle_initialize(self, message: dict[str, Any]) -> Response:
         connection_id = uuid.uuid4().hex
         transport = _HttpTransport(message.get("id"))
-        conn = AgentSideConnection(self.agent_factory, transport)
+        conn = self._connect(transport)
         self._connections[connection_id] = (conn, transport)
         # Deliver initialize to the agent and await its response so we can return
         # the 200 body synchronously (initialize is the one blocking POST). If the
