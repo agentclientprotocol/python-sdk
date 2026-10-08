@@ -150,6 +150,8 @@ Only the initial v2 request is reduced to the common v1 initialization fields
 when an agent selects v1.
 
 Client-side fallback is application controlled and may require opening a new
-transport. Protocol-level request cancellation is not yet exposed by the
-experimental runtime; `session/cancel` remains available for cancelling active
-session work.
+transport. Protocol-level request cancellation (`$/cancel_request`) is handled
+by the shared connection layer, as in v1: cancelling the task awaiting a request
+sends a best-effort cancellation to the peer, and an incoming cancellation
+cancels the handler task, which answers with its result or `-32800`.
+`session/cancel` remains available for cancelling active session work.

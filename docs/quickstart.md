@@ -228,6 +228,21 @@ MCP requests return the inner JSON result unchanged, including `null`. Use
 and optional `params`. These methods share the same connections and routers
 across stdio, HTTP, and WebSocket transports.
 
+## Request cancellation
+
+Connections handle the protocol's `$/cancel_request` notification. When the
+peer cancels one of its requests, the SDK cancels the task running your handler.
+The handler may catch `asyncio.CancelledError` and return a (partial) result;
+otherwise the peer receives a `-32800` "Request cancelled" error. Cancellations
+for unknown or already finished requests are ignored; a cancelled request still
+gets exactly one response unless the connection is closed first.
+
+Cancelling the task that awaits an outgoing request (for example through
+`asyncio.wait_for`) still raises `CancelledError` locally without waiting for the
+peer, and additionally sends a best-effort `$/cancel_request` for that request.
+Cancellation support is optional for peers. Use `session/cancel` to stop a
+prompt turn.
+
 ## Maintaining protocol routes
 
 The `Agent` and `Client` protocols in `src/acp/interfaces.py` are the source of
