@@ -47,6 +47,32 @@ async def test_parse_multibyte_utf8_split_across_chunks() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("bom_chunks", [[b"\xef\xbb\xbf"], [b"\xef", b"\xbb", b"\xbf"]])
+async def test_parse_leading_bom_preserves_first_and_later_events(bom_chunks: list[bytes]) -> None:
+    first = 'data: {"id":1,"text":"你好"}\n\n'.encode()
+    second = b'data: {"id":2}\n\n'
+    stream = _aiter([*bom_chunks, first, second])
+
+    events = [event async for event in parse_sse_stream(stream)]
+
+    assert events == [{"id": 1, "text": "你好"}, {"id": 2}]
+
+
+@pytest.mark.asyncio
+async def test_parse_preserves_bom_inside_data() -> None:
+    stream = _aiter(['data: {"text":"\ufeff你好"}\n\n'.encode()])
+    events = [event async for event in parse_sse_stream(stream)]
+    assert events == [{"text": "\ufeff你好"}]
+
+
+@pytest.mark.asyncio
+async def test_parse_rejects_invalid_utf8() -> None:
+    stream = _aiter([b"data: \xff\n\n"])
+    with pytest.raises(UnicodeDecodeError):
+        [event async for event in parse_sse_stream(stream)]
+
+
+@pytest.mark.asyncio
 async def test_parse_ignores_comments_and_other_fields() -> None:
     stream = _aiter([b': keepalive\n\nevent: message\ndata: {"id":7}\n\n'])
     events = [event async for event in parse_sse_stream(stream)]

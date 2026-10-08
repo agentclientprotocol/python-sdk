@@ -63,7 +63,7 @@ async def parse_sse_stream(chunks: AsyncIterator[bytes]) -> AsyncIterator[dict[s
     Multi-line ``data:`` fields are concatenated with newlines per the spec. A
     blank line dispatches the buffered event.
     """
-    decoder = codecs.getincrementaldecoder("utf-8")()
+    decoder = codecs.getincrementaldecoder("utf-8-sig")()
     buffer = ""
     data_lines: list[str] = []
 
