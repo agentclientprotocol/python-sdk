@@ -84,6 +84,8 @@ class AgentSideConnection:
         self._state = InitializationState()
         self._conn = connection
         agent = agent_factory(self)
+        if on_connect := getattr(agent, "on_connect", None):
+            on_connect(self)
         router = _AgentRouter(agent, self._state)
         return self, router
 

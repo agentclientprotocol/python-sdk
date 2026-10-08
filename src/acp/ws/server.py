@@ -12,6 +12,7 @@ from ..agent.connection import AgentSideConnection
 from ..http.protocol import CONNECTION_ID_HEADER
 
 if TYPE_CHECKING:
+    from ..experimental.negotiation import AgentProtocolRouter
     from ..http.server import AgentFactory
 
 __all__ = ["handle_websocket"]
@@ -48,11 +49,16 @@ class _WebSocketTransport:
             await self._ws.close()
 
 
-async def handle_websocket(agent_factory: AgentFactory, websocket: WebSocket) -> None:
+async def handle_websocket(agent_factory: AgentFactory | AgentProtocolRouter, websocket: WebSocket) -> None:
     """Run one agent for the lifetime of the socket; disconnect cancels its work."""
     await websocket.accept(headers=[(CONNECTION_ID_HEADER.lower().encode(), uuid.uuid4().hex.encode())])
     transport = _WebSocketTransport(websocket)
-    conn = AgentSideConnection(agent_factory, transport, listening=False)
+    from ..experimental.negotiation import AgentProtocolRouter
+
+    if isinstance(agent_factory, AgentProtocolRouter):
+        conn = agent_factory.connect(transport, listening=False)
+    else:
+        conn = AgentSideConnection(agent_factory, transport, listening=False)
     try:
         await conn.listen()
     finally:

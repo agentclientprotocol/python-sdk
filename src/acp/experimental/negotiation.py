@@ -136,6 +136,9 @@ class AgentProtocolConnection:
     async def _listen(self) -> None:
         await self._connection.main_loop()
 
+    async def listen(self) -> None:
+        await self._listen()
+
     async def close(self) -> None:
         await self._connection.close()
 

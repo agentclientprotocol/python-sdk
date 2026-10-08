@@ -28,7 +28,7 @@ from .protocol import (
     CONNECTION_ID_HEADER,
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_SSE,
-    LOAD_SESSION_METHOD,
+    LOAD_SESSION_METHODS,
     SESSION_ID_HEADER,
     is_initialize_request,
     is_response_message,
@@ -93,7 +93,7 @@ class _HttpStreamTransport:
             return
         key = message_id_key(message.get("id"))
         session_id = session_id_from_message(message)
-        if message.get("method") == LOAD_SESSION_METHOD and key is not None and session_id is not None:
+        if message.get("method") in LOAD_SESSION_METHODS and key is not None and session_id is not None:
             self._pending_loads[key] = session_id
         try:
             await self._send_post(message)
