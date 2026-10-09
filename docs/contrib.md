@@ -24,6 +24,7 @@ The helpers under `acp.contrib` package recurring patterns we saw in integration
 
 - `ToolCallTracker.start()/progress()/append_stream_text()` emits canonical `ToolCallStart` / `ToolCallProgress` updates and keeps an in-memory view via `view()` or `tool_call_model()`.
 - `PermissionBroker.request_for()` wraps `requestPermission` RPCs. It reuses tracker state (or a provided `ToolCall`), lets you append extra content, and defaults to Approve / Approve for session / Reject options.
+- Omit `options` or pass `None` to use broker defaults. An explicit empty option list raises `MissingPermissionOptionsError` before the permission request is sent; the same applies to empty `default_options` when no per-request options are supplied.
 - `default_permission_options()` exposes that canonical option triple if you need to customise it.
 
 > Tip: Keep one tracker near the agent event loop. Emit notifications through it and share the tracker with `PermissionBroker` so permission prompts always match the latest tool call state.

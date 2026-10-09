@@ -56,7 +56,8 @@ class PermissionBroker:
         self._requester = requester
         self._tracker = tracker
         self._default_options = tuple(
-            option.model_copy(deep=True) for option in (default_options or default_permission_options())
+            option.model_copy(deep=True)
+            for option in (default_permission_options() if default_options is None else default_options)
         )
 
     async def request_for(
@@ -84,7 +85,9 @@ class PermissionBroker:
             existing.append(ContentToolCallContent(content=TextContentBlock(text=description)))
             tool_call.content = existing
 
-        option_set = tuple(option.model_copy(deep=True) for option in (options or self._default_options))
+        option_set = tuple(
+            option.model_copy(deep=True) for option in (self._default_options if options is None else options)
+        )
         if not option_set:
             raise MissingPermissionOptionsError()
 
