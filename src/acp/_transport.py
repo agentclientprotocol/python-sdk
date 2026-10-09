@@ -79,9 +79,22 @@ class NdjsonTransport:
             if not line:
                 continue
             try:
-                message: dict[str, Any] = json.loads(line)
+                message = json.loads(line)
             except Exception:
                 logging.exception("Error parsing JSON-RPC message")
+                continue
+            if not isinstance(message, dict):
+                # A line can parse as JSON and still not be a JSON-RPC message: a batch
+                # array, a bare number or string, or ``null``. Returning it is fatal one
+                # frame later -- ``Connection._process_message`` calls ``message.get(...)``
+                # and the AttributeError escapes ``_receive_loop``, so ``_disconnect()``
+                # never runs and the process dies. ``null`` is worse than fatal-by-accident:
+                # it parses to ``None``, which this method uses as its EOF signal, so it is
+                # read as "the peer hung up". Malformed JSON is already tolerated above, and
+                # the web transports already refuse non-object frames (``ws/server.py``
+                # returns only dicts; ``http/server.py`` answers 501/400), so ignore these
+                # here too rather than tearing down a live connection.
+                logging.warning("Ignoring non-object JSON-RPC message")
                 continue
             return message
 
