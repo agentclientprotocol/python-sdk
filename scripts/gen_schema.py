@@ -176,7 +176,7 @@ def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[list[str], lis
 
 
 def _build_header(schema_json: Path, version_file: Path) -> str:
-    lines = [f"# Generated from {schema_json.relative_to(ROOT)}. Do not edit by hand."]
+    lines = [f"# Generated from {schema_json.relative_to(ROOT).as_posix()}. Do not edit by hand."]
     if version_file.exists() and (ref := version_file.read_text(encoding="utf-8").strip()):
         lines.append(f"# Schema ref: {ref}")
     return "\n".join(lines)
@@ -192,6 +192,7 @@ def _format_python(source: str, schema_out: Path) -> str:
             [sys.executable, "-m", "ruff", *arguments, "--stdin-filename", str(schema_out), "-"],
             input=source,
             text=True,
+            encoding="utf-8",
             capture_output=True,
             check=False,
             cwd=ROOT,

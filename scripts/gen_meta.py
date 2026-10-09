@@ -56,7 +56,7 @@ def render_meta(*, protocol_version: int = 1) -> str:
     client_methods = data.get("clientMethods", {})
     protocol_methods = data.get("protocolMethods")
     version = data.get("version", 1)
-    header_lines = [f"# Generated from {meta_json.relative_to(ROOT)}. Do not edit by hand."]
+    header_lines = [f"# Generated from {meta_json.relative_to(ROOT).as_posix()}. Do not edit by hand."]
     if version_file.exists():
         ref = version_file.read_text("utf-8").strip()
         if ref:
@@ -74,6 +74,7 @@ def render_meta(*, protocol_version: int = 1) -> str:
         [sys.executable, "-m", "ruff", "format", "--stdin-filename", str(out_py), "-"],
         input=source,
         text=True,
+        encoding="utf-8",
         capture_output=True,
         check=False,
         cwd=ROOT,
