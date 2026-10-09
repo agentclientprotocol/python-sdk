@@ -66,5 +66,17 @@ async def test_call_unstable_protocol_warning(connect):
 
     with pytest.warns(UserWarning) as record:
         with pytest.raises(RequestError):
-            await agent_conn.close_session(session_id="sess")
+            await agent_conn.fork_session(cwd="/workspace", session_id="sess")
         assert len(record) == 1
+
+
+@pytest.mark.parametrize("agent", [UnstableAgent()])
+@pytest.mark.asyncio
+async def test_stable_session_lifecycle_does_not_require_unstable_protocol(connect):
+    _, agent_conn = connect(use_unstable_protocol=False)
+
+    resp = await agent_conn.resume_session(cwd="/workspace", session_id="sess")
+    assert isinstance(resp, ResumeSessionResponse)
+
+    resp = await agent_conn.close_session(session_id="sess")
+    assert isinstance(resp, CloseSessionResponse)

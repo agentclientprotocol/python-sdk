@@ -33,7 +33,7 @@ from .._sse import serialize_sse_event, serialize_sse_keepalive
 from ..agent.connection import AgentSideConnection
 from .protocol import (
     CONNECTION_ID_HEADER,
-    LOAD_SESSION_METHOD,
+    SESSION_ATTACH_METHODS,
     is_initialize_request,
     is_response_message,
     message_id_key,
@@ -139,6 +139,7 @@ class _HttpTransport:
         self.connection_stream = OutboundStream()
         self.session_streams: dict[str, OutboundStream] = {}
         self._pending_routes: dict[str, str] = {}
+        # Pending session/load and session/resume requests, keyed by request id.
         self._pending_loads: dict[str, str] = {}
         self._provisional_sessions: set[str] = set()
 
@@ -155,7 +156,7 @@ class _HttpTransport:
                 self.initialize_response.set_result(message)
                 return
             session_id = self._route_response(message, key)
-        # Replay and load responses share the connection stream, including on
+        # Replay and load/resume responses share the connection stream, including on
         # reload. This preserves replay order and never waits for a session GET.
         if session_id in self._pending_loads.values():
             session_id = None
@@ -191,7 +192,7 @@ class _HttpTransport:
             session_id = session_id_from_params(message.get("params"))
             key = message_id_key(message["id"])
             if session_id is not None and key is not None:
-                if message["method"] == LOAD_SESSION_METHOD:
+                if message["method"] in SESSION_ATTACH_METHODS:
                     self._pending_loads[key] = session_id
                     if session_id not in self.session_streams:
                         # Allow clients to open a GET as soon as replay starts.

@@ -18,6 +18,8 @@ __all__ = [
     "CONTENT_TYPE_SSE",
     "INITIALIZE_METHOD",
     "LOAD_SESSION_METHOD",
+    "RESUME_SESSION_METHOD",
+    "SESSION_ATTACH_METHODS",
     "SESSION_ID_HEADER",
     "is_initialize_request",
     "is_response_message",
@@ -41,6 +43,11 @@ ACP_ENDPOINT_PATH = "/acp"
 
 INITIALIZE_METHOD = AGENT_METHODS["initialize"]
 LOAD_SESSION_METHOD = AGENT_METHODS["session_load"]
+RESUME_SESSION_METHOD = AGENT_METHODS["session_resume"]
+
+# Methods that attach the ``sessionId`` given in their request. Their responses
+# need not echo the ID, so both peers take it from the request.
+SESSION_ATTACH_METHODS = frozenset({LOAD_SESSION_METHOD, RESUME_SESSION_METHOD})
 
 # Agent methods that operate on an *already-established* session and therefore
 # require the ``Acp-Session-Id`` header on POST + session-scoped routing of their

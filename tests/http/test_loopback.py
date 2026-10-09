@@ -23,6 +23,7 @@ from acp.schema import (
     NewSessionResponse,
     PromptResponse,
     RequestPermissionResponse,
+    ResumeSessionResponse,
     TextContentBlock,
 )
 from acp.ws.client import create_websocket_stream
@@ -211,5 +212,44 @@ async def test_failed_load_can_retry_and_preserves_existing_session(protocol: st
             await asyncio.wait_for(conn.load_session(cwd="/", session_id="saved-session"), timeout=5)
         result = await asyncio.wait_for(conn.prompt(session_id="saved-session", prompt=[]), timeout=5)
         assert result.stop_reason == "end_turn"
+    finally:
+        await conn.close()
+
+
+class _ResumingAgent(_LoopbackAgent):
+    def __init__(self) -> None:
+        super().__init__()
+        self.ask_permission = True
+        self.fail_resume = False
+
+    async def resume_session(self, cwd: str, session_id: str, **kwargs: Any) -> ResumeSessionResponse:
+        if self.fail_resume:
+            raise RequestError(-32000, "resume failed")
+        return ResumeSessionResponse()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("protocol", ["http", "ws"])
+async def test_resume_session_supports_prompt(protocol: str, serve_asgi) -> None:
+    agent = _ResumingAgent()
+    server = await serve_asgi(_make_app(agent))
+    transport = (
+        create_http_stream(server.http_url) if protocol == "http" else await create_websocket_stream(server.ws_url)
+    )
+    client = _CapturingClient()
+    conn = connect_to_agent(client, transport)
+    try:
+        await conn.initialize(protocol_version=1)
+        # A failed resume can be retried; the successful one attaches the session.
+        agent.fail_resume = True
+        with pytest.raises(RequestError, match="resume failed"):
+            await asyncio.wait_for(conn.resume_session(cwd="/", session_id="saved-session"), timeout=5)
+        agent.fail_resume = False
+        resumed = await asyncio.wait_for(conn.resume_session(cwd="/", session_id="saved-session"), timeout=5)
+        assert resumed == ResumeSessionResponse()
+        result = await asyncio.wait_for(conn.prompt(session_id="saved-session", prompt=[]), timeout=5)
+        assert result.stop_reason == "end_turn"
+        assert client.permission_requested
+        assert client.updates[-1].content.text == "hello"
     finally:
         await conn.close()

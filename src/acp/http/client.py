@@ -28,7 +28,7 @@ from .protocol import (
     CONNECTION_ID_HEADER,
     CONTENT_TYPE_JSON,
     CONTENT_TYPE_SSE,
-    LOAD_SESSION_METHOD,
+    SESSION_ATTACH_METHODS,
     SESSION_ID_HEADER,
     is_initialize_request,
     is_response_message,
@@ -81,6 +81,7 @@ class _HttpStreamTransport:
         self._inbox: asyncio.Queue[Any] = asyncio.Queue()
         self._stream_tasks: set[asyncio.Task[None]] = set()
         self._session_streams: set[str] = set()
+        # Pending session/load and session/resume requests, keyed by request id.
         self._pending_loads: dict[str, str] = {}
 
     # -- Transport protocol -------------------------------------------------
@@ -93,7 +94,7 @@ class _HttpStreamTransport:
             return
         key = message_id_key(message.get("id"))
         session_id = session_id_from_message(message)
-        if message.get("method") == LOAD_SESSION_METHOD and key is not None and session_id is not None:
+        if message.get("method") in SESSION_ATTACH_METHODS and key is not None and session_id is not None:
             self._pending_loads[key] = session_id
         try:
             await self._send_post(message)
@@ -215,7 +216,7 @@ class _HttpStreamTransport:
             self._inbox.put_nowait(_EOF)
 
     def _handle_incoming(self, message: dict[str, Any]) -> None:
-        # Load responses may be empty or null; the session ID is in the request.
+        # Load and resume responses may omit sessionId; the ID is in the request.
         if is_response_message(message):
             key = message_id_key(message.get("id"))
             loaded = self._pending_loads.pop(key, None) if key is not None else None

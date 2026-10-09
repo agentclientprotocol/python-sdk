@@ -75,6 +75,10 @@ Replay is consumed as it arrives, so histories larger than the SSE buffer do not
 wait for a session stream to open. WebSocket uses its existing bidirectional
 connection for both replay and subsequent messages.
 
+`resume_session()` (when the agent advertises `sessionCapabilities.resume`)
+follows the same HTTP routing without replaying history: the response uses the
+connection SSE stream, and the client then opens the session SSE stream.
+
 A failed load returns its JSON-RPC error on the connection stream and can be
 retried. The server removes streams provisioned only for failed loads, while
 preserving established sessions and overlapping loads. It does not change the
@@ -153,7 +157,7 @@ HTTP output follows these routing rules:
 | --- | --- | --- |
 | `initialize` response | POST body, via one Future | Establishes the connection before GET streams open |
 | Response containing a new `sessionId` | Connection SSE stream | The client needs the ID before it can open the session stream |
-| `session/load` replay and response | Connection SSE stream | Replay precedes the response; the client gets the session ID from the original request |
+| `session/load` replay and response, `session/resume` response | Connection SSE stream | Replay precedes the response; the client gets the session ID from the original request |
 | Other messages | Session SSE stream when known, otherwise connection stream | Responses use their request's recorded session; requests/notifications carry `sessionId` |
 
 `OutboundStream` retains a bounded buffer, backpressure, and close handling.
