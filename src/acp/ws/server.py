@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
@@ -22,6 +23,7 @@ class _WebSocketTransport:
 
     def __init__(self, websocket: WebSocket) -> None:
         self._ws = websocket
+        self._warned_binary = False
 
     async def send(self, message: dict[str, Any]) -> None:
         if self._ws.client_state == WebSocketState.DISCONNECTED:
@@ -34,6 +36,9 @@ class _WebSocketTransport:
             if event["type"] == "websocket.disconnect":
                 return None
             if event.get("text") is None:
+                if event.get("bytes") is not None and not self._warned_binary:
+                    self._warned_binary = True
+                    logging.warning("Ignoring binary WebSocket frame; ACP messages must be sent as text frames")
                 continue
             try:
                 message = json.loads(event["text"])

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from typing import Any
 
 import pytest
@@ -197,6 +198,31 @@ async def test_asgi_websocket_ignores_non_message_frames() -> None:
         socket.client_send_text({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"protocolVersion": 1}})
         response = await socket.wait_for_send(lambda m: m.get("id") == 0)
         assert "result" in response
+    finally:
+        socket.client_disconnect()
+        await asyncio.wait_for(handler, timeout=1)
+
+
+@pytest.mark.asyncio
+async def test_asgi_websocket_warns_once_on_binary_frames(caplog: pytest.LogCaptureFixture) -> None:
+    socket = _FakeAsgiSocket()
+    socket.client_connect()
+    for _ in range(2):
+        socket._incoming.put_nowait({"type": "websocket.receive", "bytes": b'{"jsonrpc":"2.0"}\n'})
+    handler = asyncio.create_task(
+        handle_websocket(lambda conn: _Agent(), WebSocket({"type": "websocket"}, socket.receive, socket.send))
+    )
+    try:
+        with caplog.at_level(logging.WARNING):
+            socket.client_send_text({
+                "jsonrpc": "2.0",
+                "id": 0,
+                "method": "initialize",
+                "params": {"protocolVersion": 1},
+            })
+            await socket.wait_for_send(lambda m: m.get("id") == 0)
+        warnings = [r for r in caplog.records if "binary WebSocket frame" in r.getMessage()]
+        assert len(warnings) == 1
     finally:
         socket.client_disconnect()
         await asyncio.wait_for(handler, timeout=1)

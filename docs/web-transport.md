@@ -10,7 +10,8 @@ The SDK can run ACP over two remote connectivity profiles in addition to stdio:
   session), and `DELETE` to terminate. `initialize` returns `200 OK` with a JSON
   body; all other POSTs return `202 Accepted`. **Requires HTTP/2.**
 - **WebSocket** — a `GET` upgrade on the same endpoint carrying full-duplex
-  JSON-RPC text frames.
+  JSON-RPC text frames, one message per frame. Binary frames are ignored, as
+  the transport RFD specifies; the server logs a warning on the first one.
 
 Both reuse the existing JSON-RPC message format and ACP lifecycle
 (`initialize` → session methods → close).
