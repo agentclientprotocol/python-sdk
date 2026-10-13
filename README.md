@@ -2,74 +2,66 @@
   <img alt="Agent Client Protocol" src="https://zed.dev/img/acp/banner-dark.webp">
 </a>
 
-# Agent Client Protocol (Python)
+# Agent Client Protocol SDK for Python
 
-Build ACP-compliant agents and clients in Python with generated schema models, asyncio transports, and runnable demos.
+Implement ACP agent and client integrations in Python. The SDK provides typed protocol models, asynchronous handler interfaces, and connection helpers. Your application supplies the agent runtime, client callbacks, and session state.
 
-> Releases track the upstream ACP schema; contributions that tighten coverage or tooling are always welcome.
+Requires Python 3.10 through 3.14.
 
 ## Install
 
 ```bash
 pip install agent-client-protocol
-# or
+```
+
+For a project managed with uv:
+
+```bash
 uv add agent-client-protocol
 ```
 
-## At a glance
+Import the package as `acp`:
 
-- **Spec parity:** Generated Pydantic models in `acp.schema` track every ACP release so payloads stay valid.
-- **Direct construction:** Generated discriminator fields have defaults, so models can be instantiated directly.
-- **Runtime ergonomics:** Async base classes, stdio JSON-RPC plumbing, and lifecycle helpers keep custom agents tiny.
-- **Examples ready:** Streaming, permissions, Gemini bridge, and duet demos live under `examples/`.
-- **Contrib utilities:** Session accumulators, tool call trackers, and permission brokers share patterns from real deployments.
+```python
+from acp.schema import TextContentBlock
 
-## Who benefits
+message = TextContentBlock(text="Hello ACP")
+```
 
-- Agent authors who need typed models and event-stream ergonomics for ACP-compatible assistants.
-- Client integrators embedding ACP parties inside Python applications or wrapping existing CLIs via stdio.
-- Tooling teams experimenting with permission flows, streaming UX, or Gemini bridges without re-implementing transports.
-See real adopters like kimi-cli in the [Use Cases list](https://agentclientprotocol.github.io/python-sdk/use-cases/).
+## Run an agent and client
 
-## How to get started
+The example client starts the echo agent, sends your message, and prints the streamed reply. Install Git and uv, then run:
 
-- Follow the [Quickstart guide](https://agentclientprotocol.github.io/python-sdk/quickstart/) for installation, echo-agent validation, editor wiring (e.g. Zed), and programmatic launch recipes.
-- Browse the [example gallery](https://github.com/agentclientprotocol/python-sdk/tree/main/examples) to see progressively richer integrations you can copy or extend.
-- Skim the [docs hub](https://agentclientprotocol.github.io/python-sdk/) for focused references on contrib helpers, releasing, and transport details.
+```bash
+git clone https://github.com/agentclientprotocol/python-sdk.git
+cd python-sdk
+uv sync --frozen
+uv run --frozen python examples/client.py python examples/echo_agent.py
+```
 
-## Quick links
+Type `Hello ACP` at the prompt. The client starts the agent and prints `| Agent: Hello ACP`. See the [quickstart](https://agentclientprotocol.github.io/python-sdk/tutorials/quickstart/) for the initialization and session calls behind this exchange.
 
-| Need               | Link                                                                   |
-|--------------------|------------------------------------------------------------------------|
-| Docs hub           | <https://agentclientprotocol.github.io/python-sdk/>                    |
-| Quickstart         | <https://agentclientprotocol.github.io/python-sdk/quickstart/>         |
-| Use cases          | <https://agentclientprotocol.github.io/python-sdk/use-cases/>          |
-| Contrib helpers    | <https://agentclientprotocol.github.io/python-sdk/contrib/>            |
-| Releasing workflow | <https://agentclientprotocol.github.io/python-sdk/releasing/>          |
-| Examples           | <https://github.com/agentclientprotocol/python-sdk/tree/main/examples> |
-| Tests              | <https://github.com/agentclientprotocol/python-sdk/tree/main/tests>    |
-| PyPI               | <https://pypi.org/project/agent-client-protocol/>                      |
+This runs the checked-out SDK and examples. Installing the package alone does not create an `examples/` directory. The documentation follows `main`, which can include features beyond the latest stable PyPI release.
 
-## Project layout
+## Build your integration
 
-- `src/acp/`: runtime package (agents, clients, transports, schema bindings, contrib utilities)
-- `schema/`: upstream JSON schema sources (regenerate via `make gen-all`)
-- `docs/`: MkDocs content backing the published documentation
-- `examples/`: runnable scripts covering stdio orchestration patterns
-- `tests/`: pytest suite with golden fixtures and optional Gemini coverage
+| Task | Guide |
+| --- | --- |
+| Implement an agent | [Build an agent](https://agentclientprotocol.github.io/python-sdk/tutorials/agent/) |
+| Implement client callbacks and manage an agent process | [Build a client](https://agentclientprotocol.github.io/python-sdk/tutorials/client/) |
+| Handle tool calls and permissions | [Permission guide](https://agentclientprotocol.github.io/python-sdk/how-to/permissions/) |
+| Look up signatures and models | [Core API reference](https://agentclientprotocol.github.io/python-sdk/reference/api/) |
+| Study adapters built with this SDK | [Integration patterns](https://agentclientprotocol.github.io/python-sdk/integrations/) |
 
-## Developer commands
+Protocol v2, remote transports, and `acp.contrib` are experimental. Check their documentation before depending on their APIs.
 
-- `make install` provisions the `uv` virtualenv and installs pre-commit hooks.
-- `make check` runs Ruff formatting/linting, type analysis, dependency hygiene, and lock verification.
-- `make test` executes `pytest` (with doctests) inside the managed environment.
-- `ACP_SCHEMA_VERSION=<ref> make gen-all` refreshes protocol artifacts when the schema advances.
+## Contribute
 
-Keep docs and examples current whenever you ship public API or transport changes, and prefer Conventional Commits (`feat:`, `fix:`, etc.) when submitting patches.
+```bash
+make install
+make check
+make test
+make docs-test
+```
 
-## Community & support
-
-- File issues or feature requests at <https://github.com/agentclientprotocol/python-sdk>.
-- Discuss ideas or get help via GitHub Discussions: <https://github.com/agentclientprotocol/python-sdk/discussions>.
-- Join the broader ACP conversations at <https://agentclientprotocol.com/>, the Zed community channels, or the community Zulip: <https://agentclientprotocol.zulipchat.com/>.
-- Shared learnings, integrations, or third-party transports are welcome additions to the documentation—open a PR!
+Report bugs in [GitHub Issues](https://github.com/agentclientprotocol/python-sdk/issues). Include the SDK version, the agent or client you used, and a minimal reproduction. See the [release guide](https://agentclientprotocol.github.io/python-sdk/maintainers/releasing/) for schema regeneration and package publishing.

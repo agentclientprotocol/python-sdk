@@ -214,5 +214,5 @@ __marimo__/
 .zed/
 
 # others
-reference/
+/reference/
 .DS_Store

@@ -1,7 +1,7 @@
-site_name: Agent Client Protocol - Python SDK
+site_name: ACP Python SDK
 repo_url: https://github.com/agentclientprotocol/python-sdk
 site_url: https://agentclientprotocol.github.io/python-sdk
-site_description: A Python implement of Agent Client Protocol (ACP, by Zed Industries)
+site_description: Build agents and clients in Python with the Agent Client Protocol.
 site_author: Chojan Shang
 edit_uri: edit/main/docs/
 repo_name: agentclientprotocol/python-sdk
@@ -9,25 +9,63 @@ copyright: Maintained by <a href="https://github.com/psiace">psiace</a>.
 
 nav:
   - Home: index.md
-  - Quick Start: quickstart.md
-  - Use Cases: use-cases.md
-  - Web Transport (HTTP/WS): web-transport.md
-  - Experimental Protocol v2: experimental-v2.md
-  - Experimental Contrib: contrib.md
-  - Releasing: releasing.md
-  - 0.11 Migration Guide: migration-guide-0.11.md
-  - 0.7 Migration Guide: migration-guide-0.7.md
-  - 0.8 Migration Guide: migration-guide-0.8.md
+  - Tutorials:
+      - Run an agent and client: tutorials/quickstart.md
+      - Build an agent: tutorials/agent.md
+      - Build a client: tutorials/client.md
+  - How-to guides:
+      - Handle permissions: how-to/permissions.md
+      - Accumulate session state: how-to/session-state.md
+  - Explanation:
+      - Roles and session lifecycle: explanation/lifecycle.md
+      - Transport architecture: explanation/transports.md
+  - Reference:
+      - Core API: reference/api.md
+      - Protocol features and cancellation: reference/protocol.md
+      - Experimental:
+          - Contrib helpers: reference/experimental/contrib.md
+          - HTTP and WebSocket: reference/experimental/web-transports.md
+          - Protocol v2: reference/experimental/protocol-v2.md
+  - Integration patterns: integrations/index.md
+  - Migration:
+      - Upgrade to 0.11: migration/0.11.md
+      - Upgrade to 0.8: migration/0.8.md
+      - Upgrade to 0.7: migration/0.7.md
+  - Maintainers:
+      - Release the SDK: maintainers/releasing.md
+      - Deploy documentation: maintainers/documentation.md
+      - Maintain protocol routes: maintainers/protocol-routes.md
 plugins:
   - search
+  - redirects:
+      redirect_maps:
+        quickstart.md: tutorials/quickstart.md
+        guides/build-agent.md: tutorials/agent.md
+        guides/connect-agent.md: tutorials/client.md
+        guides/permissions.md: how-to/permissions.md
+        guides/session-state.md: how-to/session-state.md
+        contrib.md: reference/experimental/contrib.md
+        experimental-v2.md: reference/experimental/protocol-v2.md
+        web-transport.md: reference/experimental/web-transports.md
+        use-cases.md: integrations/index.md
+        releasing.md: maintainers/releasing.md
+        migration-guide-0.11.md: migration/0.11.md
+        migration-guide-0.8.md: migration/0.8.md
+        migration-guide-0.7.md: migration/0.7.md
   - mkdocstrings:
       handlers:
         python:
-          paths: ["src/acp"]
+          paths: ["src"]
+          options:
+            show_source: false
+            show_root_heading: true
+            heading_level: 3
+            show_signature_annotations: true
 theme:
   name: material
-  feature:
-    tabs: true
+  features:
+    - navigation.sections
+    - content.code.copy
   palette:
     - media: "(prefers-color-scheme: light)"
       scheme: default
@@ -56,5 +94,9 @@ extra:
 markdown_extensions:
   - toc:
       permalink: true
+  - admonition
+  - pymdownx.details
+  - pymdownx.highlight
+  - pymdownx.superfences
   - pymdownx.arithmatex:
       generic: true

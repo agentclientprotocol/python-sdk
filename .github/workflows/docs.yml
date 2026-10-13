@@ -1,0 +1,47 @@
+name: Documentation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'docs/**'
+      - 'src/acp/**'
+      - 'examples/**'
+      - 'README.md'
+      - 'mkdocs.yml'
+      - 'Makefile'
+      - 'pyproject.toml'
+      - 'uv.lock'
+      - '.github/actions/setup-python-env/**'
+      - '.github/workflows/docs.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pages: write
+    steps:
+      - name: Check out
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+      - name: Publish documentation to gh-pages
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git fetch origin gh-pages:gh-pages --depth=1
+          uv run --frozen mkdocs gh-deploy --strict --remote-branch gh-pages
+      - name: Request a Pages build
+        run: gh api --method POST "repos/$GITHUB_REPOSITORY/pages/builds"
+        env:
+          GH_TOKEN: ${{ github.token }}

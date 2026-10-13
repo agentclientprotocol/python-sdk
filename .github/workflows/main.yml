@@ -7,6 +7,9 @@ on:
   pull_request:
     types: [opened, synchronize, reopened, ready_for_review]
 
+permissions:
+  contents: read
+
 jobs:
   quality:
     runs-on: ubuntu-latest
@@ -67,8 +70,9 @@ jobs:
       - name: Check out
         uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
 
-      - name: Link Checker
+      - name: Check local documentation links
         id: lychee
         uses: lycheeverse/lychee-action@1ef33e2493308e49729a7789ddd73e7f8bed8f45
         with:
-          fail: false
+          args: --offline --include-fragments --no-progress README.md 'docs/**/*.md'
+          fail: true
