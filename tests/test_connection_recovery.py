@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -149,3 +150,58 @@ async def test_receive_loop_ignores_frames_that_are_not_json_objects() -> None:
     await conn.close()
 
     assert processed == ["survivor"]
+
+
+@pytest.mark.asyncio
+async def test_receive_loop_ignores_responses_with_an_invalid_id() -> None:
+    """A response whose ``id`` is not a ``RequestId`` must not answer anyone.
+
+    ``_handle_response`` looks the id up in ``_pending``. An array or an object raises there,
+    which escapes the receive loop, disconnects, and leaves the valid frame behind it
+    unhandled. ``true`` and ``1.0`` are worse than a crash: they are equal to the integer
+    ``1``, so they resolve a different request's future -- the aliasing ``_track_incoming``
+    already refuses on the way out.
+    """
+    conn, reader = _make_connection()
+    original = asyncio.get_running_loop().create_future()
+    conn._pending[1] = original
+    # The real dispatch is left in place: a response reaches ``_handle_response``, which is
+    # where the id is used. The loop is not fed EOF, so it stays alive and ``_disconnect``
+    # does not reject the pending future before it can be inspected.
+    handled: list[str] = []
+    real_track = conn._track_incoming
+
+    def tracking_track(request_id: Any, task: asyncio.Task[Any]) -> None:
+        handled.append("request")
+        real_track(request_id, task)
+
+    conn._track_incoming = tracking_track  # type: ignore[method-assign]
+
+    invalid = b"\n".join([
+        json.dumps({"jsonrpc": "2.0", "id": [], "result": "array"}).encode(),
+        json.dumps({"jsonrpc": "2.0", "id": {}, "result": "object"}).encode(),
+        json.dumps({"jsonrpc": "2.0", "id": True, "result": "aliased"}).encode(),
+        json.dumps({"jsonrpc": "2.0", "id": 1.0, "result": "aliased"}).encode(),
+    ])
+    survivor = {"jsonrpc": "2.0", "method": "survivor", "id": 2}
+    reader.feed_data(invalid + b"\n" + json.dumps(survivor).encode() + b"\n")
+
+    loop_task = asyncio.create_task(conn._receive_loop())
+    for _ in range(200):
+        await asyncio.sleep(0)
+        if handled and 1 not in conn._incoming:
+            break
+
+    # None of the four bad ids answered the integer-1 request, and the loop kept going: the
+    # valid request behind them was dispatched. Request 2 answers nothing and is cleaned up,
+    # so only the unanswered request 1 remains pending.
+    assert not original.done()
+    assert sorted(conn._pending) == [1]
+    assert handled == ["request"]
+
+    loop_task.cancel()
+    with contextlib.suppress(asyncio.CancelledError):
+        await loop_task
+
+    conn._pending.clear()
+    await conn.close()

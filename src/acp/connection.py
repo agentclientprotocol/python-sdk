@@ -299,6 +299,12 @@ class Connection:
 
     def _handle_response(self, message: dict[str, Any]) -> None:
         request_id = message["id"]
+        # A response can only answer a request this side sent, so its id must be a valid
+        # ``RequestId``. An unhashable one would raise on the lookup below and escape the
+        # receive loop, and Python would alias an invalid one such as ``true`` or ``1.0``
+        # with the integer ``1`` -- the same aliasing ``_track_incoming`` guards against.
+        if not _is_request_id(request_id):
+            return
         future = self._pending.pop(request_id, None)
         if future is None or future.done():
             return
