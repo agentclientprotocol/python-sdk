@@ -12,6 +12,8 @@ The SDK can run ACP over two remote connectivity profiles in addition to stdio:
 - **WebSocket** — a `GET` upgrade on the same endpoint carrying full-duplex
   JSON-RPC text frames, one message per frame. Binary frames are ignored, as
   the transport RFD specifies; the server logs a warning on the first one.
+  Both endpoints ignore malformed JSON and JSON values that are not objects,
+  continuing to receive subsequent messages.
 
 Both reuse the existing JSON-RPC message format and ACP lifecycle
 (`initialize` → session methods → close).

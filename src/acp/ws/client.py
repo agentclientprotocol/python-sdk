@@ -53,9 +53,11 @@ class _WebSocketTransport:
             if isinstance(frame, bytes):
                 continue
             try:
-                return json.loads(frame)
+                message = json.loads(frame)
             except json.JSONDecodeError:
                 continue
+            if isinstance(message, dict):
+                return message
 
     async def close(self) -> None:
         if self._closed:
