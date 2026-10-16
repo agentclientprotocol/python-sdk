@@ -11,6 +11,7 @@ import pytest
 from starlette.websockets import WebSocket
 from websockets.asyncio.server import serve
 
+from acp.connection import Connection
 from acp.http.protocol import CONNECTION_ID_HEADER
 from acp.schema import NewSessionResponse, PromptResponse
 from acp.ws.client import create_websocket_stream
@@ -87,6 +88,46 @@ async def test_client_transport_ignores_binary_frames() -> None:
             assert received == {"ok": True}
         finally:
             await transport.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("frame", ["null", "[]", "123", "1.5", '"x"', "true", "false", "invalid json", b"binary"])
+async def test_client_transport_ignores_non_object_frames(frame: str | bytes) -> None:
+    message = {"jsonrpc": "2.0", "id": 0, "result": {"items": [], "value": None}}
+
+    async def send_frames(ws: Any) -> None:
+        await ws.send(frame)
+        await ws.send(json.dumps(message))
+        await ws.close()
+
+    async with serve(send_frames, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        transport = await create_websocket_stream(f"ws://127.0.0.1:{port}")
+        try:
+            assert await asyncio.wait_for(transport.receive(), timeout=1) == message
+            assert await asyncio.wait_for(transport.receive(), timeout=1) is None
+        finally:
+            await transport.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("frame", ["null", "[]"])
+async def test_client_connection_recovers_after_non_object_frame(frame: str) -> None:
+    async def respond(ws: Any) -> None:
+        request = json.loads(await ws.recv())
+        await ws.send(frame)
+        await ws.send(json.dumps({"jsonrpc": "2.0", "id": request["id"], "result": {"protocolVersion": 1}}))
+        await ws.wait_closed()
+
+    async def handler(method: str, params: Any, is_notification: bool) -> None:
+        pass
+
+    async with serve(respond, "127.0.0.1", 0) as server:
+        port = server.sockets[0].getsockname()[1]
+        transport = await create_websocket_stream(f"ws://127.0.0.1:{port}")
+        async with Connection(handler, transport) as conn:
+            result = await asyncio.wait_for(conn.send_request("initialize", {"protocolVersion": 1}), timeout=1)
+            assert result == {"protocolVersion": 1}
 
 
 # -- ASGI websocket server handler ---------------------------------------------
