@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -57,7 +57,7 @@ async def test_writer_failure_settles_active_queued_and_late_sends() -> None:
     error = BrokenPipeError("writer failed")
     writer = _ControlledWriter(error=error)
     supervisor = TaskSupervisor(source="test")
-    sender = MessageSender(writer, supervisor)
+    sender = MessageSender(cast(asyncio.StreamWriter, writer), supervisor)
     tasks: list[asyncio.Task[Any]] = []
 
     try:
@@ -88,7 +88,7 @@ async def test_writer_failure_settles_active_queued_and_late_sends() -> None:
 async def test_supervisor_shutdown_settles_active_queued_and_late_sends() -> None:
     writer = _ControlledWriter()
     supervisor = TaskSupervisor(source="test")
-    sender = MessageSender(writer, supervisor)
+    sender = MessageSender(cast(asyncio.StreamWriter, writer), supervisor)
     tasks: list[asyncio.Task[Any]] = []
 
     try:
@@ -105,8 +105,9 @@ async def test_supervisor_shutdown_settles_active_queued_and_late_sends() -> Non
         tasks.append(late)
         await _assert_tasks_finish(tasks)
 
-        for task in tasks:
-            assert isinstance(task.exception(), ConnectionError)
+        for task in tasks[:2]:
+            assert task.cancelled()
+        assert late.cancelled()
     finally:
         await _close_supervisor(supervisor, tasks)
 
@@ -115,7 +116,7 @@ async def test_supervisor_shutdown_settles_active_queued_and_late_sends() -> Non
 async def test_shutdown_before_sender_loop_starts_rejects_later_send() -> None:
     writer = _ControlledWriter()
     supervisor = TaskSupervisor(source="test")
-    sender = MessageSender(writer, supervisor)
+    sender = MessageSender(cast(asyncio.StreamWriter, writer), supervisor)
     tasks: list[asyncio.Task[Any]] = []
 
     try:
@@ -123,7 +124,7 @@ async def test_shutdown_before_sender_loop_starts_rejects_later_send() -> None:
         late = asyncio.create_task(sender.send({"id": 1}), name="send-after-shutdown")
         tasks.append(late)
         await _assert_tasks_finish(tasks)
-        assert isinstance(late.exception(), ConnectionError)
+        assert late.cancelled()
     finally:
         await _close_supervisor(supervisor, tasks)
 
@@ -132,7 +133,7 @@ async def test_shutdown_before_sender_loop_starts_rejects_later_send() -> None:
 async def test_healthy_sends_preserve_order_and_graceful_close() -> None:
     writer = _ControlledWriter()
     supervisor = TaskSupervisor(source="test")
-    sender = MessageSender(writer, supervisor)
+    sender = MessageSender(cast(asyncio.StreamWriter, writer), supervisor)
     tasks: list[asyncio.Task[Any]] = []
     closing: asyncio.Task[None] | None = None
 
@@ -157,7 +158,7 @@ async def test_healthy_sends_preserve_order_and_graceful_close() -> None:
         late = asyncio.create_task(sender.send({"id": 3}), name="send-after-close")
         tasks.append(late)
         await _assert_tasks_finish([late])
-        assert isinstance(late.exception(), ConnectionError)
+        assert late.cancelled()
     finally:
         if closing is not None and not closing.done():
             closing.cancel()

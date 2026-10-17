@@ -3,7 +3,7 @@ from __future__ import annotations
 import asyncio
 import contextlib
 import json
-from typing import Any
+from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock
 
 import pytest
@@ -170,7 +170,7 @@ async def test_receive_loop_ignores_frames_that_are_not_json_objects() -> None:
 async def test_send_request_removes_pending_after_writer_failure() -> None:
     reader = asyncio.StreamReader()
     writer = _FailingWriter()
-    conn = Connection(_noop_handler, writer, reader, listening=False)
+    conn = Connection(_noop_handler, cast(asyncio.StreamWriter, writer), reader, listening=False)
     requests = [
         asyncio.create_task(conn.send_request("first"), name="request-first"),
         asyncio.create_task(conn.send_request("second"), name="request-second"),
