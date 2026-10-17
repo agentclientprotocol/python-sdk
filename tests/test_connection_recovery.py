@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import json
 from typing import Any
 from unittest.mock import AsyncMock, MagicMock
@@ -27,6 +28,20 @@ def _make_connection(
     writer = asyncio.StreamWriter(transport, protocol, reader, asyncio.get_running_loop())
     conn = Connection(_noop_handler, writer, reader, listening=False, receive_timeout=receive_timeout)
     return conn, reader
+
+
+class _FailingWriter:
+    def __init__(self) -> None:
+        self.drain_started = asyncio.Event()
+        self.release = asyncio.Event()
+
+    def write(self, _payload: bytes) -> None:
+        pass
+
+    async def drain(self) -> None:
+        self.drain_started.set()
+        await self.release.wait()
+        raise BrokenPipeError("writer failed")
 
 
 @pytest.mark.asyncio
@@ -149,3 +164,44 @@ async def test_receive_loop_ignores_frames_that_are_not_json_objects() -> None:
     await conn.close()
 
     assert processed == ["survivor"]
+
+
+@pytest.mark.asyncio
+async def test_send_request_removes_pending_after_writer_failure() -> None:
+    reader = asyncio.StreamReader()
+    writer = _FailingWriter()
+    conn = Connection(_noop_handler, writer, reader, listening=False)
+    requests = [
+        asyncio.create_task(conn.send_request("first"), name="request-first"),
+        asyncio.create_task(conn.send_request("second"), name="request-second"),
+    ]
+
+    try:
+        await asyncio.wait_for(writer.drain_started.wait(), timeout=1)
+        for _ in range(100):
+            if conn._transport._sender._queue.qsize() == 1:  # type: ignore[attr-defined]
+                break
+            await asyncio.sleep(0)
+        else:
+            raise AssertionError("second request was not queued")
+
+        writer.release.set()
+        done, pending = await asyncio.wait(requests, timeout=1)
+        try:
+            assert not pending, f"requests still pending: {pending}"
+            for request in done:
+                with pytest.raises(BrokenPipeError, match="writer failed"):
+                    request.result()
+            assert conn._pending == {}
+        finally:
+            for request in pending:
+                request.cancel()
+            await asyncio.gather(*requests, return_exceptions=True)
+    finally:
+        writer.release.set()
+        for request in requests:
+            if not request.done():
+                request.cancel()
+        await asyncio.gather(*requests, return_exceptions=True)
+        with contextlib.suppress(BrokenPipeError):
+            await conn.close()
