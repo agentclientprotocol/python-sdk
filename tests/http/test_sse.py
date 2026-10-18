@@ -72,3 +72,11 @@ async def test_parse_skips_invalid_json() -> None:
     stream = _aiter([b'data: not-json\n\ndata: {"id":1}\n\n'])
     events = [event async for event in parse_sse_stream(stream)]
     assert events == [{"id": 1}]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("payload", [b"[]", b'[ {"id":2} ]', b'"text"', b"42", b"true", b"false", b"null"])
+async def test_parse_skips_non_object_json(payload: bytes) -> None:
+    stream = _aiter([b"data: " + payload + b'\n\ndata: {"id":1}\n\n'])
+    events = [event async for event in parse_sse_stream(stream)]
+    assert events == [{"id": 1}]

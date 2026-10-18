@@ -42,9 +42,10 @@ def _decode_event(data_lines: list[str]) -> dict[str, Any] | None:
     if not payload:
         return None
     try:
-        return json.loads(payload)
+        message = json.loads(payload)
     except json.JSONDecodeError:
         return None
+    return message if isinstance(message, dict) else None
 
 
 def _append_field(line: str, data_lines: list[str]) -> None:
@@ -60,6 +61,7 @@ async def parse_sse_stream(chunks: AsyncIterator[bytes]) -> AsyncIterator[dict[s
     """Parse an SSE byte stream, yielding decoded JSON-RPC ``data:`` payloads.
 
     Comments (lines starting with ``:``) and non-``data`` fields are ignored.
+    Invalid JSON and non-object JSON payloads are skipped.
     Multi-line ``data:`` fields are concatenated with newlines per the spec. A
     blank line dispatches the buffered event.
     """

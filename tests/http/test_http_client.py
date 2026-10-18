@@ -136,6 +136,25 @@ async def test_connection_scoped_sse_delivers_new_session_result() -> None:
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize("payload", [b"[]", b'"text"', b"42"])
+async def test_connection_scoped_sse_skips_non_object_json(payload: bytes) -> None:
+    server = FakeServer()
+    transport, client = _make_transport(server)
+    try:
+        await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
+        await asyncio.wait_for(transport.receive(), timeout=1)
+        await transport.send({"jsonrpc": "2.0", "id": 1, "method": "session/new", "params": {}})
+        server.conn_stream.put_nowait(b"data: " + payload + b"\n\n")
+        response = {"jsonrpc": "2.0", "id": 1, "result": {"sessionId": "sess-1"}}
+        server.push_conn(response)
+
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == response
+    finally:
+        await transport.close()
+        await client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_session_scoped_sse_opens_after_new_session() -> None:
     server = FakeServer()
     transport, client = _make_transport(server)
