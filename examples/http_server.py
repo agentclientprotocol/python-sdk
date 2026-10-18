@@ -1,5 +1,5 @@
 # /// script
-# requires-python = ">=3.10,<3.15"
+# requires-python = ">=3.10,<3.16"
 # dependencies = [
 #     "agent-client-protocol[http]",
 #     "hypercorn>=0.17",
