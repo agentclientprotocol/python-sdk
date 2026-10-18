@@ -2,14 +2,16 @@
 
 from __future__ import annotations
 
+import contextlib
 import json
 import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
-from starlette.websockets import WebSocket, WebSocketState
+from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
 from ..agent.connection import AgentSideConnection
+from ..exceptions import RequestError
 from ..http.protocol import CONNECTION_ID_HEADER
 
 if TYPE_CHECKING:
@@ -44,9 +46,18 @@ class _WebSocketTransport:
             try:
                 message = json.loads(event["text"])
             except json.JSONDecodeError:
-                continue
-            if isinstance(message, dict):
-                return message
+                error = RequestError.parse_error()
+            else:
+                if isinstance(message, dict) and message:
+                    return message
+                if isinstance(message, list) and message:
+                    # Batch support is outside this message-level transport.
+                    continue
+                error = RequestError.invalid_request()
+            # A failed write must not discard valid messages buffered by ASGI.
+            if self._ws.application_state == WebSocketState.CONNECTED:
+                with contextlib.suppress(WebSocketDisconnect):
+                    await self.send({"jsonrpc": "2.0", "id": None, "error": error.to_error_obj()})
         return None
 
     async def close(self) -> None:
