@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Sequence
 from contextlib import suppress
+from copy import deepcopy
 from typing import Any
 
 from pydantic import BaseModel, ConfigDict
@@ -62,8 +63,8 @@ class _MutableToolCallState:
         self.status = update.status
         self.content = _copy_model_list(update.content)
         self.locations = _copy_model_list(update.locations)
-        self.raw_input = update.raw_input
-        self.raw_output = update.raw_output
+        self.raw_input = deepcopy(update.raw_input)
+        self.raw_output = deepcopy(update.raw_output)
 
     def apply_progress(self, update: ToolCallProgress) -> None:
         if update.title is not None:
@@ -77,9 +78,9 @@ class _MutableToolCallState:
         if update.locations is not None:
             self.locations = _copy_model_list(update.locations)
         if update.raw_input is not None:
-            self.raw_input = update.raw_input
+            self.raw_input = deepcopy(update.raw_input)
         if update.raw_output is not None:
-            self.raw_output = update.raw_output
+            self.raw_output = deepcopy(update.raw_output)
 
     def snapshot(self) -> ToolCallView:
         return ToolCallView(
@@ -89,8 +90,8 @@ class _MutableToolCallState:
             status=self.status,
             content=tuple(item.model_copy(deep=True) for item in self.content) if self.content else None,
             locations=tuple(loc.model_copy(deep=True) for loc in self.locations) if self.locations else None,
-            raw_input=self.raw_input,
-            raw_output=self.raw_output,
+            raw_input=deepcopy(self.raw_input),
+            raw_output=deepcopy(self.raw_output),
         )
 
 

@@ -13,6 +13,7 @@ The helpers under `acp.contrib` package recurring patterns we saw in integration
 
 - `SessionAccumulator.apply(notification)` reconciles `tool_call` and `tool_call_update` payloads, even if the start event arrives late.
 - `snapshot()` returns an immutable `SessionSnapshot` Pydantic model containing the plan, current mode, commands, and ordered message history.
+- Raw tool input/output payloads are copied when applying notifications and creating snapshots, so nested payload mutations do not change the accumulated state.
 - `subscribe(callback)` lets you push snapshots into stores or UI components whenever state changes.
 - Automatic reset on session-change (toggle with `auto_reset_on_session_change`).
 

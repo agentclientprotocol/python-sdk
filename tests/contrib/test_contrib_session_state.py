@@ -22,6 +22,66 @@ def notification(session_id: str, update):
     return SessionNotification(session_id=session_id, update=update)
 
 
+@pytest.fixture(params=["start", "progress"])
+def raw_tool_notification(request: pytest.FixtureRequest) -> SessionNotification:
+    raw_input = {"options": {"paths": ["input.txt"]}}
+    raw_output = {"result": {"lines": ["original"]}}
+    update: ToolCallStart | ToolCallProgress
+    if request.param == "start":
+        update = ToolCallStart(
+            session_update="tool_call",
+            tool_call_id="call-1",
+            title="Read file",
+            raw_input=raw_input,
+            raw_output=raw_output,
+        )
+    else:
+        update = ToolCallProgress(
+            session_update="tool_call_update",
+            tool_call_id="call-1",
+            raw_input=raw_input,
+            raw_output=raw_output,
+        )
+    return notification("s", update)
+
+
+def test_raw_notification_mutation_does_not_change_accumulated_state(
+    raw_tool_notification: SessionNotification,
+) -> None:
+    acc = SessionAccumulator()
+    first = acc.apply(raw_tool_notification)
+    update = raw_tool_notification.update
+    assert isinstance(update, ToolCallStart | ToolCallProgress)
+    assert update.raw_input is not None
+    assert update.raw_output is not None
+
+    update.raw_input["options"]["paths"].append("external.txt")
+    update.raw_output["result"]["lines"].append("external")
+
+    for snapshot in (first, acc.snapshot()):
+        assert snapshot.tool_calls["call-1"].raw_input == {"options": {"paths": ["input.txt"]}}
+        assert snapshot.tool_calls["call-1"].raw_output == {"result": {"lines": ["original"]}}
+
+
+def test_raw_snapshot_mutation_does_not_change_other_snapshots_or_state(
+    raw_tool_notification: SessionNotification,
+) -> None:
+    acc = SessionAccumulator()
+    first = acc.apply(raw_tool_notification)
+    second = acc.snapshot()
+
+    first.tool_calls["call-1"].raw_input["options"]["paths"].append("external.txt")
+    first.tool_calls["call-1"].raw_output["result"]["lines"].append("external")
+
+    for snapshot in (second, acc.snapshot()):
+        assert snapshot.tool_calls["call-1"].raw_input == {"options": {"paths": ["input.txt"]}}
+        assert snapshot.tool_calls["call-1"].raw_output == {"result": {"lines": ["original"]}}
+    update = raw_tool_notification.update
+    assert isinstance(update, ToolCallStart | ToolCallProgress)
+    assert update.raw_input == {"options": {"paths": ["input.txt"]}}
+    assert update.raw_output == {"result": {"lines": ["original"]}}
+
+
 def test_session_accumulator_merges_tool_calls():
     acc = SessionAccumulator()
     start = ToolCallStart(
