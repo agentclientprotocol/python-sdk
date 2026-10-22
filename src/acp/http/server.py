@@ -29,8 +29,10 @@ try:
 except ImportError as exc:
     raise ImportError("The HTTP server requires the 'http' extra: pip install agent-client-protocol[http]") from exc
 
+from .._jsonrpc import error_response, require_message_object
 from .._sse import serialize_sse_event, serialize_sse_keepalive
 from ..agent.connection import AgentSideConnection
+from ..exceptions import RequestError
 from .protocol import (
     CONNECTION_ID_HEADER,
     SESSION_ATTACH_METHODS,
@@ -249,10 +251,12 @@ class AcpServer:
     ) -> Response:
         if content_type is None or not content_type.lower().startswith("application/json"):
             return JSONResponse({"error": "Content-Type must be application/json"}, status_code=415)
-        if isinstance(message, list):
+        try:
+            message = require_message_object(message)
+        except RequestError as error:
+            return JSONResponse(error_response(error), status_code=400)
+        if message is None:
             return JSONResponse({"error": "Batch requests are not supported"}, status_code=501)
-        if not isinstance(message, dict):
-            return JSONResponse({"error": "Invalid JSON-RPC message"}, status_code=400)
 
         if is_initialize_request(message):
             return await self._handle_initialize(message)

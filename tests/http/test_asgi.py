@@ -28,7 +28,8 @@ INITIALIZE = {"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {"pro
         ("POST", {"Content-Type": "text/plain"}, "{}", 415),
         ("POST", {"Content-Type": "application/json"}, "invalid", 400),
         ("POST", {"Content-Type": "application/json"}, "null", 400),
-        ("POST", {"Content-Type": "application/json"}, "[]", 501),
+        ("POST", {"Content-Type": "application/json"}, "[]", 400),
+        ("POST", {"Content-Type": "application/json"}, '[{"jsonrpc":"2.0","method":"probe","id":1}]', 501),
         ("GET", {"Accept": "application/json"}, "", 406),
         ("GET", {"Accept": "text/event-stream"}, "", 400),
         ("GET", {"Accept": "text/event-stream", CONNECTION_ID_HEADER: "unknown"}, "", 404),
@@ -45,6 +46,35 @@ async def test_http_errors(method: str, headers: dict[str, str], body: str, stat
         response = await client.request(method, "/acp", headers=headers, content=body)
         assert response.status_code == status
         assert "error" in response.json()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("payload", "code"),
+    [
+        ("invalid json", -32700),
+        ("null", -32600),
+        ("[]", -32600),
+        ("{}", -32600),
+        ("true", -32600),
+        ("42", -32600),
+        ('"text"', -32600),
+    ],
+)
+async def test_invalid_post_returns_protocol_error_without_losing_connection(payload: str, code: int) -> None:
+    app = create_asgi_app(lambda conn: TestAgent())
+    async with (
+        app.router.lifespan_context(app),
+        httpx2.AsyncClient(transport=httpx2.ASGITransport(app=app), base_url="http://test") as client,
+    ):
+        initialized = await client.post("/acp", json=INITIALIZE)
+        headers = {"Content-Type": "application/json", CONNECTION_ID_HEADER: initialized.headers[CONNECTION_ID_HEADER]}
+        response = await client.post("/acp", content=payload, headers=headers)
+        assert response.status_code == 400
+        body = response.json()
+        assert body["jsonrpc"] == "2.0" and body["id"] is None
+        assert body["error"]["code"] == code
+        assert (await client.delete("/acp", headers=headers)).status_code == 202
 
 
 @pytest.mark.asyncio

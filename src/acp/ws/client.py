@@ -13,6 +13,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from .._cookies import MemoryAcpCookieStore
+from .._jsonrpc import decode_message, error_response
 from ..exceptions import RequestError
 
 try:
@@ -54,21 +55,14 @@ class _WebSocketTransport:
             if isinstance(frame, bytes):
                 continue
             try:
-                message = json.loads(frame)
-            except json.JSONDecodeError:
-                error = RequestError.parse_error()
-            else:
-                if isinstance(message, dict) and message:
+                message = decode_message(frame)
+                if message is not None:
                     return message
-                if isinstance(message, list) and message:
-                    # Batch support is outside this message-level transport.
-                    continue
-                error = RequestError.invalid_request()
-            # Sending while closing waits for EOF, which may require draining
-            # buffered frames first. Keep receiving instead of waiting here.
-            if self._ws.state == websockets.State.OPEN:
-                with contextlib.suppress(websockets.ConnectionClosed):
-                    await self.send({"jsonrpc": "2.0", "id": None, "error": error.to_error_obj()})
+            except RequestError as error:
+                # Sending while closing may wait for buffered frames to drain.
+                if self._ws.state == websockets.State.OPEN:
+                    with contextlib.suppress(websockets.ConnectionClosed):
+                        await self.send(error_response(error))
 
     async def close(self) -> None:
         if self._closed:
