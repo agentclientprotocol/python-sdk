@@ -107,8 +107,9 @@ jobs:
             make test
           instruction: >-
             Security remediation only: inspect open Dependabot alerts; skip routine upgrades and stop if alert access fails. Closed alerts only reconcile tracked remediation.
-            For failed CI, verify the supplied security dependency PR's current head and failed checks; make only necessary repairs on its existing branch, without force-push.
+            Before editing and again before publishing a new draft, inspect open dependency PRs by package, manifest path and patched version. Reuse a matching Dependabot, Renovate or Landing PR; never create a duplicate for the same remediation.
+            Leave existing candidates with passing or pending CI unchanged. Repair only completed failed CI on the current head, using the original branch and draft status; do not force-push or create a replacement when write access fails.
             Follow AGENTS.md: use uv, preserve dependency constraints and pinning styles, and keep manifest/lock changes scoped to the security fix.
-            Reuse matching PRs; publish new candidates as English drafts on deps/landing-* branches with Conventional Commit titles and advisory/version/check evidence.
+            Publish new candidates as English drafts on deps/landing-* branches with Conventional Commit titles and advisory/version/check evidence.
             After each candidate push, run gh workflow run main.yml --ref <candidate-branch> and verify the run's head_sha matches; report dispatch failures without weakening checks.
             Maintainers decide merges, releases and alert dismissal; do not change the package version or generated protocol bindings. No general review or triage is authorized.
