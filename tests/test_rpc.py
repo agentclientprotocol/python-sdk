@@ -975,3 +975,226 @@ async def test_connection_init_under_eager_task_factory(server):
     await asyncio.sleep(0)
     assert conn._disconnected is False
     await conn.close()
+
+
+async def _response_handler(method: str, params: Any, is_notification: bool) -> None:
+    return None
+
+
+async def _start_response_requests(
+    conn: Connection, peer: asyncio.StreamReader
+) -> tuple[list[asyncio.Task[Any]], list[dict[str, Any]]]:
+    tasks = [asyncio.create_task(conn.send_request("probe", {"index": index})) for index in range(2)]
+    frames = [json.loads(await asyncio.wait_for(peer.readline(), timeout=1)) for _ in tasks]
+    assert [frame["id"] for frame in frames] == [0, 1]
+    return tasks, frames
+
+
+async def _send_responses(writer: asyncio.StreamWriter, *messages: dict[str, Any]) -> None:
+    writer.write("".join(json.dumps(message) + "\n" for message in messages).encode())
+    await writer.drain()
+
+
+async def _cleanup_response_requests(
+    conn: Connection, tasks: list[asyncio.Task[Any]], receive_loop: asyncio.Task[Any] | None = None
+) -> None:
+    for task in tasks:
+        if not task.done():
+            task.cancel()
+    await asyncio.gather(*tasks, return_exceptions=True)
+    await conn.close()
+    if receive_loop is not None:
+        if not receive_loop.done():
+            receive_loop.cancel()
+        await asyncio.gather(receive_loop, return_exceptions=True)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("error", [["malformed"], "malformed", 7, True])
+@pytest.mark.parametrize("manual", [False, True], ids=["supervised", "main_loop"])
+async def test_bad_response_rejects_all_requests_before_close(server, error: Any, manual: bool) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader, listening=not manual)
+    receive_loop = asyncio.create_task(conn.main_loop()) if manual else None
+    tasks: list[asyncio.Task[Any]] = []
+    try:
+        tasks, frames = await _start_response_requests(conn, server.server_reader)
+        await _send_responses(server.server_writer, {"jsonrpc": "2.0", "id": frames[0]["id"], "error": error})
+        done, pending = await asyncio.wait(tasks, timeout=1)
+        # Observe automatic cleanup before close(), without cancelling requests on timeout.
+        assert not pending, f"orphaned requests: {len(pending)}"
+        assert len(done) == 2
+        for task in tasks:
+            assert isinstance(task.exception(), ConnectionError)
+        assert conn._disconnected
+        assert not conn._pending
+        if receive_loop is not None:
+            with pytest.raises(AttributeError):
+                await receive_loop
+    finally:
+        await _cleanup_response_requests(conn, tasks, receive_loop)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("response", "value", "error"),
+    [
+        ({"result": {"value": 1}}, {"value": 1}, None),
+        ({"result": None}, None, None),
+        ({"result": False}, False, None),
+        ({"result": "ok", "error": ["ignored"]}, "ok", None),
+        ({}, None, None),
+        ({"error": {"code": -32602, "message": "bad", "data": {"x": 1}}}, None, (-32602, "bad", {"x": 1})),
+        *[({"error": item}, None, (-32603, "Error", None)) for item in [{}, [], "", 0, False, None]],
+        ({"error": {"code": [], "message": "Error"}}, None, ([], "Error", None)),
+    ],
+)
+async def test_response_compatibility(server, response: dict[str, Any], value: Any, error: Any) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader)
+    tasks: list[asyncio.Task[Any]] = []
+    try:
+        tasks, frames = await _start_response_requests(conn, server.server_reader)
+        await _send_responses(
+            server.server_writer,
+            {"jsonrpc": "2.0", "id": frames[0]["id"], **response},
+            {"jsonrpc": "2.0", "id": frames[1]["id"], "result": "survivor"},
+        )
+        _, pending = await asyncio.wait(tasks, timeout=1)
+        assert not pending
+        if error is None:
+            assert tasks[0].result() == value
+        else:
+            exception = tasks[0].exception()
+            assert isinstance(exception, RequestError)
+            assert (exception.code, str(exception), exception.data) == error
+        assert tasks[1].result() == "survivor"
+        assert not conn._pending
+        assert not conn._disconnected
+    finally:
+        await _cleanup_response_requests(conn, tasks)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("request_id", [[], {}, True, 1.0, 999, "unknown", None])
+async def test_unknown_or_invalid_ids_do_not_parse_bad_error(server, request_id: Any) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader)
+    tasks: list[asyncio.Task[Any]] = []
+    try:
+        tasks, _ = await _start_response_requests(conn, server.server_reader)
+        await _send_responses(
+            server.server_writer,
+            {"jsonrpc": "2.0", "id": request_id, "error": ["malformed"]},
+            {"jsonrpc": "2.0", "id": 0, "result": "first"},
+            {"jsonrpc": "2.0", "id": 1, "result": "second"},
+        )
+        _, pending = await asyncio.wait(tasks, timeout=1)
+        assert not pending
+        assert [task.result() for task in tasks] == ["first", "second"]
+        assert not conn._disconnected
+        assert not conn._pending
+    finally:
+        await _cleanup_response_requests(conn, tasks)
+
+
+@pytest.mark.asyncio
+async def test_cancelled_request_and_late_bad_response(server) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader)
+    tasks: list[asyncio.Task[Any]] = []
+    try:
+        tasks, _ = await _start_response_requests(conn, server.server_reader)
+        tasks[0].cancel()
+        with pytest.raises(asyncio.CancelledError):
+            await tasks[0]
+        cancel = json.loads(await asyncio.wait_for(server.server_reader.readline(), timeout=1))
+        assert cancel["method"] == "$/cancel_request"
+        assert cancel["params"] == {"requestId": 0}
+        await _send_responses(
+            server.server_writer,
+            {"jsonrpc": "2.0", "id": 0, "error": ["malformed"]},
+            {"jsonrpc": "2.0", "id": 1, "result": "survivor"},
+        )
+        _, pending = await asyncio.wait(tasks, timeout=1)
+        assert not pending
+        assert tasks[0].cancelled()
+        assert tasks[1].result() == "survivor"
+        assert not conn._disconnected
+    finally:
+        await _cleanup_response_requests(conn, tasks)
+
+
+@pytest.mark.asyncio
+async def test_duplicate_bad_response_is_ignored(server) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader)
+    tasks: list[asyncio.Task[Any]] = []
+    try:
+        tasks, _ = await _start_response_requests(conn, server.server_reader)
+        await _send_responses(
+            server.server_writer,
+            {"jsonrpc": "2.0", "id": 0, "result": "first"},
+            {"jsonrpc": "2.0", "id": 0, "error": ["malformed"]},
+            {"jsonrpc": "2.0", "id": 1, "result": "second"},
+        )
+        _, pending = await asyncio.wait(tasks, timeout=1)
+        assert not pending
+        assert [task.result() for task in tasks] == ["first", "second"]
+        assert not conn._disconnected
+    finally:
+        await _cleanup_response_requests(conn, tasks)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("action", ["close", "eof"])
+async def test_normal_shutdown_rejects_pending(server, action: str) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader)
+    tasks: list[asyncio.Task[Any]] = []
+    try:
+        tasks, _ = await _start_response_requests(conn, server.server_reader)
+        if action == "close":
+            await conn.close()
+        else:
+            server.server_writer.close()
+            await server.server_writer.wait_closed()
+        _, pending = await asyncio.wait(tasks, timeout=1)
+        assert not pending
+        assert all(isinstance(task.exception(), ConnectionError) for task in tasks)
+        assert not conn._pending
+    finally:
+        await _cleanup_response_requests(conn, tasks)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("status", ["done", "cancelled"])
+async def test_completed_future_is_removed_without_parsing(server, status: str) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader, listening=False)
+    future = asyncio.get_running_loop().create_future()
+    conn._pending[0] = future
+    if status == "done":
+        future.set_result("original")
+    else:
+        future.cancel()
+    try:
+        conn._handle_response({"id": 0, "error": ["malformed"]})
+        assert not conn._pending
+        assert not conn._disconnected
+        if status == "done":
+            assert future.result() == "original"
+        else:
+            assert future.cancelled()
+    finally:
+        await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_done_callback_runs_after_pending_removal(server) -> None:
+    conn = Connection(_response_handler, server.client_writer, server.client_reader, listening=False)
+    future = asyncio.get_running_loop().create_future()
+    observed: list[bool] = []
+    conn._pending[0] = future
+    future.add_done_callback(lambda _: observed.append(0 in conn._pending))
+    try:
+        conn._handle_response({"id": 0, "result": "ok"})
+        assert observed == []
+        assert not conn._pending
+        await asyncio.sleep(0)
+        assert observed == [False]
+    finally:
+        await conn.close()
