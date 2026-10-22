@@ -116,3 +116,22 @@ def test_default_permission_options_shape():
     options = default_permission_options()
     assert len(options) == 3
     assert {opt.option_id for opt in options} == {"approve", "approve_for_session", "reject"}
+
+
+@pytest.mark.asyncio
+async def test_permission_request_raw_payloads_are_detached_from_tracker() -> None:
+    tracker = ToolCallTracker()
+    tracker.start("external", title="Run", raw_input={"args": ["original"]}, raw_output={"result": ["original"]})
+
+    async def requester(request: RequestPermissionRequest) -> RequestPermissionResponse:
+        assert isinstance(request.tool_call.raw_input, dict)
+        assert isinstance(request.tool_call.raw_output, dict)
+        request.tool_call.raw_input["args"].append("request mutation")
+        request.tool_call.raw_output["result"].append("request mutation")
+        return RequestPermissionResponse(outcome=AllowedOutcome(option_id="approve", outcome="selected"))
+
+    broker = PermissionBroker("session", requester, tracker=tracker)
+    await broker.request_for("external")
+
+    assert tracker.view("external").raw_input == {"args": ["original"]}
+    assert tracker.view("external").raw_output == {"result": ["original"]}
