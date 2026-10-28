@@ -155,6 +155,32 @@ async def test_connection_scoped_sse_skips_non_object_json(payload: bytes) -> No
 
 
 @pytest.mark.asyncio
+async def test_rejected_protocol_error_does_not_discard_buffered_response() -> None:
+    server = FakeServer()
+
+    def handle(request: httpx2.Request) -> httpx2.Response:
+        response = server.handler(request)
+        if request.method == "POST" and "error" in json.loads(request.content):
+            return httpx2.Response(503)
+        return response
+
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(handle)) as client:
+        transport = create_http_stream("http://test/acp", client=client)
+        try:
+            await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
+            await transport.receive()
+            server.conn_stream.put_nowait(b"data: invalid json\n\n")
+            response = {"jsonrpc": "2.0", "id": 1, "result": {"items": [], "value": None}}
+            server.push_conn(response)
+            server.conn_stream.put_nowait(None)
+            assert await asyncio.wait_for(transport.receive(), timeout=1) == response
+            assert await asyncio.wait_for(transport.receive(), timeout=1) is None
+            assert server.posts[-1]["error"]["code"] == -32700
+        finally:
+            await transport.close()
+
+
+@pytest.mark.asyncio
 async def test_session_scoped_sse_opens_after_new_session() -> None:
     server = FakeServer()
     transport, client = _make_transport(server)

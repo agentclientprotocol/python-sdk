@@ -23,7 +23,9 @@ import asyncio
 import contextlib
 from typing import TYPE_CHECKING, Any
 
+from .._jsonrpc import error_response
 from .._sse import parse_sse_stream
+from ..exceptions import RequestError
 from .protocol import (
     CONNECTION_ID_HEADER,
     CONTENT_TYPE_JSON,
@@ -190,7 +192,7 @@ class _HttpStreamTransport:
             async with self._client.stream("GET", self._url, headers=headers) as response:
                 if response.status_code != 200:
                     return
-                async for event in parse_sse_stream(_aiter_raw(response)):
+                async for event in parse_sse_stream(_aiter_raw(response), on_error=self._send_protocol_error):
                     self._handle_incoming(event)
         except (httpx2.HTTPError, asyncio.CancelledError):
             return
@@ -214,6 +216,10 @@ class _HttpStreamTransport:
         if not self._closed:
             self._pending_loads.clear()
             self._inbox.put_nowait(_EOF)
+
+    async def _send_protocol_error(self, error: RequestError) -> None:
+        with contextlib.suppress(ConnectionError, httpx2.HTTPError, AcpHttpStatusError):
+            await self.send(error_response(error))
 
     def _handle_incoming(self, message: dict[str, Any]) -> None:
         # Load and resume responses may omit sessionId; the ID is in the request.

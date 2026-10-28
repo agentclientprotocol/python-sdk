@@ -3,13 +3,13 @@
 from __future__ import annotations
 
 import contextlib
-import json
 import logging
 import uuid
 from typing import TYPE_CHECKING, Any
 
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
+from .._jsonrpc import decode_message, error_response
 from ..agent.connection import AgentSideConnection
 from ..exceptions import RequestError
 from ..http.protocol import CONNECTION_ID_HEADER
@@ -44,20 +44,14 @@ class _WebSocketTransport:
                     logging.warning("Ignoring binary WebSocket frame; ACP messages must be sent as text frames")
                 continue
             try:
-                message = json.loads(event["text"])
-            except json.JSONDecodeError:
-                error = RequestError.parse_error()
-            else:
-                if isinstance(message, dict) and message:
+                message = decode_message(event["text"])
+                if message is not None:
                     return message
-                if isinstance(message, list) and message:
-                    # Batch support is outside this message-level transport.
-                    continue
-                error = RequestError.invalid_request()
-            # A failed write must not discard valid messages buffered by ASGI.
-            if self._ws.application_state == WebSocketState.CONNECTED:
-                with contextlib.suppress(WebSocketDisconnect):
-                    await self.send({"jsonrpc": "2.0", "id": None, "error": error.to_error_obj()})
+            except RequestError as error:
+                # A failed write must not discard valid messages buffered by ASGI.
+                if self._ws.application_state == WebSocketState.CONNECTED:
+                    with contextlib.suppress(WebSocketDisconnect):
+                        await self.send(error_response(error))
         return None
 
     async def close(self) -> None:

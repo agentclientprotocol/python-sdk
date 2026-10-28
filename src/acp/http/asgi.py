@@ -18,6 +18,8 @@ from starlette.responses import JSONResponse, Response, StreamingResponse
 from starlette.routing import Route, WebSocketRoute
 from starlette.websockets import WebSocket
 
+from .._jsonrpc import error_response
+from ..exceptions import RequestError
 from ..ws.server import handle_websocket
 from .protocol import ACP_ENDPOINT_PATH, CONNECTION_ID_HEADER, CONTENT_TYPE_SSE, SESSION_ID_HEADER
 from .server import AcpServer, AgentFactory
@@ -62,7 +64,7 @@ async def _post(server: AcpServer, request: Request) -> Response:
     try:
         message = await request.json()
     except (json.JSONDecodeError, UnicodeDecodeError):
-        return JSONResponse({"error": "Invalid JSON"}, status_code=400)
+        return JSONResponse(error_response(RequestError.parse_error()), status_code=400)
     return await server.handle_post(
         message,
         content_type=request.headers.get("content-type"),

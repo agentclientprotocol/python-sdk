@@ -71,7 +71,9 @@ async def test_post_wrong_content_type_returns_415() -> None:
 @pytest.mark.asyncio
 async def test_batch_returns_501() -> None:
     server = AcpServer(_agent_factory(_Agent()))
-    result = await server.handle_post([], content_type=CT_JSON, connection_id=None, session_id=None)
+    result = await server.handle_post(
+        [{"jsonrpc": "2.0", "method": "probe", "id": 1}], content_type=CT_JSON, connection_id=None, session_id=None
+    )
     assert result.status_code == 501
     await server.close()
 
