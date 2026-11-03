@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from acp.contrib.tool_calls import ToolCallTracker
 from acp.schema import ContentToolCallContent, TextContentBlock, ToolCallProgress
 
@@ -33,3 +35,79 @@ def test_tool_call_tracker_streaming_text_updates_content():
     assert isinstance(second_content, ContentToolCallContent)
     assert isinstance(second_content.content, TextContentBlock)
     assert second_content.content.text == "hello, world"
+
+
+@pytest.mark.parametrize("field", ["raw_input", "raw_output"])
+@pytest.mark.parametrize("operation", ["start", "progress"])
+def test_tracker_snapshots_incoming_raw_payloads(field: str, operation: str) -> None:
+    tracker = ToolCallTracker()
+    payload = {"nested": ["original"]}
+    if operation == "start":
+        notification = tracker.start(
+            "external",
+            title="Run",
+            raw_input=payload if field == "raw_input" else None,
+            raw_output=payload if field == "raw_output" else None,
+        )
+    else:
+        tracker.start("external", title="Run")
+        notification = tracker.progress(
+            "external",
+            raw_input=payload if field == "raw_input" else None,
+            raw_output=payload if field == "raw_output" else None,
+        )
+
+    payload["nested"].append("caller mutation")
+
+    assert getattr(tracker.view("external"), field) == {"nested": ["original"]}
+    assert getattr(notification, field) == {"nested": ["original"]}
+
+
+@pytest.mark.parametrize("field", ["raw_input", "raw_output"])
+@pytest.mark.parametrize("output", ["start", "progress", "view", "tool_call_model"])
+def test_tracker_raw_payload_exports_cannot_mutate_state(field: str, output: str) -> None:
+    tracker = ToolCallTracker()
+    payload = {"nested": ["original"]}
+    notification = tracker.start(
+        "external",
+        title="Run",
+        raw_input=payload if field == "raw_input" else None,
+        raw_output=payload if field == "raw_output" else None,
+    )
+    if output == "progress":
+        exported = tracker.progress(
+            "external",
+            raw_input=payload if field == "raw_input" else None,
+            raw_output=payload if field == "raw_output" else None,
+        )
+    elif output == "view":
+        exported = tracker.view("external")
+    elif output == "tool_call_model":
+        exported = tracker.tool_call_model("external")
+    else:
+        exported = notification
+
+    getattr(exported, field)["nested"].append("consumer mutation")
+
+    assert getattr(tracker.view("external"), field) == {"nested": ["original"]}
+
+
+@pytest.mark.parametrize("payload", [None, False, 0, "text", ["item"]])
+def test_tracker_preserves_json_raw_payload_values(payload: object) -> None:
+    tracker = ToolCallTracker()
+    tracker.start("external", title="Run", raw_input=payload, raw_output=payload)
+
+    assert tracker.view("external").raw_input == payload
+    assert tracker.tool_call_model("external").raw_output == payload
+
+
+def test_tracker_progress_can_clear_raw_payloads() -> None:
+    tracker = ToolCallTracker()
+    tracker.start("external", title="Run", raw_input={"old": True}, raw_output={"old": True})
+
+    progress = tracker.progress("external", raw_input=None, raw_output=None)
+
+    assert progress.raw_input is None
+    assert progress.raw_output is None
+    assert tracker.view("external").raw_input is None
+    assert tracker.view("external").raw_output is None
