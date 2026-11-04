@@ -1,0 +1,109 @@
+name: ACP TCK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+permissions:
+  contents: read
+
+env:
+  TCK_COMMIT: 7c71c4d1af0994e73bdc100c9f7f6b98f2319cda # v0.5.0
+  TCK_SPEC_REVISION: 3ea94133bb4e7cfdb1105df75660ff83e66acf62
+  PYTHON_VERSION: "3.14.5"
+
+jobs:
+  agent-stdio:
+    name: ${{ matrix.name }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # TCK v1.32.0 unstable vs SDK schema-v1.35.0.
+          - protocol: 1
+            name: agent-stdio (v1)
+            sdk-schema: schema
+            sdk-bindings: src/acp
+            tck-schema-blob: 4f18b3e7e90d8d65d413d27b750aa87b1fe9024c
+            tck-meta-blob: 2736f7fc75263e8fe18545de936b905da6e15436
+          # Diagnostic: TCK alpha.16 vs SDK alpha.7; keep the native failure visible.
+          - protocol: 2
+            name: agent-stdio (v2 diagnostic)
+            sdk-schema: schema/v2
+            sdk-bindings: src/acp/experimental/v2
+            tck-schema-blob: 819dc3d7bea6022f673b7d6a03c6fc2f831b25b8
+            tck-meta-blob: 8854425691cc15acdc82569facc1467494e2e7d6
+    steps:
+      - name: Check out SDK
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          persist-credentials: false
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          version: "0.11.14"
+          enable-cache: true
+
+      - name: Install current SDK checkout
+        run: uv sync --locked --no-dev --python "$PYTHON_VERSION"
+
+      - name: Check out pinned ACP TCK
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          repository: agentclientprotocol/acp-tck
+          ref: ${{ env.TCK_COMMIT }}
+          path: build/acp-tck
+          persist-credentials: false
+
+      - name: Run full ACP TCK suite
+        shell: bash
+        env:
+          PROTOCOL: ${{ matrix.protocol }}
+          SDK_SCHEMA: ${{ matrix.sdk-schema }}
+          SDK_BINDINGS: ${{ matrix.sdk-bindings }}
+          TCK_SCHEMA_BLOB: ${{ matrix.tck-schema-blob }}
+          TCK_META_BLOB: ${{ matrix.tck-meta-blob }}
+        run: |
+          mkdir -p build/tck
+          tck="$PWD/build/acp-tck"
+          vendored="$tck/src/tck/v$PROTOCOL/schema"
+          {
+            echo "SDK commit: $(git rev-parse HEAD)"
+            echo "SDK schema: $(cat "$SDK_SCHEMA/VERSION")"
+            git diff --exit-code HEAD -- "$SDK_SCHEMA" "$SDK_BINDINGS/schema.py" "$SDK_BINDINGS/meta.py"
+            git ls-files -s -- "$SDK_SCHEMA/schema.json" "$SDK_SCHEMA/meta.json" \
+              "$SDK_BINDINGS/schema.py" "$SDK_BINDINGS/meta.py"
+            sdk_import=$(.venv/bin/python -c 'import acp; print(acp.__file__)')
+            echo "SDK import: $sdk_import"
+            test "$sdk_import" = "$PWD/src/acp/__init__.py"
+            echo "TCK commit: $(git -C "$tck" rev-parse HEAD)"
+            echo "TCK spec revision: $TCK_SPEC_REVISION"
+            test "$(git -C "$tck" rev-parse HEAD)" = "$TCK_COMMIT"
+            grep -F "SCHEMA_REVISION = \"$TCK_SPEC_REVISION\"" "$vendored/../protocol.py"
+            test "$(git hash-object "$vendored/schema.unstable.json")" = "$TCK_SCHEMA_BLOB"
+            test "$(git hash-object "$vendored/meta.unstable.json")" = "$TCK_META_BLOB"
+            echo "TCK schema/meta blobs: $TCK_SCHEMA_BLOB $TCK_META_BLOB"
+          } 2>&1 | tee build/tck/tck.log
+
+          status=0
+          uv run --project "$tck" --locked --no-dev --python "$PYTHON_VERSION" acp-tck \
+            --protocol-version "$PROTOCOL" --timeout 5 --cancel-prompt wait_for_cancel \
+            --report-json "$PWD/build/tck/report.json" -- \
+            "$PWD/.venv/bin/python" "$PWD/tests/tck/agent_v$PROTOCOL.py" \
+            >>build/tck/tck.log 2>&1 || status=$?
+          printf '%s\n' "$status" >build/tck/exit-code.txt
+          tail -n 30 build/tck/tck.log
+          exit "$status"
+
+      - name: Upload TCK report, log and exit code
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: acp-tck-v${{ matrix.protocol }}
+          path: build/tck/
+          if-no-files-found: warn
