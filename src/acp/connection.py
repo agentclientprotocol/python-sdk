@@ -271,7 +271,9 @@ class Connection:
             except RequestError as exc:
                 payload["error"] = exc.to_error_obj()
             except ValidationError as exc:
-                payload["error"] = RequestError.invalid_params({"errors": exc.errors()}).to_error_obj()
+                payload["error"] = RequestError.invalid_params({
+                    "errors": json.loads(exc.json(include_context=False))
+                }).to_error_obj()
             except Exception as exc:
                 logging.exception(
                     "Unhandled error while handling request method=%s",

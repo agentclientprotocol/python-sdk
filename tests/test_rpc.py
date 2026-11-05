@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Any, cast
 
 import pytest
-from pydantic import AnyUrl
+from pydantic import AnyUrl, BaseModel
 
 from acp import (
     AcceptElicitationResponse,
@@ -527,6 +527,66 @@ async def test_invalid_params_results_in_error_response(connect, server):
     assert resp["id"] == 1
     assert "error" in resp
     assert resp["error"]["code"] == -32602  # invalid params
+
+
+class _HandlerOriginModel(BaseModel):
+    n: int
+
+
+class _NotJsonNative:
+    def __repr__(self) -> str:
+        return "<NotJsonNative>"
+
+
+class _ReprRaises:
+    def __repr__(self) -> str:
+        raise RuntimeError("repr exploded")
+
+
+def _handler_building_model_from(value: Any):
+    async def handler(method: str, params: Any, is_notification: bool) -> Any:
+        _HandlerOriginModel(n=value)  # type: ignore[arg-type]
+        return None
+
+    return handler
+
+
+@pytest.mark.asyncio
+async def test_handler_origin_validation_error_reaches_the_peer(server):
+    # Handler-origin validation error: ``input`` holds a plain Python object, which
+    # ``json.dumps`` in the transport refuses. The reply must still arrive.
+    conn = Connection(_handler_building_model_from(_NotJsonNative()), server.client_writer, server.client_reader)
+    req = {"jsonrpc": "2.0", "id": 1, "method": "thing", "params": {}}
+    server.server_writer.write((json.dumps(req) + "\n").encode())
+    await server.server_writer.drain()
+
+    line = await asyncio.wait_for(server.server_reader.readline(), timeout=2)
+    resp = json.loads(line)
+    assert resp["id"] == 1
+    assert resp["error"]["code"] == -32602
+    # The offending value survives as a diagnostic string rather than being dropped.
+    assert isinstance(resp["error"]["data"]["errors"][0]["input"], str)
+
+    await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_handler_origin_validation_error_survives_an_input_whose_repr_raises(server):
+    # Pins the serialiser: pydantic substitutes a placeholder, while anything that
+    # stringifies the input (e.g. ``fallback=str``) raises inside the ``except``
+    # clause and strands the peer again.
+    conn = Connection(_handler_building_model_from(_ReprRaises()), server.client_writer, server.client_reader)
+    req = {"jsonrpc": "2.0", "id": 2, "method": "thing", "params": {}}
+    server.server_writer.write((json.dumps(req) + "\n").encode())
+    await server.server_writer.drain()
+
+    line = await asyncio.wait_for(server.server_reader.readline(), timeout=2)
+    resp = json.loads(line)
+    assert resp["id"] == 2
+    assert resp["error"]["code"] == -32602
+    assert isinstance(resp["error"]["data"]["errors"][0]["input"], str)
+
+    await conn.close()
 
 
 @pytest.mark.asyncio
