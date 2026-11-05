@@ -278,10 +278,19 @@ class Connection:
                     method,
                     exc_info=exc,
                 )
+                # Stringify once, before either branch: this is the recovery path for an
+                # exception, so re-running ``str(exc)`` inside an ``except`` clause has no
+                # sibling handler left and escapes ``_execute_request`` unanswered.
                 try:
-                    data = json.loads(str(exc))
+                    text = str(exc)
                 except Exception:
-                    data = {"details": str(exc)}
+                    # ``type(exc).__name__`` reads the class attribute and calls nothing on
+                    # the instance, unlike ``repr(exc)``, which is the same hazard again.
+                    text = f"<unprintable {type(exc).__name__}>"
+                try:
+                    data = json.loads(text)
+                except Exception:
+                    data = {"details": text}
                 payload["error"] = RequestError.internal_error(data).to_error_obj()
         return payload
 

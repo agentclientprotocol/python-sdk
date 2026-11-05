@@ -975,3 +975,56 @@ async def test_connection_init_under_eager_task_factory(server):
     await asyncio.sleep(0)
     assert conn._disconnected is False
     await conn.close()
+
+
+class _UnprintableError(Exception):
+    """Handler crash whose ``__str__`` raises, like a proxy whose backing state is gone."""
+
+    def __str__(self) -> str:
+        raise RuntimeError("__str__ exploded")
+
+
+class _JsonMessageError(Exception):
+    """Handler crash whose message is itself a JSON document."""
+
+    def __str__(self) -> str:
+        return json.dumps({"reason": "busy", "retryAfter": 5})
+
+
+async def _answer_request(server, exc: Exception) -> dict[str, Any]:
+    """Serve one request from a handler raising ``exc`` and return the response frame."""
+
+    async def handler(method: str, params: Any, is_notification: bool) -> Any:
+        raise exc
+
+    conn = Connection(handler, server.server_writer, server.server_reader)
+    try:
+        req = {"jsonrpc": "2.0", "id": 1, "method": "explode", "params": {}}
+        server.client_writer.write((json.dumps(req) + "\n").encode())
+        await server.client_writer.drain()
+        line = await asyncio.wait_for(server.client_reader.readline(), timeout=2)
+    finally:
+        await conn.close()
+    return cast("dict[str, Any]", json.loads(line))
+
+
+@pytest.mark.asyncio
+async def test_handler_exception_with_raising_str_still_answers(server):
+    # Regression: the internal-error recovery called str(exc) a second time inside its own
+    # except clause, so the retry escaped _execute_request and no reply was ever written.
+    resp = await _answer_request(server, _UnprintableError())
+
+    assert resp["id"] == 1
+    assert resp["error"]["code"] == -32603
+    # The type name is what distinguishes this from an ordinary crash with an empty message.
+    assert "_UnprintableError" in resp["error"]["data"]["details"]
+
+
+@pytest.mark.asyncio
+async def test_handler_exception_with_json_message_keeps_parsed_data(server):
+    # Pre-existing behaviour the stringify-once rewrite must not break.
+    resp = await _answer_request(server, _JsonMessageError())
+
+    assert resp["id"] == 1
+    assert resp["error"]["code"] == -32603
+    assert resp["error"]["data"] == {"reason": "busy", "retryAfter": 5}
