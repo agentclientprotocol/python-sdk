@@ -283,6 +283,16 @@ class Connection:
                 except Exception:
                     data = {"details": str(exc)}
                 payload["error"] = RequestError.internal_error(data).to_error_obj()
+            # One gate for every payload shape. The response is already attributed to a
+            # request id, and ``json.dumps`` is what each transport calls, so anything it
+            # refuses here would otherwise strand the peer inside ``transport.send``, where
+            # the failure escapes the response task with no handler left to answer.
+            try:
+                json.dumps(payload)
+            except Exception as exc:
+                logging.exception("Response for method=%s could not be encoded", method, exc_info=exc)
+                payload.pop("result", None)
+                payload["error"] = RequestError.internal_error({"details": str(exc)}).to_error_obj()
         return payload
 
     async def _run_notification(self, message: dict[str, Any]) -> None:

@@ -975,3 +975,74 @@ async def test_connection_init_under_eager_task_factory(server):
     await asyncio.sleep(0)
     assert conn._disconnected is False
     await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_unserialisable_raw_result_answers_the_peer(server):
+    # Regression: a handler returning a raw (non-BaseModel) value that json.dumps cannot
+    # encode used to build a payload that died in the transport, so no response line was
+    # ever written and the peer waited on the request id forever.
+    async def handler(method: str, params: Any, is_notification: bool) -> Any:
+        return {"x": {1, 2}}
+
+    conn = Connection(handler, server.client_writer, server.client_reader)
+
+    req = {"jsonrpc": "2.0", "id": 1, "method": "custom/thing", "params": {}}
+    server.server_writer.write((json.dumps(req) + "\n").encode())
+    await server.server_writer.drain()
+
+    line = await asyncio.wait_for(server.server_reader.readline(), timeout=1)
+    resp = json.loads(line)
+    assert resp["id"] == 1
+    assert resp["error"]["code"] == -32603
+    details = resp["error"]["data"]["details"]
+    assert "set" in details and "JSON serializable" in details
+
+    await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_base_model_result_with_a_set_is_coerced_and_still_answers(server):
+    # Pins why the BaseModel branch above needs no representability check:
+    # model_dump(mode="json") already coerces an Any-typed set into a list. If that ever
+    # stops being true, this test says so instead of the check silently becoming too narrow.
+    async def handler(method: str, params: Any, is_notification: bool) -> Any:
+        return AuthenticateResponse(field_meta={"tags": {1, 2}})
+
+    conn = Connection(handler, server.client_writer, server.client_reader)
+
+    req = {"jsonrpc": "2.0", "id": 2, "method": "authenticate", "params": {}}
+    server.server_writer.write((json.dumps(req) + "\n").encode())
+    await server.server_writer.drain()
+
+    line = await asyncio.wait_for(server.server_reader.readline(), timeout=1)
+    resp = json.loads(line)
+    assert resp["id"] == 2
+    assert "error" not in resp
+    assert sorted(resp["result"]["_meta"]["tags"]) == [1, 2]
+
+    await conn.close()
+
+
+@pytest.mark.asyncio
+async def test_unserialisable_request_error_data_answers_the_peer(server):
+    # Regression: ``RequestError.data`` is typed ``Any``, so a handler raising a structured
+    # protocol error whose data json.dumps cannot encode used to build a payload that died in
+    # the transport, leaving no response line and the peer waiting on the request id forever.
+    async def handler(method: str, params: Any, is_notification: bool) -> Any:
+        raise RequestError(-32000, "boom", data={"x": {1, 2}})
+
+    conn = Connection(handler, server.client_writer, server.client_reader)
+
+    req = {"jsonrpc": "2.0", "id": 3, "method": "custom/thing", "params": {}}
+    server.server_writer.write((json.dumps(req) + "\n").encode())
+    await server.server_writer.drain()
+
+    line = await asyncio.wait_for(server.server_reader.readline(), timeout=1)
+    resp = json.loads(line)
+    assert resp["id"] == 3
+    assert resp["error"]["code"] == -32603
+    details = resp["error"]["data"]["details"]
+    assert "set" in details and "JSON serializable" in details
+
+    await conn.close()
