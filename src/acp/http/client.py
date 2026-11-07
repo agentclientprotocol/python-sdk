@@ -23,7 +23,7 @@ import asyncio
 import contextlib
 from typing import TYPE_CHECKING, Any
 
-from .._jsonrpc import error_response
+from .._jsonrpc import JsonRpcMessage, error_response
 from .._sse import parse_sse_stream
 from ..exceptions import RequestError
 from .protocol import (
@@ -88,9 +88,13 @@ class _HttpStreamTransport:
 
     # -- Transport protocol -------------------------------------------------
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         if self._closed:
             raise ConnectionError("Transport closed")
+        if isinstance(message, list):
+            # A Streamable HTTP POST carries a single JSON-RPC message and the server answers a
+            # batch root with 501, so a batch can never be delivered over this transport.
+            raise ConnectionError("Batch requests are not supported over Streamable HTTP")
         if is_initialize_request(message):
             await self._send_initialize(message)
             return
@@ -105,7 +109,7 @@ class _HttpStreamTransport:
                 self._pending_loads.pop(key, None)
             raise
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> JsonRpcMessage | None:
         item = await self._inbox.get()
         if item is _EOF:
             return None
@@ -221,7 +225,12 @@ class _HttpStreamTransport:
         with contextlib.suppress(ConnectionError, httpx2.HTTPError, AcpHttpStatusError):
             await self.send(error_response(error))
 
-    def _handle_incoming(self, message: dict[str, Any]) -> None:
+    def _handle_incoming(self, message: dict[str, Any] | list[Any]) -> None:
+        if isinstance(message, list):
+            for entry in message:
+                if isinstance(entry, dict):
+                    self._handle_incoming(entry)
+            return
         # Load and resume responses may omit sessionId; the ID is in the request.
         if is_response_message(message):
             key = message_id_key(message.get("id"))

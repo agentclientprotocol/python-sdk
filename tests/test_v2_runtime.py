@@ -212,23 +212,31 @@ async def test_callable_agent_is_not_treated_as_a_factory() -> None:
 
 
 @pytest.mark.asyncio
-async def test_v2_runtime_rejects_a_different_protocol_version() -> None:
-    client_transport, agent_transport = memory_transport_pair()
+@pytest.mark.parametrize("requested_version", [1, v2.PROTOCOL_VERSION, 65535])
+async def test_v2_initialize_negotiates_the_supported_version_on_the_wire(requested_version: int) -> None:
+    # TCK ACP-INIT-003/201/202: a v2-only agent must answer 1, 2 and 65535 with version 2 instead
+    # of a -32602, and must still reject a second initialize on the same connection.
+    peer, agent_transport = memory_transport_pair()
     agent = Agent()
     agent_connection = v2.AgentSideConnection(agent, agent_transport)
-    client_connection = v2.ClientSideConnection(Client(), client_transport)
+    params = {
+        **initialize_request().model_dump(mode="json", by_alias=True, exclude_none=True),
+        "protocolVersion": requested_version,
+    }
 
     try:
-        with pytest.raises(RequestError) as error:
-            await client_connection.initialize(
-                protocol_version=1, info=v2.schema.Implementation(name="test-client", version="1.0.0")
-            )
+        await peer.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": params})
+        response = await asyncio.wait_for(peer.receive(), timeout=1)
 
-        assert isinstance(error.value, RequestError)
-        assert error.value.code == -32602
-        assert agent.initialize_calls == 0
+        assert response["result"]["protocolVersion"] == v2.PROTOCOL_VERSION
+        assert agent.initialize_calls == 1
+
+        await peer.send({"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": params})
+        duplicate = await asyncio.wait_for(peer.receive(), timeout=1)
+
+        assert (duplicate["id"], duplicate["error"]["code"]) == (1, -32600)
+        assert agent.initialize_calls == 1
     finally:
-        await client_connection.close()
         await agent_connection.close()
 
 
@@ -580,5 +588,51 @@ async def test_cancel_request_before_the_handler_starts_still_replies() -> None:
 
         assert (response["id"], response["error"]["code"]) == (1, -32800)
         assert handled == []
+    finally:
+        await agent_connection.close()
+
+
+@pytest.mark.asyncio
+async def test_v2_request_without_params_is_not_invalid_params() -> None:
+    # TCK ACP-BATCH-204/205/JSONRPC-001 batch ``session/list`` with no ``params`` member at all.
+    # Every ACP request envelope requires only ``id``/``method``, so an omitted ``params`` means
+    # "no arguments" and must not be rejected as Invalid params.
+    class ListAgent(Agent):
+        async def list_sessions(
+            self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
+        ) -> v2.schema.ListSessionsResponse:
+            return v2.schema.ListSessionsResponse(sessions=[])
+
+        async def new_session(self, cwd: str, **kwargs: Any) -> v2.schema.NewSessionResponse:
+            return v2.schema.NewSessionResponse(session_id="sess")
+
+    peer, agent_transport = memory_transport_pair()
+    agent_connection = v2.AgentSideConnection(ListAgent(), agent_transport)
+
+    try:
+        await peer.send({
+            "jsonrpc": "2.0",
+            "id": 0,
+            "method": "initialize",
+            "params": initialize_request().model_dump(mode="json", by_alias=True, exclude_none=True),
+        })
+        assert "result" in await asyncio.wait_for(peer.receive(), timeout=1)
+
+        await peer.send({"jsonrpc": "2.0", "id": 1, "method": "session/list"})
+        single = await asyncio.wait_for(peer.receive(), timeout=1)
+        assert single["result"] == {"sessions": []}
+
+        await peer.send([
+            {"jsonrpc": "2.0", "id": "a", "method": "session/list"},
+            {"jsonrpc": "2.0", "id": "b", "method": "session/list"},
+        ])
+        batch = await asyncio.wait_for(peer.receive(), timeout=1)
+        assert [entry["id"] for entry in batch] == ["a", "b"]
+        assert all("result" in entry for entry in batch)
+
+        # A method whose params really are required still fails validation.
+        await peer.send({"jsonrpc": "2.0", "id": 2, "method": "session/new"})
+        rejected = await asyncio.wait_for(peer.receive(), timeout=1)
+        assert rejected["error"]["code"] == -32602
     finally:
         await agent_connection.close()

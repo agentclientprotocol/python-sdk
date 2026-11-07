@@ -131,3 +131,26 @@ async def test_ignored_payload_preserves_requests_without_reply(peer: _Peer, pay
     await _complete(peer, pending, request)
     next_pending, next_request = await _request(peer)
     await _complete(peer, next_pending, next_request)
+
+
+@pytest.mark.asyncio
+async def test_batch_root_is_answered_as_one_array(peer: _Peer) -> None:
+    # A JSON-RPC batch arrives as a single frame; both replies come back in one array, and the
+    # response entry inside the batch resolves the request we sent instead of being echoed.
+    pending, request = await _request(peer)
+    await peer.send(
+        json.dumps([
+            {"jsonrpc": "2.0", "id": "one", "method": "probe", "params": {"n": 1}},
+            {"jsonrpc": "2.0", "id": request["id"], "result": "answered"},
+            {"jsonrpc": "2.0", "id": "two", "method": "probe", "params": {"n": 2}},
+        ])
+    )
+
+    assert await asyncio.wait_for(pending, timeout=1) == "answered"
+    # SSE carries one message per frame, so the HTTP transport fans the array out again while
+    # keeping each response on its own route; stdio and WebSocket keep the single array frame.
+    replies: list[dict[str, Any]] = []
+    while len(replies) < 2:
+        received = await asyncio.wait_for(peer.receive(), timeout=1)
+        replies.extend(received if isinstance(received, list) else [received])
+    assert [reply["id"] for reply in replies] == ["one", "two"]

@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING, Any
 
 from starlette.websockets import WebSocket, WebSocketDisconnect, WebSocketState
 
-from .._jsonrpc import decode_message, error_response
+from .._jsonrpc import JsonRpcMessage, decode_message, error_response
 from ..agent.connection import AgentSideConnection
 from ..exceptions import RequestError
 from ..http.protocol import CONNECTION_ID_HEADER
@@ -28,12 +28,12 @@ class _WebSocketTransport:
         self._ws = websocket
         self._warned_binary = False
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         if self._ws.client_state == WebSocketState.DISCONNECTED:
             raise ConnectionError("Transport closed")
         await self._ws.send_json(message)
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> JsonRpcMessage | None:
         while self._ws.client_state != WebSocketState.DISCONNECTED:
             event = await self._ws.receive()
             if event["type"] == "websocket.disconnect":
