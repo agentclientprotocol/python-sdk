@@ -36,10 +36,18 @@ environment and lockfile; it never supplies the agent's SDK package. It writes `
 `build/tck/v2.json`, `build/tck/manifest.json`, and a detailed log for each suite.
 
 The v1 lane is a CI gate: the official TCK verdict and every mandatory test outcome must pass.
-This catches cancellation tests that TCK's aggregate verdict would otherwise allow to skip. The
-v2 lane always runs and reports its current behavior. Even with the alpha.5 TCK, the SDK
-currently fails mandatory version-negotiation and batch-response checks, so v2 is not yet a CI
-gate. Its failures remain visible in the report. Promote it after those SDK behaviors are fixed.
+This catches cancellation tests that TCK's aggregate verdict would otherwise allow to skip.
+
+The v2 lane gates mandatory outcomes only: any `MANDATORY` `FAIL`, `NOT_TESTED`, or unexpected
+`SKIPPED` requirement fails CI. The two conditional auth checks `ACP-AUTH-206` and `ACP-AUTH-207`
+are the sole exception — alpha.5 skips them when the agent advertises no auth methods, and the
+runner accepts those skips only when the fixture's recorded capabilities report no `auth` and
+each child test is `SKIPPED` on the pinned node id with the pinned skip reason exactly. There is
+no substring matching: a missing or unparseable reason, a missing capabilities object, a `FAIL`
+row, or any third skip stays gated. The v2 lane does not gate the TCK's own verdict (which
+also folds in `CAPABILITY` failures) and never gates `ADVISORY` results, which stay as advisory
+reporting.
+
 The CI job uploads all reports and logs even when its gate fails.
 
 The probes advertise only the capabilities they implement. Optional capability tests that remain

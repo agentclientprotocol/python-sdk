@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import ast
 import json
 import shutil
 import subprocess
@@ -20,6 +21,20 @@ TCK_SCHEMA_REVISIONS = {
     2: "9af0e9f748db9f4cc4c410a7b212ead4f98ae78c",
 }
 CANCEL_PROMPT = "wait_for_cancel"
+
+# The only v2 MANDATORY SKIPs the gate accepts: alpha.5's two conditional auth checks, which have
+# nothing to inspect unless the agent advertises auth methods. Pinned per requirement id to the test
+# that must skip and its exact reason, so any other MANDATORY SKIP fails CI.
+V2_PINNED_SKIPS = {
+    "ACP-AUTH-206": (
+        "test_authentication.py::test_auth_method_type_is_a_defined_or_prefixed_value",
+        "Skipped: agent advertises no authMethods",
+    ),
+    "ACP-AUTH-207": (
+        "test_authentication.py::test_terminal_auth_method_descriptor_shape",
+        "Skipped: agent advertises no type=='terminal' authMethods entry; nothing to check",
+    ),
+}
 
 
 def executable(name: str) -> str:
@@ -80,10 +95,44 @@ def run_suite(tck_dir: Path, output_dir: Path, python: Path, version: int, timeo
         ).returncode
 
 
-def check_mandatory(requirements: list[dict[str, Any]], version: int) -> list[str]:
+def pinned_auth_skip(requirement: dict[str, Any], version: int, report: dict[str, Any]) -> bool:
+    """True only for the two pinned alpha.5 conditional auth SKIPs.
+
+    Fail-closed on every axis: the v2 lane only; the requirement itself ``SKIPPED`` (a ``FAIL``
+    row stays gated even when its children claim ``SKIPPED``); a fixture whose recorded
+    capabilities object reports no ``auth`` (missing or non-object capabilities count as
+    advertising it); and every child test a ``SKIPPED`` on the pinned node id whose message
+    parses to exactly the pinned reason. alpha.5 records a message as
+    ``repr((file, line, reason))``; any other shape is rejected, never substring-matched.
+    """
+    pinned = V2_PINNED_SKIPS.get(str(requirement.get("id"))) if version == 2 else None
+    capabilities = report.get("agent_capabilities")
+    tests = requirement.get("tests") or []
+    if pinned is None or requirement.get("status") != "SKIPPED" or not tests:
+        return False
+    if not isinstance(capabilities, dict) or capabilities.get("auth") is not None:
+        return False
+    nodeid, reason = pinned
+    for test in tests:
+        message = test.get("message")
+        if test.get("status") != "SKIPPED" or test.get("nodeid") != nodeid or not isinstance(message, str):
+            return False
+        try:
+            parsed = ast.literal_eval(message)
+        except (SyntaxError, ValueError):
+            return False
+        if not (isinstance(parsed, tuple) and parsed[-1:] == (reason,)):
+            return False
+    return True
+
+
+def check_mandatory(requirements: list[dict[str, Any]], version: int, report: dict[str, Any]) -> list[str]:
     errors = []
     for item in requirements:
         if item.get("tier") != "MANDATORY":
+            continue
+        if pinned_auth_skip(item, version, report):
+            print(f"v{version}: {item['id']} is SKIPPED (pinned conditional auth check)", flush=True)
             continue
         if item.get("status") != "PASS":
             errors.append(f"v{version}: {item['id']} is {item.get('status')}, expected PASS")
@@ -135,10 +184,11 @@ def inspect_report(
         flush=True,
     )
 
-    if strict:
-        if tck_exit != 0 or verdict.get("conformant") is not True:
-            errors.append(f"v{version}: TCK conformance verdict failed")
-        errors.extend(check_mandatory(requirements, version))
+    if strict and (tck_exit != 0 or verdict.get("conformant") is not True):
+        errors.append(f"v{version}: TCK conformance verdict failed")
+    # Both lanes gate MANDATORY outcomes; only the v1 lane additionally requires the TCK's own
+    # verdict, which also folds in CAPABILITY failures. ADVISORY results are never gated.
+    errors.extend(check_mandatory(requirements, version, report))
     return errors, report
 
 
