@@ -485,10 +485,10 @@ async def test_cancelled_request_is_removed_from_pending_map() -> None:
     sent = asyncio.Event()
 
     class _NeverRespondTransport:
-        async def send(self, message: dict[str, Any]) -> None:
+        async def send(self, message: dict[str, Any] | list[Any]) -> None:
             sent.set()
 
-        async def receive(self) -> dict[str, Any] | None:
+        async def receive(self) -> dict[str, Any] | list[Any] | None:
             await asyncio.Event().wait()
             return None
 

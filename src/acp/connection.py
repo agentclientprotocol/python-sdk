@@ -12,6 +12,7 @@ from typing import Any, cast
 
 from pydantic import BaseModel, ValidationError
 
+from ._jsonrpc import error_response as _error_response
 from ._transport import NdjsonTransport, Transport
 from .exceptions import RequestError
 from .meta import PROTOCOL_METHODS
@@ -33,12 +34,17 @@ class StreamDirection(str, Enum):
 @dataclass(frozen=True, slots=True)
 class StreamEvent:
     direction: StreamDirection
-    message: dict[str, Any]
+    message: dict[str, Any] | list[Any]
 
 
 StreamObserver = Callable[[StreamEvent], Awaitable[None] | None]
 
 _CANCEL_REQUEST_METHOD = PROTOCOL_METHODS["cancel_request"]
+
+
+async def _answer_invalid_entry(payload: dict[str, Any]) -> dict[str, Any]:
+    """Answer a batch entry that is not a valid request without dispatching it."""
+    return payload
 
 
 def _is_request_id(value: Any) -> bool:
@@ -148,6 +154,9 @@ class Connection:
                 message = await self._transport.receive()
                 if message is None:
                     break
+                if isinstance(message, list):
+                    self._process_batch(message)
+                    continue
                 self._notify_observers(StreamDirection.INCOMING, message)
                 self._process_message(message)
         except asyncio.CancelledError:
@@ -177,7 +186,56 @@ class Connection:
         if has_id:  # this is a response, {"id", "result" | "error"}
             self._handle_response(message)
 
-    def _notify_observers(self, direction: StreamDirection, message: dict[str, Any]) -> None:
+    def _process_batch(self, batch: list[Any]) -> None:
+        # JSON-RPC 2.0 batches: entries are dispatched as if they had arrived one per frame, but
+        # every reply is collected and sent as a single array in the order the entries appeared.
+        # A batch with no requests (only notifications, or entries that answer nothing such as
+        # responses) produces no output at all. An empty array never reaches here: ``decode_message``
+        # answers it with a single ``-32600`` object on every transport that decodes frames.
+        replies: list[asyncio.Task[Any]] = []
+        for item in batch:
+            entry = _error_response(RequestError.invalid_request())
+            if isinstance(item, dict):
+                self._notify_observers(StreamDirection.INCOMING, item)
+                method = item.get("method")
+                if method is None:
+                    if "id" in item:
+                        # A response to one of our own requests never joins the reply array.
+                        self._handle_response(item)
+                        continue
+                elif "id" not in item:
+                    if method == _CANCEL_REQUEST_METHOD:
+                        self._cancel_incoming(item.get("params"))
+                    else:
+                        self._tasks.create(self._run_notification(item), name="acp.Connection.notification")
+                    continue
+                else:
+                    entry = item
+            # Non-object entries keep the null-id error response built above, as the spec requires.
+            if "method" in entry:
+                handler = self._tasks.create(self._execute_request(entry), name="acp.Connection.request")
+                self._track_incoming(entry["id"], handler)
+            else:
+                handler = self._tasks.create(_answer_invalid_entry(entry), name="acp.Connection.batch_entry")
+            replies.append(self._tasks.create(self._batch_reply(handler, entry), name="acp.Connection.batch_reply"))
+        if replies:
+            self._tasks.create(self._send_batch(replies), name="acp.Connection.batch_response")
+
+    async def _batch_reply(self, handler: asyncio.Task[Any], entry: dict[str, Any]) -> dict[str, Any]:
+        # Mirrors ``_run_request``: ``asyncio.wait`` keeps a handler cancelled by
+        # ``$/cancel_request`` from aborting the reply for the whole batch.
+        await asyncio.wait({handler})
+        if not handler.cancelled():
+            return handler.result()
+        return {"jsonrpc": "2.0", "id": entry.get("id"), "error": RequestError.request_cancelled().to_error_obj()}
+
+    async def _send_batch(self, replies: list[asyncio.Task[Any]]) -> None:
+        # ``gather`` preserves the order of the entries, so the array mirrors the request batch.
+        payload = list(await asyncio.gather(*replies))
+        await self._transport.send(payload)
+        self._notify_observers(StreamDirection.OUTGOING, payload)
+
+    def _notify_observers(self, direction: StreamDirection, message: dict[str, Any] | list[Any]) -> None:
         if not self._observers:
             return
         snapshot = copy.deepcopy(message)

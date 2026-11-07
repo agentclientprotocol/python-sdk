@@ -25,7 +25,7 @@ class MessageSender:
         self._closed = False
         self._task = supervisor.create(self._loop(), name="acp.Sender.loop", on_error=self._on_error)
 
-    async def send(self, payload: dict[str, Any]) -> None:
+    async def send(self, payload: dict[str, Any] | list[Any]) -> None:
         data = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
         future: asyncio.Future[None] = asyncio.get_running_loop().create_future()
         await self._queue.put(_PendingSend(data, future))

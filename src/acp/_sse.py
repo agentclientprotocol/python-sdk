@@ -9,9 +9,9 @@ from __future__ import annotations
 
 import codecs
 import json
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
-from ._jsonrpc import decode_message
+from ._jsonrpc import JsonRpcMessage, decode_message
 from .exceptions import RequestError
 
 if TYPE_CHECKING:
@@ -24,7 +24,7 @@ __all__ = [
 ]
 
 
-def serialize_sse_event(message: dict[str, Any]) -> bytes:
+def serialize_sse_event(message: JsonRpcMessage) -> bytes:
     """Serialize a JSON-RPC message as an SSE ``data:`` event.
 
     The payload is JSON-encoded on a single line and terminated by a blank line,
@@ -41,8 +41,8 @@ def serialize_sse_keepalive() -> bytes:
 
 async def _decode_event(
     data_lines: list[str], on_error: Callable[[RequestError], Awaitable[None]] | None
-) -> dict[str, Any] | None:
-    """Decode buffered ``data:`` lines into a JSON object, or None to skip."""
+) -> JsonRpcMessage | None:
+    """Decode buffered ``data:`` lines into a JSON object or batch, or None to skip."""
     payload = "\n".join(data_lines)
     if not payload:
         return None
@@ -65,11 +65,12 @@ def _append_field(line: str, data_lines: list[str]) -> None:
 
 async def parse_sse_stream(
     chunks: AsyncIterator[bytes], *, on_error: Callable[[RequestError], Awaitable[None]] | None = None
-) -> AsyncIterator[dict[str, Any]]:
+) -> AsyncIterator[JsonRpcMessage]:
     """Parse an SSE byte stream, yielding decoded JSON-RPC ``data:`` payloads.
 
     Comments (lines starting with ``:``) and non-``data`` fields are ignored.
-    Invalid JSON and non-object JSON payloads are skipped.
+    Invalid JSON and other non-message JSON payloads are skipped; a JSON array
+    is delivered as a batch.
     Multi-line ``data:`` fields are concatenated with newlines per the spec. A
     blank line dispatches the buffered event.
     """
