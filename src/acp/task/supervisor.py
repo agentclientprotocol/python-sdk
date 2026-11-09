@@ -70,10 +70,13 @@ class TaskSupervisor:
         self._closed = True
         if not self._tasks:
             return
-        tasks = list(self._tasks)
+        # A handler or async observer may close its own connection. Cancelling
+        # and gathering that caller would create a self-await cancellation cycle.
+        current = asyncio.current_task()
+        tasks = [task for task in self._tasks if task is not current]
         for task in tasks:
             task.cancel()
         # Failures were already routed to the error handlers by ``_on_done``; shutdown only
         # needs to wait for the tasks to finish, so don't let them escape from here.
         await asyncio.gather(*tasks, return_exceptions=True)
-        self._tasks.clear()
+        self._tasks.difference_update(tasks)
