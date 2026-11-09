@@ -76,7 +76,7 @@ class Connection:
         if reader is None:
             self._transport: Transport = cast("Transport", writer)
         else:
-            sender = MessageSender(cast("asyncio.StreamWriter", writer), self._tasks)
+            sender = MessageSender(cast("asyncio.StreamWriter", writer))
             self._transport = NdjsonTransport(reader, sender, receive_timeout=receive_timeout)
         self._observers: list[StreamObserver] = list(observers or [])
         if listening:
@@ -248,7 +248,14 @@ class Connection:
             payload = {"jsonrpc": "2.0", "id": message["id"], "error": RequestError.request_cancelled().to_error_obj()}
         else:
             payload = handler.result()
-        await self._transport.send(payload)
+        try:
+            await self._transport.send(payload)
+        except ConnectionError:
+            if self._closed or self._disconnected:
+                # The connection went away while the handler was running; nobody can receive it.
+                logging.debug("Dropping response for request %r: connection closed", message["id"])
+                return
+            raise
         self._notify_observers(StreamDirection.OUTGOING, payload)
 
     async def _execute_request(self, message: dict[str, Any]) -> dict[str, Any]:
