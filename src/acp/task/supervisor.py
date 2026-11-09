@@ -3,7 +3,6 @@ from __future__ import annotations
 import asyncio
 import logging
 from collections.abc import Awaitable, Callable
-from contextlib import suppress
 from typing import Any
 
 __all__ = ["TaskSupervisor"]
@@ -74,7 +73,7 @@ class TaskSupervisor:
         tasks = list(self._tasks)
         for task in tasks:
             task.cancel()
-        for task in tasks:
-            with suppress(asyncio.CancelledError):
-                await task
+        # Failures were already routed to the error handlers by ``_on_done``; shutdown only
+        # needs to wait for the tasks to finish, so don't let them escape from here.
+        await asyncio.gather(*tasks, return_exceptions=True)
         self._tasks.clear()
