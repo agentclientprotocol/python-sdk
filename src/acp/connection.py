@@ -305,19 +305,23 @@ class Connection:
         # with the integer ``1`` -- the same aliasing ``_track_incoming`` guards against.
         if not _is_request_id(request_id):
             return
-        future = self._pending.pop(request_id, None)
-        if future is None or future.done():
+        future = self._pending.get(request_id)
+        if future is None:
             return
-        if "result" in message:
-            future.set_result(message.get("result"))
-            return
-        if "error" in message:
-            error_obj = message.get("error") or {}
-            future.set_exception(
-                RequestError(error_obj.get("code", -32603), error_obj.get("message", "Error"), error_obj.get("data"))
-            )
-            return
-        future.set_result(None)
+        # Keep the request tracked until its response has been settled.
+        if not future.done():
+            if "result" in message:
+                future.set_result(message.get("result"))
+            elif "error" in message:
+                error_obj = message.get("error") or {}
+                future.set_exception(
+                    RequestError(
+                        error_obj.get("code", -32603), error_obj.get("message", "Error"), error_obj.get("data")
+                    )
+                )
+            else:
+                future.set_result(None)
+        self._pending.pop(request_id, None)
 
     def _on_receive_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
         logging.exception("Receive loop failed", exc_info=exc)
