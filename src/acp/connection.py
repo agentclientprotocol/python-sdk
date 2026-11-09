@@ -89,7 +89,11 @@ class Connection:
             self._recv_task = None
 
     async def close(self) -> None:
-        """Stop the receive loop and cancel any in-flight handler tasks."""
+        """Stop receiving and cancel other in-flight tasks.
+
+        A handler or async observer can await close itself. That calling task
+        is allowed to return; no response is guaranteed after transport closure.
+        """
         if self._closed:
             return
         self._closed = True
