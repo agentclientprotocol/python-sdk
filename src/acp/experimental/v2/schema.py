@@ -5412,9 +5412,10 @@ class ClientResponseMessage(BaseModel):
         RequestPermissionResponse,
         ConnectMcpResponse,
         DisconnectMcpResponse,
-        Union[
-            AcceptElicitationResponse, DeclineElicitationResponse, CancelElicitationResponse, OtherElicitationResponse
-        ],
+        AcceptElicitationResponse,
+        DeclineElicitationResponse,
+        CancelElicitationResponse,
+        OtherElicitationResponse,
         Any,
     ]
     """
@@ -5722,11 +5723,9 @@ class ClientRequest(BaseModel):
             SuggestNesRequest,
             CloseNesRequest,
             MessageMcpRequest,
-            Union[
-                SetSessionConfigOptionIdRequest,
-                SetSessionConfigOptionBooleanRequest,
-                SetSessionConfigOptionOtherRequest,
-            ],
+            SetSessionConfigOptionIdRequest,
+            SetSessionConfigOptionBooleanRequest,
+            SetSessionConfigOptionOtherRequest,
             Any,
         ]
     ] = None
@@ -5829,9 +5828,10 @@ class UpdateSessionNotification(BaseModel):
         SessionCompactionUpdate,
         SessionCompactionSummaryChunk,
         OtherSessionUpdate,
-        Union[
-            RunningSessionStateUpdate, IdleSessionStateUpdate, RequiresActionSessionStateUpdate, OtherSessionStateUpdate
-        ],
+        RunningSessionStateUpdate,
+        IdleSessionStateUpdate,
+        RequiresActionSessionStateUpdate,
+        OtherSessionStateUpdate,
     ]
     """
     The actual update content.
@@ -5968,11 +5968,12 @@ class AgentRequest(BaseModel):
             ConnectMcpRequest,
             MessageMcpRequest,
             DisconnectMcpRequest,
-            Union[
-                Union[CreateOtherSessionElicitationRequest, CreateOtherRequestElicitationRequest],
-                Union[CreateFormSessionElicitationRequest, CreateFormRequestElicitationRequest],
-                Union[CreateUrlSessionElicitationRequest, CreateUrlRequestElicitationRequest],
-            ],
+            CreateOtherSessionElicitationRequest,
+            CreateOtherRequestElicitationRequest,
+            CreateFormSessionElicitationRequest,
+            CreateFormRequestElicitationRequest,
+            CreateUrlSessionElicitationRequest,
+            CreateUrlRequestElicitationRequest,
             Any,
         ]
     ] = None
