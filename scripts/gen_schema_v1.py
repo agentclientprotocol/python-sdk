@@ -111,6 +111,8 @@ for variant_names in (
     MODEL_NAME_MAP.update(variant_names)
 
 MODEL_NAME_MAP.update({
+    inline_model_ref("MessageMcpResponse", ("anyOf", 0), ("object", None)): "McpResultResponse",
+    inline_model_ref("MessageMcpResponse", ("anyOf", 1), ("object", None)): "McpErrorResponse",
     inline_model_ref("RequestPermissionOutcome", ("oneOf", 0), ("object", None)): "DeniedOutcome",
     inline_model_ref("RequestPermissionOutcome", ("oneOf", 1), ("allOf", None)): "AllowedOutcome",
     inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
@@ -161,8 +163,10 @@ MODEL_NAME_MAP.update({
 })
 
 # datamodel-code-generator owns schema interpretation and its internal model names.
-# This block only preserves the Python names already published by the SDK.
+# Public aliases preserve published Python names and name the MCP outcome union.
 COMPATIBILITY_ALIASES = textwrap.dedent("""
+    MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
+
     PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
     PlanEntryPriority = Literal["high", "medium", "low"]
     PlanEntryStatus = Literal["pending", "in_progress", "completed"]
@@ -230,6 +234,9 @@ SEMANTICS = SchemaSemantics(
     base_class="acp._schema_base.BaseModel",
     model_name_map=MODEL_NAME_MAP,
     compatibility_aliases=COMPATIBILITY_ALIASES,
-    # The generator loses additionalProperties types on nullable objects.
-    field_type_overrides={"ElicitationAcceptAction.content": "acp._schema_base.ElicitationContent"},
+    # Preserve nullable object value types and reject non-integer MCP error codes.
+    field_type_overrides={
+        "ElicitationAcceptAction.content": "acp._schema_base.ElicitationContent",
+        "McpError.code": "pydantic.StrictInt",
+    },
 )

@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Any, Literal, Protocol
 
+from pydantic import TypeAdapter
+
+from ._mcp import validate_mcp_response
 from ._protocol_adapters import (
     elicitation_to_kwargs,
     validate_create_elicitation_request,
@@ -28,8 +32,6 @@ from .schema import (
     CloseSessionResponse,
     CompleteElicitationNotification,
     ConfigOptionUpdate,
-    ConnectMcpRequest,
-    ConnectMcpResponse,
     CreateElicitationResponse,
     CreateFormRequestElicitationRequest,
     CreateFormSessionElicitationRequest,
@@ -47,8 +49,6 @@ from .schema import (
     DidSaveDocumentNotification,
     DisableProviderRequest,
     DisableProviderResponse,
-    DisconnectMcpRequest,
-    DisconnectMcpResponse,
     ElicitationMode,
     EmbeddedResourceContentBlock,
     EnvVariable,
@@ -72,6 +72,7 @@ from .schema import (
     McpServerStdio,
     MessageMcpNotification,
     MessageMcpRequest,
+    MessageMcpResponse,
     NesRepository,
     NesSuggestContext,
     NewSessionRequest,
@@ -96,6 +97,9 @@ from .schema import (
     SessionUpdateCompactionSummaryChunk,
     SessionUpdateCompactionUpdate,
     SessionUpdateNotice,
+    SessionUpdateSessionMessage,
+    SessionUpdateSessionMessageChunk,
+    SessionUpdateSubagentUpdate,
     SetProviderRequest,
     SetProviderResponse,
     SetSessionConfigOptionBooleanRequest,
@@ -129,23 +133,15 @@ __all__ = ["Agent", "Client"]
 
 
 class Client(Protocol):
-    @param_model(ConnectMcpRequest, method=CLIENT_METHODS["mcp_connect"], unstable=True)
-    async def connect_mcp(self, server_id: str, **kwargs: Any) -> ConnectMcpResponse: ...
-
     @param_model(
-        DisconnectMcpRequest, method=CLIENT_METHODS["mcp_disconnect"], unstable=True, adapt_result=normalize_result
+        MessageMcpRequest,
+        method=CLIENT_METHODS["mcp_message"],
+        unstable=True,
+        adapt_result=partial(validate_mcp_response, adapter=TypeAdapter(MessageMcpResponse)),
     )
-    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> DisconnectMcpResponse: ...
-
-    @param_model(MessageMcpRequest, method=CLIENT_METHODS["mcp_message"], unstable=True)
     async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any: ...
-
-    @param_model(MessageMcpNotification, method=CLIENT_METHODS["mcp_message"], kind="notification", unstable=True)
-    async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None: ...
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> MessageMcpResponse: ...
 
     @param_model(RequestPermissionRequest, method=CLIENT_METHODS["session_request_permission"])
     async def request_permission(
@@ -171,7 +167,10 @@ class Client(Protocol):
         | UsageUpdate
         | SessionUpdateNotice
         | SessionUpdateCompactionUpdate
-        | SessionUpdateCompactionSummaryChunk,
+        | SessionUpdateCompactionSummaryChunk
+        | SessionUpdateSubagentUpdate
+        | SessionUpdateSessionMessage
+        | SessionUpdateSessionMessageChunk,
         **kwargs: Any,
     ) -> None: ...
 
@@ -289,14 +288,9 @@ class Agent(Protocol):
     @param_model(LogoutRequest, method=AGENT_METHODS["logout"], adapt_result=normalize_result)
     async def logout(self, **kwargs: Any) -> LogoutResponse: ...
 
-    @param_model(MessageMcpRequest, method=AGENT_METHODS["mcp_message"], unstable=True)
-    async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any: ...
-
     @param_model(MessageMcpNotification, method=AGENT_METHODS["mcp_message"], kind="notification", unstable=True)
     async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None: ...
 
     @param_model(StartNesRequest, method=AGENT_METHODS["nes_start"], unstable=True)

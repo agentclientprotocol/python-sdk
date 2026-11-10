@@ -247,26 +247,15 @@ class ClientSideConnection:
             build_request(schema.CancelSessionNotification, {"session_id": session_id}, kwargs),
         )
 
-    @param_model(schema.MessageMcpRequest)
-    async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any:
-        return await self._request(
-            AGENT_METHODS["mcp_message"],
-            build_request(
-                schema.MessageMcpRequest, {"connection_id": connection_id, "method": method, "params": params}, kwargs
-            ),
-        )
-
     @param_model(schema.MessageMcpNotification)
     async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None:
         await self._notify(
             AGENT_METHODS["mcp_message"],
             build_request(
                 schema.MessageMcpNotification,
-                {"connection_id": connection_id, "method": method, "params": params},
+                {"server_id": server_id, "request_id": request_id, "method": method, "params": params},
                 kwargs,
             ),
         )

@@ -1,5 +1,5 @@
 # Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.23.0
+# Schema ref: refs/tags/schema-v1.24.1
 AGENT_METHODS = {
     "initialize": "initialize",
     "authenticate": "authenticate",
@@ -40,9 +40,7 @@ CLIENT_METHODS = {
     "terminal_release": "terminal/release",
     "terminal_wait_for_exit": "terminal/wait_for_exit",
     "terminal_kill": "terminal/kill",
-    "mcp_connect": "mcp/connect",
     "mcp_message": "mcp/message",
-    "mcp_disconnect": "mcp/disconnect",
     "elicitation_create": "elicitation/create",
     "elicitation_complete": "elicitation/complete",
 }

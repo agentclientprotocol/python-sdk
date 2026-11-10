@@ -159,7 +159,7 @@ update = AgentMessageChunk(
 
 ## Session notices (unstable)
 
-The v1 bindings use `schema-v1.23.0`. Clients that can display live advisory
+The v1 bindings use `schema-v1.24.1`. Clients that can display live advisory
 notices advertise `ClientCapabilities(session=ClientSessionCapabilities(notices=NoticeCapabilities()))`
 in `initialize`; these models are available from `acp.schema`.
 
@@ -189,7 +189,7 @@ nested objects are not valid form values.
 
 ## Additional v1 protocol methods
 
-The SDK exposes all agent and client methods in the bundled `schema-v1.23.0`
+The SDK exposes all agent and client methods in the bundled `schema-v1.24.1`
 method tables. `session/delete` and `logout` are stable and do not require
 `use_unstable_protocol=True`. The other methods in the table below are unstable;
 enable that flag on the receiving connection (or `run_agent`) to route them.
@@ -200,9 +200,8 @@ Check the peer's advertised capabilities before calling these methods.
 | `session/delete` | `delete_session(session_id=...)` | Agent |
 | `providers/list`, `providers/set`, `providers/disable` | `list_providers`, `set_provider`, `disable_provider` | Agent |
 | `logout` | `logout()` | Agent |
-| `mcp/connect`, `mcp/disconnect` | `connect_mcp`, `disconnect_mcp` | Client |
-| `mcp/message` (request) | `mcp_message` | Either peer |
-| `mcp/message` (notification) | `notify_mcp` | Either peer |
+| `mcp/message` (request) | `mcp_message` | Client/provider |
+| `mcp/message` (notification) | `notify_mcp` | Agent |
 | `nes/start`, `nes/suggest`, `nes/close` | `start_nes`, `suggest_nes`, `close_nes` | Agent |
 | `nes/accept`, `nes/reject` | `accept_nes`, `reject_nes` | Agent |
 | `document/didOpen`, `document/didChange`, `document/didClose`, `document/didSave`, `document/didFocus` | `did_open`, `did_change`, `did_close`, `did_save`, `did_focus` | Agent |
@@ -223,10 +222,70 @@ session. The SDK dispatches these calls to your implementation; it does not
 provide session storage or provider management itself. Missing request handlers
 return the JSON-RPC method-not-found error.
 
-MCP requests return the inner JSON result unchanged, including `null`. Use
-`notify_mcp` for one-way MCP messages. Both APIs accept `connection_id`, `method`,
-and optional `params`. These methods share the same connections and routers
-across stdio, HTTP, and WebSocket transports.
+## Stateless MCP-over-ACP
+
+The unstable native binding targets **MCP 2026-07-28**. A provider advertises an
+`AcpMcpServer(name=..., server_id=...)` in session setup after checking the
+agent's `mcpCapabilities.acp` capability. Register the provider's handler before
+publishing the declaration: the agent may call it before session setup returns.
+There is no MCP initialization or connect/disconnect exchange.
+
+An agent calls its connection's `mcp_message`; the client/provider implements
+that handler. Supply a fresh string `request_id` for every operation, including
+an interactive-tool retry. This logical MCP ID is separate from the outer ACP
+JSON-RPC request ID. Include the required MCP metadata in the inner parameters:
+
+```python
+from uuid import uuid4
+from acp import McpErrorResponse
+
+response = await connection.mcp_message(
+    server_id="project-tools",
+    request_id=uuid4().hex,
+    method="tools/list",
+    params={
+        "_meta": {
+            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
+            "io.modelcontextprotocol/clientCapabilities": {},
+        },
+    },
+    trace="outer ACP metadata",
+)
+if isinstance(response, McpErrorResponse):
+    handle_mcp_error(response.error)
+else:
+    use_mcp_result(response.result)
+```
+
+Providers return `McpResultResponse(result=...)` or
+`McpErrorResponse(error=McpError(code=..., message=...))`. Results are opaque JSON,
+including explicit `null`, tool errors with `isError`, and interactive
+`input_required` results. Error data preserves omission versus explicit null,
+and unknown inner error fields survive. Outer ACP failures raise `RequestError`;
+an inner MCP error, even code `-32000`, remains inside the response carrier.
+Send exactly one outcome; receivers prefer `result` if both keys are received.
+
+The provider sends `notify_mcp(server_id=..., request_id=..., method=..., params=...)`
+for an active request; the agent implements `notify_mcp` to receive it. Keep the
+same server and logical request IDs and stop notifications before sending the
+final outcome. Consumers must correlate notifications with active operations
+and ignore unknown or completed ones. There are no provider-originated MCP requests.
+
+The SDK provides typed envelopes and routing. Applications own server registrations,
+MCP metadata/version validation, duplicate-active-ID rejection, operation admission,
+and notification lifetimes. They also decide how to handle interactive input;
+retry with fresh IDs and preserve opaque request state. Cancelling the task awaiting
+`mcp_message` uses the existing ACP cancellation mechanism described below.
+These methods work over stdio, HTTP, and WebSocket ACP connections.
+
+**Migration:** `connect_mcp`, `disconnect_mcp`, and `connection_id` are removed.
+Replace them with server-addressed requests carrying `server_id` and `request_id`,
+add per-request MCP metadata, and wrap handler outcomes in the typed carrier.
+Older MCP revisions and the connection-oriented prototype are not supported.
+
+Run `uv run python examples/mcp_over_acp.py` for a local request/progress example.
+See the [upstream binding specification](https://agentclientprotocol.com/rfds/mcp-over-acp)
+for registration, subscription, and error-code requirements.
 
 ## Request cancellation
 

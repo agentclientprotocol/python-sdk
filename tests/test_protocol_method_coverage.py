@@ -113,39 +113,32 @@ async def test_agent_notification_roundtrip(connect, agent, name, wire_method, p
 
 
 @pytest.mark.asyncio
-async def test_mcp_connection_lifecycle(connect, client):
-    client.connect_mcp = AsyncMock(return_value=schema.ConnectMcpResponse(connection_id="c"))
-    client.disconnect_mcp = AsyncMock(return_value=None)
-    connection, _ = connect(use_unstable_protocol=True)
-    assert (await connection.connect_mcp(server_id="m", trace="test")).connection_id == "c"
-    client.connect_mcp.assert_awaited_once_with(server_id="m", trace="test")
-    assert await connection.disconnect_mcp(connection_id="c") == schema.DisconnectMcpResponse()
-    client.disconnect_mcp.assert_awaited_once_with(connection_id="c")
-
-
-@pytest.mark.asyncio
-@pytest.mark.parametrize("response", [None, {}, {"tools": []}, [1, "x"], False, 42])
-@pytest.mark.parametrize("direction", ["agent", "client"])
-async def test_mcp_requests_and_notifications_share_method(connect, agent, client, direction, response):
-    receiver = agent if direction == "agent" else client
-    receiver.mcp_message = AsyncMock(return_value=response)
+@pytest.mark.parametrize("result", [None, {}, {"tools": []}, [1, "x"], False, 42])
+async def test_mcp_requests_and_notifications_share_method(connect, agent, client, result):
     received = asyncio.Event()
 
     async def notify_mcp(**kwargs):
-        assert kwargs == {"connection_id": "c", "method": "notifications/initialized", "params": None, "trace": "test"}
+        assert kwargs == {
+            "server_id": "s",
+            "request_id": "r",
+            "method": "notifications/progress",
+            "params": None,
+            "trace": "test",
+        }
         received.set()
 
-    receiver.notify_mcp = notify_mcp
+    agent.notify_mcp = notify_mcp
+    client.mcp_message = AsyncMock(return_value=schema.McpResultResponse(result=result))
     agent_side, client_side = connect(use_unstable_protocol=True)
-    sender = client_side if direction == "agent" else agent_side
-    assert (
-        await sender.mcp_message(connection_id="c", method="tools/list", params={"cursor": "next"}, trace="test")
-        == response
+    response = await agent_side.mcp_message(
+        server_id="s", request_id="r", method="tools/list", params={"cursor": "next"}, trace="test"
     )
-    receiver.mcp_message.assert_awaited_once_with(
-        connection_id="c", method="tools/list", params={"cursor": "next"}, trace="test"
+    assert isinstance(response, schema.McpResultResponse)
+    assert response.result == result
+    client.mcp_message.assert_awaited_once_with(
+        server_id="s", request_id="r", method="tools/list", params={"cursor": "next"}, trace="test"
     )
-    await sender.notify_mcp(connection_id="c", method="notifications/initialized", trace="test")
+    await client_side.notify_mcp(server_id="s", request_id="r", method="notifications/progress", trace="test")
     await asyncio.wait_for(received.wait(), 2)
 
 
