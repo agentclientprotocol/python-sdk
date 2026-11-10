@@ -1,5 +1,5 @@
 # Generated from schema/v2/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v2.0.0-alpha.5
+# Schema ref: refs/tags/schema-v2.0.0-alpha.7
 AGENT_METHODS = {
     "initialize": "initialize",
     "auth_login": "auth/login",
@@ -31,9 +31,7 @@ AGENT_METHODS = {
 CLIENT_METHODS = {
     "session_request_permission": "session/request_permission",
     "session_update": "session/update",
-    "mcp_connect": "mcp/connect",
     "mcp_message": "mcp/message",
-    "mcp_disconnect": "mcp/disconnect",
     "elicitation_create": "elicitation/create",
     "elicitation_complete": "elicitation/complete",
 }
