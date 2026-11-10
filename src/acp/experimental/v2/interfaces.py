@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Any, Literal, Protocol
 
-from pydantic import AnyUrl
+from pydantic import AnyUrl, TypeAdapter
 
+from acp._mcp import validate_mcp_response
 from acp.utils import param_model
 
 from . import schema
@@ -14,7 +16,6 @@ SetConfigOptionRequest = (
     | schema.SetSessionConfigOptionBooleanRequest
     | schema.SetSessionConfigOptionOtherRequest
 )
-
 CreateElicitationRequest = (
     schema.CreateOtherSessionElicitationRequest
     | schema.CreateOtherRequestElicitationRequest
@@ -23,7 +24,6 @@ CreateElicitationRequest = (
     | schema.CreateUrlSessionElicitationRequest
     | schema.CreateUrlRequestElicitationRequest
 )
-
 CreateElicitationResponse = (
     schema.AcceptElicitationResponse
     | schema.DeclineElicitationResponse
@@ -144,14 +144,9 @@ class Agent(Protocol):
     @param_model(schema.CancelSessionNotification, method=AGENT_METHODS["session_cancel"], kind="notification")
     async def cancel_session(self, session_id: str, **kwargs: Any) -> None: ...
 
-    @param_model(schema.MessageMcpRequest, method=AGENT_METHODS["mcp_message"])
-    async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any: ...
-
     @param_model(schema.MessageMcpNotification, method=AGENT_METHODS["mcp_message"], kind="notification")
     async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None: ...
 
     @param_model(schema.StartNesRequest, method=AGENT_METHODS["nes_start"])
@@ -269,29 +264,26 @@ class Client(Protocol):
         | schema.SessionNotice
         | schema.SessionCompactionUpdate
         | schema.SessionCompactionSummaryChunk
+        | schema.SessionSubagentUpdate
+        | schema.SessionMessageUpdate
+        | schema.SessionMessageChunkUpdate
         | schema.OtherSessionUpdate
         | schema.RunningSessionStateUpdate
         | schema.IdleSessionStateUpdate
         | schema.RequiresActionSessionStateUpdate
+        | schema.UnknownSessionStateUpdate
         | schema.OtherSessionStateUpdate,
         **kwargs: Any,
     ) -> None: ...
 
-    @param_model(schema.ConnectMcpRequest, method=CLIENT_METHODS["mcp_connect"])
-    async def connect_mcp(self, server_id: str, **kwargs: Any) -> schema.ConnectMcpResponse: ...
-
-    @param_model(schema.MessageMcpRequest, method=CLIENT_METHODS["mcp_message"])
+    @param_model(
+        schema.MessageMcpRequest,
+        method=CLIENT_METHODS["mcp_message"],
+        adapt_result=partial(validate_mcp_response, adapter=TypeAdapter(schema.MessageMcpResponse)),
+    )
     async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any: ...
-
-    @param_model(schema.MessageMcpNotification, method=CLIENT_METHODS["mcp_message"], kind="notification")
-    async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None: ...
-
-    @param_model(schema.DisconnectMcpRequest, method=CLIENT_METHODS["mcp_disconnect"], default_result={})
-    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> schema.DisconnectMcpResponse: ...
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> schema.MessageMcpResponse: ...
 
     @param_model(CreateElicitationRequest, method=CLIENT_METHODS["elicitation_create"])
     async def create_elicitation(

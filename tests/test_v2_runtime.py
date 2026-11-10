@@ -144,8 +144,10 @@ class ExtensionAgent:
         notification = v2.schema.CancelSessionNotification(session_id=session_id, **kwargs)
         await self.notifications.put(("cancel", notification))
 
-    async def notify_mcp(self, connection_id: str, method: str, **kwargs: Any) -> None:
-        notification = v2.schema.MessageMcpNotification(connection_id=connection_id, method=method, **kwargs)
+    async def notify_mcp(self, server_id: str, request_id: str, method: str, **kwargs: Any) -> None:
+        notification = v2.schema.MessageMcpNotification(
+            server_id=server_id, request_id=request_id, method=method, **kwargs
+        )
         await self.notifications.put(("mcp", notification))
 
 
@@ -403,12 +405,12 @@ async def test_extension_and_notification_names_are_explicit() -> None:
             await client_connection.send_extension_request("vendor/do")
 
         await client_connection.cancel_session(session_id="session-1")
-        await client_connection.notify_mcp(connection_id="mcp-1", method="notifications/progress")
+        await client_connection.notify_mcp(server_id="mcp-1", request_id="r", method="notifications/progress")
 
         cancel_kind, cancel = await asyncio.wait_for(agent.notifications.get(), timeout=1)
         mcp_kind, mcp = await asyncio.wait_for(agent.notifications.get(), timeout=1)
         assert (cancel_kind, cancel.session_id) == ("cancel", "session-1")
-        assert (mcp_kind, mcp.connection_id) == ("mcp", "mcp-1")
+        assert (mcp_kind, mcp.server_id) == ("mcp", "mcp-1")
     finally:
         await client_connection.close()
         await agent_connection.close()

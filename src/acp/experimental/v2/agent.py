@@ -12,9 +12,7 @@ from acp.utils import param_model
 from . import schema
 from ._connection import open_connection
 from ._initialization import InitializationState
-from ._methods import (
-    CLIENT_REQUESTS_BY_METHOD,
-)
+from ._methods import CLIENT_REQUESTS_BY_METHOD
 from ._params import build_elicitation_request, build_request
 from ._router import MethodRouter
 from .interfaces import Agent, CreateElicitationRequest, CreateElicitationResponse
@@ -143,10 +141,14 @@ class AgentSideConnection:
         | schema.SessionNotice
         | schema.SessionCompactionUpdate
         | schema.SessionCompactionSummaryChunk
+        | schema.SessionSubagentUpdate
+        | schema.SessionMessageUpdate
+        | schema.SessionMessageChunkUpdate
         | schema.OtherSessionUpdate
         | schema.RunningSessionStateUpdate
         | schema.IdleSessionStateUpdate
         | schema.RequiresActionSessionStateUpdate
+        | schema.UnknownSessionStateUpdate
         | schema.OtherSessionStateUpdate,
         **kwargs: Any,
     ) -> None:
@@ -155,41 +157,17 @@ class AgentSideConnection:
             build_request(schema.UpdateSessionNotification, {"session_id": session_id, "update": update}, kwargs),
         )
 
-    @param_model(schema.ConnectMcpRequest)
-    async def connect_mcp(self, server_id: str, **kwargs: Any) -> schema.ConnectMcpResponse:
-        return await self._request(
-            CLIENT_METHODS["mcp_connect"], build_request(schema.ConnectMcpRequest, {"server_id": server_id}, kwargs)
-        )
-
     @param_model(schema.MessageMcpRequest)
     async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any:
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+    ) -> schema.MessageMcpResponse:
         return await self._request(
             CLIENT_METHODS["mcp_message"],
             build_request(
-                schema.MessageMcpRequest, {"connection_id": connection_id, "method": method, "params": params}, kwargs
-            ),
-        )
-
-    @param_model(schema.MessageMcpNotification)
-    async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None:
-        await self._notify(
-            CLIENT_METHODS["mcp_message"],
-            build_request(
-                schema.MessageMcpNotification,
-                {"connection_id": connection_id, "method": method, "params": params},
+                schema.MessageMcpRequest,
+                {"server_id": server_id, "request_id": request_id, "method": method, "params": params},
                 kwargs,
             ),
-        )
-
-    @param_model(schema.DisconnectMcpRequest)
-    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> schema.DisconnectMcpResponse:
-        return await self._request(
-            CLIENT_METHODS["mcp_disconnect"],
-            build_request(schema.DisconnectMcpRequest, {"connection_id": connection_id}, kwargs),
         )
 
     @param_model(CreateElicitationRequest)

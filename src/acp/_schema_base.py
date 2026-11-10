@@ -21,6 +21,8 @@ ElicitationContent = dict[str, str | int | float | bool | list[str]]
 class BaseModel(pydantic.BaseModel):
     """Runtime behavior shared by generated ACP schema models."""
 
+    _preserved_null_fields: ClassVar[dict[str, str]] = {"McpResultResponse": "result", "McpError": "data"}
+
     _reserved_tags: ClassVar[dict[str, tuple[str, frozenset[str]]]] = {
         "CreateOtherSessionElicitationRequest": ("mode", frozenset({"form", "url"})),
         "CreateOtherRequestElicitationRequest": ("mode", frozenset({"form", "url"})),
@@ -49,6 +51,24 @@ class BaseModel(pydantic.BaseModel):
         info: SerializationInfo,
     ) -> Any:
         data = handler(self)
+        # MCP preserves explicit null outcomes, error data, and opaque error extensions.
+        mcp_field = self._preserved_null_fields.get(type(self).__name__)
+        if (
+            mcp_field is not None
+            and mcp_field in self.model_fields_set
+            and getattr(self, mcp_field) is None
+            and (info.include is None or mcp_field in info.include)
+            and (info.exclude is None or mcp_field not in info.exclude)
+        ):
+            data[mcp_field] = None
+        if type(self).__name__ == "McpError":
+            for name, value in (self.model_extra or {}).items():
+                if (
+                    value is None
+                    and (info.include is None or name in info.include)
+                    and (info.exclude is None or name not in info.exclude)
+                ):
+                    data[name] = None
         for name, field in type(self).model_fields.items():
             annotation = field.annotation
             if info.include is not None and name not in info.include:

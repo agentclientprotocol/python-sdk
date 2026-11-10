@@ -1,5 +1,5 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.23.0
+# Schema ref: refs/tags/schema-v1.24.1
 
 from __future__ import annotations
 
@@ -8,7 +8,16 @@ from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
 from acp._schema_base import BaseModel, ElicitationContent
-from pydantic import AnyUrl, ConfigDict, Field, RootModel, ValidationInfo, ValidatorFunctionWrapHandler, field_validator
+from pydantic import (
+    AnyUrl,
+    ConfigDict,
+    Field,
+    RootModel,
+    StrictInt,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+)
 
 
 class ReadTextFileRequest(BaseModel):
@@ -647,21 +656,6 @@ class ElicitationUrlMode(RootModel[Union[ElicitationUrlSessionMode, ElicitationU
     root: Union[ElicitationUrlSessionMode, ElicitationUrlRequestMode]
     """
     URL-based elicitation mode where the client directs the user to a URL.
-    """
-
-
-class DisconnectMcpRequest(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
-    """
-    The MCP-over-ACP connection to close.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
 
@@ -1601,6 +1595,81 @@ class Notice(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
+class SessionCancelCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+
+
+class StateUpdate5(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    state: str
+    """
+    Unrecognized state discriminator.
+    """
+
+
+class RunningStateUpdate(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional; omitted and `null` mean no metadata for this state snapshot.
+    """
+
+
+class IdleStateUpdate(BaseModel):
+    stop_reason: Annotated[
+        Optional[Literal["end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"]],
+        Field(alias="stopReason"),
+    ] = None
+    """
+    Reason foreground work stopped. Optional; omitted or `null` means not reported.
+    """
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional; omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional; omitted and `null` mean no metadata for this state snapshot.
+    """
+
+    @field_validator("stop_reason", "usage", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class RequiresActionStateUpdate(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional; omitted and `null` mean no metadata for this state snapshot.
+    """
+
+
+class UnknownStateUpdate(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional; omitted and `null` mean no metadata for this state snapshot.
+    """
+
+
 class CompleteElicitationNotification(BaseModel):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
@@ -1616,36 +1685,6 @@ class CompleteElicitationNotification(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
-
-
-class MessageMcpNotification(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
-    """
-    The MCP-over-ACP connection this message is sent on.
-    """
-    method: str
-    """
-    The inner MCP method name.
-    """
-    params: Optional[Dict[str, Any]] = None
-    """
-    Optional inner MCP params.
-
-    If omitted or set to `null`, the inner MCP message has no params.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("params", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
 
 
 class FileSystemCapabilities(BaseModel):
@@ -1689,6 +1728,15 @@ class BooleanConfigOptionCapabilities(BaseModel):
 
 class NoticeCapabilities(BaseModel):
     pass
+
+
+class SubagentCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+    """
 
 
 class PlanCapabilities(BaseModel):
@@ -2443,29 +2491,32 @@ class ElicitationAcceptAction(BaseModel):
     """
 
 
-class ConnectMcpResponse(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
+class McpResultResponse(BaseModel):
+    result: Any
     """
-    The unique identifier for this MCP-over-ACP connection.
+    Required, even if JSON null.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Optional ACP carrier metadata.
     """
 
 
-class DisconnectMcpResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+class McpError(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    code: StrictInt
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Inner MCP error code; never an ACP error code.
+    """
+    message: str
+    """
+    Inner MCP error message.
+    """
+    data: Optional[Any] = None
+    """
+    Optional error data; explicit null is retained.
     """
 
 
@@ -2561,6 +2612,35 @@ class AcceptNesNotification(BaseModel):
     id: str
     """
     The ID of the accepted suggestion.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    """
+
+
+class MessageMcpNotification(BaseModel):
+    server_id: Annotated[str, Field(alias="serverId")]
+    """
+    The declared ACP MCP server handling the associated request.
+    """
+    request_id: Annotated[str, Field(alias="requestId")]
+    """
+    The identifier of the active inner MCP request.
+    """
+    method: str
+    """
+    The inner MCP method name.
+    """
+    params: Optional[Dict[str, Any]] = None
+    """
+    Optional inner MCP params.
+
+    If omitted or set to `null`, the inner MCP message has no params.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -3069,25 +3149,14 @@ class MultiSelectPropertySchema(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class ConnectMcpRequest(BaseModel):
+class MessageMcpRequest(BaseModel):
     server_id: Annotated[str, Field(alias="serverId")]
     """
-    The ACP MCP server ID that was provided by the component declaring the MCP server.
+    The declared ACP MCP server receiving this request.
     """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    request_id: Annotated[str, Field(alias="requestId")]
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class MessageMcpRequest(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
-    """
-    The MCP-over-ACP connection this message is sent on.
+    The caller-generated identifier for the inner MCP request.
     """
     method: str
     """
@@ -3623,6 +3692,96 @@ class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
     """
 
 
+class SubagentSessionCapabilities(BaseModel):
+    cancel: Optional[SessionCancelCapabilities] = None
+    """
+    Permits the client to cancel this child's current work without ending
+    the session. Omitted or `null` means unsupported; an object (including
+    `{}`) means supported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+    """
+
+    @field_validator("cancel", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class StateUpdate1(RunningStateUpdate):
+    state: Literal["running"] = "running"
+
+
+class StateUpdate2(IdleStateUpdate):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate3(RequiresActionStateUpdate):
+    state: Literal["requires_action"] = "requires_action"
+
+
+class StateUpdate4(UnknownStateUpdate):
+    state: Literal["unknown"] = "unknown"
+
+
+class SubagentUpdate(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The opaque session ID identifying the child in all ACP messages.
+    """
+    title: Optional[str] = None
+    """
+    The parent's human-readable display title for this child. It need not be unique.
+
+    Omitted means unchanged; `null` clears it. If unset, the Client chooses
+    a fallback presentation.
+    """
+    description: Optional[str] = None
+    """
+    The parent's human-readable description of the child's role or purpose.
+
+    Omitted means unchanged; `null` clears it. If unset, the Client chooses
+    a fallback presentation. This is current display metadata, not the
+    history of instructions sent to the child.
+    """
+    capabilities: Optional[SubagentSessionCapabilities] = None
+    """
+    Client-initiated session mutations permitted for this subagent session.
+
+    Omitted means unchanged; `null` clears the capability set and disables
+    child mutations. If never supplied, no session mutations are permitted.
+    Read-only operations retain their normal protocol semantics and capability
+    requirements. A concrete object replaces the whole capability set.
+    """
+    state: Optional[Union[StateUpdate1, StateUpdate2, StateUpdate3, StateUpdate4, StateUpdate5]] = None
+    """
+    Current state snapshot for the child session.
+
+    Omitted means unchanged; `null` clears the current activity without
+    asserting idle or sending an `unknown` snapshot. A concrete state
+    replaces the previous state object wholesale. If never supplied, the
+    current activity is unset/unconfirmed.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Omitted means unchanged; `null` removes the metadata.
+    """
+
+    @field_validator("capabilities", "description", "state", "title", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
 class SessionConfigOptionsCapabilities(BaseModel):
     boolean: Optional[BooleanConfigOptionCapabilities] = None
     """
@@ -3999,6 +4158,17 @@ class AcceptElicitationResponse(ElicitationAcceptAction):
     action: Literal["accept"] = "accept"
 
 
+class McpErrorResponse(BaseModel):
+    error: McpError
+    """
+    Required, non-null MCP error object.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Optional ACP carrier metadata.
+    """
+
+
 class TextDocumentContentChangeEvent(BaseModel):
     range: Optional[Range] = None
     """
@@ -4249,6 +4419,10 @@ class AgentPlanUpdate(Plan):
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")] = "plan"
 
 
+class SessionUpdateSubagentUpdate(SubagentUpdate):
+    session_update: Annotated[Literal["subagent_update"], Field(alias="sessionUpdate")] = "subagent_update"
+
+
 class ContentChunk(BaseModel):
     content: Annotated[
         Union[
@@ -4407,6 +4581,90 @@ class CompactionSummaryChunk(BaseModel):
     """
     Metadata scoped to this chunk. Omission and `null` both mean absent.
     """
+
+
+class SessionMessage(BaseModel):
+    message_id: Annotated[str, Field(alias="messageId")]
+    """
+    Identifier of this message within the enclosing session's transcript.
+    """
+    sender_session_id: Annotated[Optional[str], Field(alias="senderSessionId")] = None
+    """
+    Optional sending session identity; omission or `null` retains a known value.
+    """
+    recipient_session_id: Annotated[Optional[str], Field(alias="recipientSessionId")] = None
+    """
+    Optional receiving session identity; omission or `null` retains a known value.
+    """
+    content: Optional[
+        List[
+            Annotated[
+                Union[
+                    TextContentBlock,
+                    ImageContentBlock,
+                    AudioContentBlock,
+                    ResourceContentBlock,
+                    EmbeddedResourceContentBlock,
+                ],
+                Field(discriminator="type"),
+            ]
+        ]
+    ] = None
+    """
+    Omitted leaves content unchanged; `null` or `[]` clears it.
+    A non-empty array replaces all content.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Omitted leaves metadata unchanged; `null` removes it.
+
+    Implementations MUST NOT make assumptions about values in `_meta`.
+    """
+
+    @field_validator("recipient_session_id", "sender_session_id", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+    @field_validator("content", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
+
+
+class SessionMessageChunk(BaseModel):
+    message_id: Annotated[str, Field(alias="messageId")]
+    """
+    Identifier of this message within the enclosing session's transcript.
+    """
+    sender_session_id: Annotated[Optional[str], Field(alias="senderSessionId")] = None
+    """
+    Optional sending session identity; omission or `null` retains a known value.
+    """
+    recipient_session_id: Annotated[Optional[str], Field(alias="recipientSessionId")] = None
+    """
+    Optional receiving session identity; omission or `null` retains a known value.
+    """
+    content: Annotated[
+        Union[
+            TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock
+        ],
+        Field(discriminator="type"),
+    ]
+    """
+    A single content block appended to the message.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Optional and nullable chunk-scoped metadata; omitted or `null` means none.
+
+    Implementations MUST NOT make assumptions about values in `_meta`.
+    """
+
+    @field_validator("recipient_session_id", "sender_session_id", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ClientSessionCapabilities(BaseModel):
@@ -4920,6 +5178,14 @@ class SessionUpdateCompactionSummaryChunk(CompactionSummaryChunk):
     )
 
 
+class SessionUpdateSessionMessage(SessionMessage):
+    session_update: Annotated[Literal["session_message"], Field(alias="sessionUpdate")] = "session_message"
+
+
+class SessionUpdateSessionMessageChunk(SessionMessageChunk):
+    session_update: Annotated[Literal["session_message_chunk"], Field(alias="sessionUpdate")] = "session_message_chunk"
+
+
 class ToolCall(BaseModel):
     tool_call_id: Annotated[str, Field(alias="toolCallId")]
     """
@@ -5029,6 +5295,19 @@ class ClientCapabilities(BaseModel):
     Optional. Omitted or `null` both mean the client does not advertise any
     session-related extensions.
     """
+    subagents: Optional[SubagentCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the client understands exposed subagent sessions.
+
+    Optional and nullable. Omitted or `null` both mean the client does not
+    advertise support.
+    Supplying `{}` means the client understands child associations, work-state
+    snapshots, session-directed messages, and restricted-session semantics.
+    """
     plan: Optional[PlanCapabilities] = None
     """
     **UNSTABLE**
@@ -5084,7 +5363,7 @@ class ClientCapabilities(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
-    @field_validator("auth", "elicitation", "fs", "nes", "plan", "session", "terminal", mode="wrap")
+    @field_validator("auth", "elicitation", "fs", "nes", "plan", "session", "subagents", "terminal", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -5148,11 +5427,10 @@ class ClientResponseMessage(BaseModel):
         ReleaseTerminalResponse,
         WaitForTerminalExitResponse,
         KillTerminalResponse,
-        ConnectMcpResponse,
-        DisconnectMcpResponse,
         Union[
             AcceptElicitationResponse, DeclineElicitationResponse, CancelElicitationResponse, OtherElicitationResponse
         ],
+        Union[McpResultResponse, McpErrorResponse],
         Any,
     ]
     """
@@ -5593,6 +5871,9 @@ class SessionNotification(BaseModel):
             SessionUpdateNotice,
             SessionUpdateCompactionUpdate,
             SessionUpdateCompactionSummaryChunk,
+            SessionUpdateSubagentUpdate,
+            SessionUpdateSessionMessage,
+            SessionUpdateSessionMessageChunk,
         ],
         Field(discriminator="session_update"),
     ]
@@ -5638,7 +5919,6 @@ class ClientRequest(BaseModel):
             StartNesRequest,
             SuggestNesRequest,
             CloseNesRequest,
-            MessageMcpRequest,
             Union[SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest],
             Any,
         ]
@@ -5667,9 +5947,7 @@ class AgentRequest(BaseModel):
             ReleaseTerminalRequest,
             WaitForTerminalExitRequest,
             KillTerminalRequest,
-            ConnectMcpRequest,
             MessageMcpRequest,
-            DisconnectMcpRequest,
             Union[
                 Union[CreateOtherSessionElicitationRequest, CreateOtherRequestElicitationRequest],
                 Union[CreateFormSessionElicitationRequest, CreateFormRequestElicitationRequest],
@@ -5740,7 +6018,7 @@ class AgentNotification(BaseModel):
     """
     The notification method name.
     """
-    params: Optional[Union[SessionNotification, CompleteElicitationNotification, MessageMcpNotification, Any]] = None
+    params: Optional[Union[SessionNotification, CompleteElicitationNotification, Any]] = None
     """
     Method-specific notification parameters.
     """
@@ -5784,6 +6062,8 @@ class AgentResponse(RootModel[Union[AgentResponseMessage, AgentErrorMessage]]):
     A JSON-RPC response object.
     """
 
+
+MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
 
 PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
 PlanEntryPriority = Literal["high", "medium", "low"]

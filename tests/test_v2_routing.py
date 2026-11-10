@@ -24,8 +24,8 @@ def test_protocols_cover_wire_methods_and_match_connection_signatures(protocol, 
         assert inspect.signature(getattr(protocol, spec.handler)) == inspect.signature(
             getattr(connection, spec.handler)
         )
-    assert "mcp/message" in {spec.method for spec in requests}
-    assert "mcp/message" in {spec.method for spec in notifications}
+    assert ("mcp/message" in {spec.method for spec in requests}) == (protocol is v2.Client)
+    assert ("mcp/message" in {spec.method for spec in notifications}) == (protocol is v2.Agent)
 
 
 @pytest.mark.asyncio
@@ -36,6 +36,7 @@ async def test_protocol_stubs_are_not_treated_as_implemented_handlers() -> None:
     router = MethodRouter(Agent(), v2.Agent)
     with pytest.raises(RequestError) as error:
         await router("session/new", {"cwd": "/workspace"}, False)
+    assert isinstance(error.value, RequestError)
     assert isinstance(error.value, RequestError)
     assert error.value.code == -32601
     assert await router("session/cancel", {"sessionId": "s"}, True) is None
@@ -66,7 +67,10 @@ async def test_v2_route_validation_and_empty_responses_remain_strict() -> None:
         await router("session/prompt", {"sessionId": "s", "prompt": []}, False)
     assert agent.calls == 1
     assert isinstance(await router("auth/logout", {}, False), v2.schema.LogoutAuthResponse)
-    assert await router("mcp/message", {"connectionId": "m", "method": "ping"}, False) is None
+    with pytest.raises(RequestError) as error:
+        await router("mcp/message", {"serverId": "s", "requestId": "r", "method": "ping"}, False)
+    assert isinstance(error.value, RequestError)
+    assert error.value.code == -32601
 
 
 @pytest.mark.asyncio
