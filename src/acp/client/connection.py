@@ -50,7 +50,6 @@ from ..schema import (
     LogoutResponse,
     McpServerStdio,
     MessageMcpNotification,
-    MessageMcpRequest,
     NesRepository,
     NesSuggestContext,
     NewSessionRequest,
@@ -86,7 +85,6 @@ from ..utils import (
     param_model,
     request_model,
     request_model_from_dict,
-    serialize_params,
 )
 from .router import build_client_router
 
@@ -434,26 +432,15 @@ class ClientSideConnection:
             self._conn, AGENT_METHODS["logout"], LogoutRequest(field_meta=kwargs or None), LogoutResponse
         )
 
-    @param_model(MessageMcpRequest)
-    async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any:
-        return await self._conn.send_request(
-            AGENT_METHODS["mcp_message"],
-            serialize_params(
-                MessageMcpRequest(connection_id=connection_id, method=method, params=params, field_meta=kwargs or None)
-            ),
-        )
-
     @param_model(MessageMcpNotification)
     async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None:
         await notify_model(
             self._conn,
             AGENT_METHODS["mcp_message"],
             MessageMcpNotification(
-                connection_id=connection_id, method=method, params=params, field_meta=kwargs or None
+                server_id=server_id, request_id=request_id, method=method, params=params, field_meta=kwargs or None
             ),
         )
 
