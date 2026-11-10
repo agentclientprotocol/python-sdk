@@ -5150,9 +5150,10 @@ class ClientResponseMessage(BaseModel):
         KillTerminalResponse,
         ConnectMcpResponse,
         DisconnectMcpResponse,
-        Union[
-            AcceptElicitationResponse, DeclineElicitationResponse, CancelElicitationResponse, OtherElicitationResponse
-        ],
+        AcceptElicitationResponse,
+        DeclineElicitationResponse,
+        CancelElicitationResponse,
+        OtherElicitationResponse,
         Any,
     ]
     """
@@ -5425,11 +5426,7 @@ class InitializeRequest(BaseModel):
     """
     client_capabilities: Annotated[
         Optional[ClientCapabilities], Field(alias="clientCapabilities", validate_default=True)
-    ] = {
-        "fs": {"readTextFile": False, "writeTextFile": False},
-        "terminal": False,
-        "auth": {"terminal": False},
-    }
+    ] = {"fs": {"readTextFile": False, "writeTextFile": False}, "terminal": False, "auth": {"terminal": False}}
     """
     Capabilities supported by the client.
     """
@@ -5489,11 +5486,7 @@ class AgentCapabilities(BaseModel):
     """
     prompt_capabilities: Annotated[
         Optional[PromptCapabilities], Field(alias="promptCapabilities", validate_default=True)
-    ] = {
-        "image": False,
-        "audio": False,
-        "embeddedContext": False,
-    }
+    ] = {"image": False, "audio": False, "embeddedContext": False}
     """
     Prompt capabilities supported by the agent.
     """
@@ -5639,7 +5632,8 @@ class ClientRequest(BaseModel):
             SuggestNesRequest,
             CloseNesRequest,
             MessageMcpRequest,
-            Union[SetSessionConfigOptionBooleanRequest, SetSessionConfigOptionSelectRequest],
+            SetSessionConfigOptionBooleanRequest,
+            SetSessionConfigOptionSelectRequest,
             Any,
         ]
     ] = None
@@ -5670,11 +5664,12 @@ class AgentRequest(BaseModel):
             ConnectMcpRequest,
             MessageMcpRequest,
             DisconnectMcpRequest,
-            Union[
-                Union[CreateOtherSessionElicitationRequest, CreateOtherRequestElicitationRequest],
-                Union[CreateFormSessionElicitationRequest, CreateFormRequestElicitationRequest],
-                Union[CreateUrlSessionElicitationRequest, CreateUrlRequestElicitationRequest],
-            ],
+            CreateOtherSessionElicitationRequest,
+            CreateOtherRequestElicitationRequest,
+            CreateFormSessionElicitationRequest,
+            CreateFormRequestElicitationRequest,
+            CreateUrlSessionElicitationRequest,
+            CreateUrlRequestElicitationRequest,
             Any,
         ]
     ] = None
