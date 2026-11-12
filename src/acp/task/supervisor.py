@@ -5,6 +5,8 @@ import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+_logger = logging.getLogger(__name__)
+
 __all__ = ["TaskSupervisor"]
 
 ErrorHandler = Callable[[asyncio.Task[Any], BaseException], None]
@@ -55,16 +57,16 @@ class TaskSupervisor:
                     on_error(task, exc)
                     handled = True
                 except Exception:
-                    logging.exception("Error in %s task-specific error handler", self._source)
+                    _logger.exception("Error in %s task-specific error handler", self._source)
             if not handled:
                 for handler in self._error_handlers:
                     try:
                         handler(task, exc)
                         handled = True
                     except Exception:
-                        logging.exception("Error in %s supervisor error handler", self._source)
+                        _logger.exception("Error in %s supervisor error handler", self._source)
             if not handled:
-                logging.exception("Unhandled error in %s task", self._source)
+                _logger.exception("Unhandled error in %s task", self._source)
 
     async def shutdown(self) -> None:
         self._closed = True

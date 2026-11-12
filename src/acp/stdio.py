@@ -18,6 +18,8 @@ from .connection import Connection, MethodHandler, StreamObserver
 from .interfaces import Agent, Client
 from .transports import spawn_stdio_transport
 
+_logger = logging.getLogger(__name__)
+
 __all__ = [
     "spawn_agent_process",
     "spawn_client_process",
@@ -76,7 +78,7 @@ class _StdoutTransport(asyncio.BaseTransport):
             sys.stdout.buffer.write(data)
             sys.stdout.buffer.flush()
         except Exception:
-            logging.exception("Error writing to stdout")
+            _logger.exception("Error writing to stdout")
 
     def can_write_eof(self) -> bool:  # type: ignore[override]
         return False

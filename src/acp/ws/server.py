@@ -18,6 +18,8 @@ if TYPE_CHECKING:
     from ..experimental.negotiation import AgentProtocolRouter
     from ..http.server import AgentFactory
 
+_logger = logging.getLogger(__name__)
+
 __all__ = ["handle_websocket"]
 
 
@@ -41,7 +43,7 @@ class _WebSocketTransport:
             if event.get("text") is None:
                 if event.get("bytes") is not None and not self._warned_binary:
                     self._warned_binary = True
-                    logging.warning("Ignoring binary WebSocket frame; ACP messages must be sent as text frames")
+                    _logger.warning("Ignoring binary WebSocket frame; ACP messages must be sent as text frames")
                 continue
             try:
                 message = decode_message(event["text"])

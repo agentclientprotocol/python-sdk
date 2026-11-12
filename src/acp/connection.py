@@ -18,6 +18,8 @@ from .meta import PROTOCOL_METHODS
 from .task import MessageSender, TaskSupervisor
 from .telemetry import span_context
 
+_logger = logging.getLogger(__name__)
+
 JsonValue = Any
 MethodHandler = Callable[[str, JsonValue | None, bool], Awaitable[JsonValue | None]]
 
@@ -107,7 +109,7 @@ class Connection:
         try:
             await self._receive_loop()
         except Exception as exc:
-            logging.exception("Connection main loop failed", exc_info=exc)
+            _logger.exception("Connection main loop failed", exc_info=exc)
             self._on_receive_error(None, exc)  # type: ignore[arg-type]
             raise
 
@@ -190,7 +192,7 @@ class Connection:
             try:
                 result = observer(event)
             except Exception:
-                logging.exception("Stream observer failed", exc_info=True)
+                _logger.exception("Stream observer failed", exc_info=True)
                 continue
             if inspect.isawaitable(result):
                 self._tasks.create(
@@ -200,7 +202,7 @@ class Connection:
                 )
 
     def _on_observer_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
-        logging.exception("Stream observer coroutine failed", exc_info=exc)
+        _logger.exception("Stream observer coroutine failed", exc_info=exc)
 
     def _track_incoming(self, request_id: Any, task: asyncio.Task[Any]) -> None:
         # A ``$/cancel_request`` can only name a valid request id, and Python would alias an invalid
@@ -237,7 +239,7 @@ class Connection:
         )
 
     def _on_cancel_request_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
-        logging.debug("Failed to send %s", _CANCEL_REQUEST_METHOD, exc_info=exc)
+        _logger.debug("Failed to send %s", _CANCEL_REQUEST_METHOD, exc_info=exc)
 
     async def _run_request(
         self, message: dict[str, Any], handler: asyncio.Future[dict[str, Any]] | None = None
@@ -257,7 +259,7 @@ class Connection:
         except ConnectionError:
             if self._closed or self._disconnected:
                 # The connection went away while the handler was running; nobody can receive it.
-                logging.debug("Dropping response for request %r: connection closed", message["id"])
+                _logger.debug("Dropping response for request %r: connection closed", message["id"])
                 return
             raise
         self._notify_observers(StreamDirection.OUTGOING, payload)
@@ -284,7 +286,7 @@ class Connection:
             except ValidationError as exc:
                 payload["error"] = RequestError.invalid_params({"errors": exc.errors()}).to_error_obj()
             except Exception as exc:
-                logging.exception(
+                _logger.exception(
                     "Unhandled error while handling request method=%s",
                     method,
                     exc_info=exc,
@@ -302,7 +304,7 @@ class Connection:
             try:
                 await self._handler(method, message.get("params"), True)
             except Exception as exc:
-                logging.exception(
+                _logger.exception(
                     "Unhandled error while handling notification method=%s",
                     method,
                     exc_info=exc,
@@ -335,11 +337,11 @@ class Connection:
         self._pending.pop(request_id, None)
 
     def _on_receive_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
-        logging.exception("Receive loop failed", exc_info=exc)
+        _logger.exception("Receive loop failed", exc_info=exc)
         self._disconnect()
 
     def _on_task_error(self, task: asyncio.Task[Any], exc: BaseException) -> None:
-        logging.exception("Background task failed", exc_info=exc)
+        _logger.exception("Background task failed", exc_info=exc)
 
     def _disconnect(self) -> None:
         if self._disconnected:
