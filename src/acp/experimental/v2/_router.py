@@ -37,7 +37,11 @@ class MethodRouter:
         handler = self._handler(spec.handler)
         if handler is None:
             raise RequestError.method_not_found(spec.method)
-        request = spec.request.validate_python(params)
+        # ``params`` is optional on every ACP request envelope, so an omitted one means "no
+        # arguments" and validates like ``{}``. A request whose fields are required still fails
+        # validation, so this only rescues methods such as ``session/list`` whose fields are all
+        # optional (TCK ACP-BATCH-204/205/JSONRPC-001 send ``session/list`` with no params).
+        request = spec.request.validate_python({} if params is None else params)
         response = await handler(**model_to_kwargs(request, type(request)))
         if response is None and spec.empty_response:
             response = {}

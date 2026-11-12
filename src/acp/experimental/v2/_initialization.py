@@ -24,11 +24,11 @@ class InitializationState:
     def begin(self, request: schema.InitializeRequest) -> None:
         if self._phase != "uninitialized":
             raise RequestError.invalid_request({"details": "ACP v2 connections may only be initialized once"})
-        if request.protocol_version != PROTOCOL_VERSION:
-            raise RequestError.invalid_params({
-                "expectedProtocolVersion": PROTOCOL_VERSION,
-                "receivedProtocolVersion": request.protocol_version,
-            })
+        # A request for any version other than PROTOCOL_VERSION is answered by the response, not
+        # rejected: initialization requires an unsupported request to succeed with the newest
+        # version this runtime supports (TCK ACP-INIT-003/201/202). The requested value is
+        # therefore validated only by the generated request model; `complete` still enforces that
+        # the response advertises PROTOCOL_VERSION.
         self._phase = "initializing"
 
     def complete(self, response: schema.InitializeResponse) -> None:

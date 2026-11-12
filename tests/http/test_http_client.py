@@ -117,6 +117,21 @@ async def test_initialize_failure_raises() -> None:
 
 
 @pytest.mark.asyncio
+async def test_batch_send_is_rejected_before_reaching_the_wire() -> None:
+    # The ACP HTTP server answers a batch POST root with 501, so the client transport refuses one
+    # front instead of opening a connection and failing per entry.
+    server = FakeServer()
+    transport, client = _make_transport(server)
+    try:
+        with pytest.raises(ConnectionError, match="not supported over Streamable HTTP"):
+            await transport.send([{"jsonrpc": "2.0", "id": 1, "method": "session/list"}])
+        assert server.posts == []
+    finally:
+        await transport.close()
+        await client.aclose()
+
+
+@pytest.mark.asyncio
 async def test_connection_scoped_sse_delivers_new_session_result() -> None:
     server = FakeServer()
     transport, client = _make_transport(server)
