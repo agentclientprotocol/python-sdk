@@ -100,8 +100,8 @@ class _TrackedToolCall:
             status=self.status,
             content=tuple(item.model_copy(deep=True) for item in self.content) if self.content else None,
             locations=tuple(loc.model_copy(deep=True) for loc in self.locations) if self.locations else None,
-            raw_input=deepcopy(self.raw_input),
-            raw_output=deepcopy(self.raw_output),
+            raw_input=self.raw_input,
+            raw_output=self.raw_output,
         )
 
     def to_tool_call_model(self) -> ToolCallUpdate:
@@ -113,8 +113,8 @@ class _TrackedToolCall:
             status=self.status,
             content=_copy_model_list(self.content),
             locations=_copy_model_list(self.locations),
-            raw_input=deepcopy(self.raw_input),
-            raw_output=deepcopy(self.raw_output),
+            raw_input=self.raw_input,
+            raw_output=self.raw_output,
         )
 
     def to_start_model(self) -> ToolCallStart:
@@ -129,8 +129,8 @@ class _TrackedToolCall:
             status=self.status,
             content=_copy_model_list(self.content),
             locations=_copy_model_list(self.locations),
-            raw_input=deepcopy(self.raw_input),
-            raw_output=deepcopy(self.raw_output),
+            raw_input=self.raw_input,
+            raw_output=self.raw_output,
         )
 
     def update(
@@ -170,11 +170,11 @@ class _TrackedToolCall:
             )
             kwargs["locations"] = _copy_model_list(seq_locations)
         if raw_input is not UNSET:
-            self.raw_input = deepcopy(raw_input)
-            kwargs["rawInput"] = deepcopy(self.raw_input)
+            self.raw_input = raw_input
+            kwargs["rawInput"] = raw_input
         if raw_output is not UNSET:
-            self.raw_output = deepcopy(raw_output)
-            kwargs["raw_output"] = deepcopy(self.raw_output)
+            self.raw_output = raw_output
+            kwargs["raw_output"] = raw_output
         return ToolCallProgress(session_update="tool_call_update", tool_call_id=self.tool_call_id, **kwargs)
 
     def append_stream_text(
@@ -190,11 +190,7 @@ class _TrackedToolCall:
 
 
 class ToolCallTracker:
-    """Utility for generating ACP tool call updates on the server side.
-
-    Raw input/output payloads are copied on entry and export so caller, view,
-    notification, and permission-request mutations cannot change tracked state.
-    """
+    """Utility for generating ACP tool call updates on the server side."""
 
     def __init__(self, *, id_factory: Callable[[], str] | None = None) -> None:
         self._id_factory = id_factory or (lambda: uuid.uuid4().hex)

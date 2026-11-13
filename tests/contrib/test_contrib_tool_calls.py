@@ -38,34 +38,7 @@ def test_tool_call_tracker_streaming_text_updates_content():
 
 
 @pytest.mark.parametrize("field", ["raw_input", "raw_output"])
-@pytest.mark.parametrize("operation", ["start", "progress"])
-def test_tracker_snapshots_incoming_raw_payloads(field: str, operation: str) -> None:
-    tracker = ToolCallTracker()
-    payload = {"nested": ["original"]}
-    if operation == "start":
-        notification = tracker.start(
-            "external",
-            title="Run",
-            raw_input=payload if field == "raw_input" else None,
-            raw_output=payload if field == "raw_output" else None,
-        )
-    else:
-        tracker.start("external", title="Run")
-        notification = tracker.progress(
-            "external",
-            raw_input=payload if field == "raw_input" else None,
-            raw_output=payload if field == "raw_output" else None,
-        )
-
-    payload["nested"].append("caller mutation")
-
-    assert getattr(tracker.view("external"), field) == {"nested": ["original"]}
-    assert getattr(notification, field) == {"nested": ["original"]}
-
-
-@pytest.mark.parametrize("field", ["raw_input", "raw_output"])
-@pytest.mark.parametrize("output", ["start", "progress", "view", "tool_call_model"])
-def test_tracker_raw_payload_exports_cannot_mutate_state(field: str, output: str) -> None:
+def test_tracker_start_snapshots_incoming_raw_payloads(field: str) -> None:
     tracker = ToolCallTracker()
     payload = {"nested": ["original"]}
     notification = tracker.start(
@@ -74,22 +47,11 @@ def test_tracker_raw_payload_exports_cannot_mutate_state(field: str, output: str
         raw_input=payload if field == "raw_input" else None,
         raw_output=payload if field == "raw_output" else None,
     )
-    if output == "progress":
-        exported = tracker.progress(
-            "external",
-            raw_input=payload if field == "raw_input" else None,
-            raw_output=payload if field == "raw_output" else None,
-        )
-    elif output == "view":
-        exported = tracker.view("external")
-    elif output == "tool_call_model":
-        exported = tracker.tool_call_model("external")
-    else:
-        exported = notification
 
-    getattr(exported, field)["nested"].append("consumer mutation")
+    payload["nested"].append("caller mutation")
 
     assert getattr(tracker.view("external"), field) == {"nested": ["original"]}
+    assert getattr(notification, field) == {"nested": ["original"]}
 
 
 @pytest.mark.parametrize("payload", [None, False, 0, "text", ["item"]])
