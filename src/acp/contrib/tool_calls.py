@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Callable, Sequence
+from copy import deepcopy
 from typing import Any, cast
 
 from pydantic import BaseModel, ConfigDict
@@ -86,8 +87,8 @@ class _TrackedToolCall:
         self.status = status
         self.content = _copy_model_list(content)
         self.locations = _copy_model_list(locations)
-        self.raw_input = raw_input
-        self.raw_output = raw_output
+        self.raw_input = deepcopy(raw_input)
+        self.raw_output = deepcopy(raw_output)
         self._stream_buffer: str | None = None
 
     def to_view(self) -> TrackedToolCallView:
