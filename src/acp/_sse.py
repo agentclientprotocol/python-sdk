@@ -76,9 +76,16 @@ async def parse_sse_stream(
     decoder = codecs.getincrementaldecoder("utf-8")()
     buffer = ""
     data_lines: list[str] = []
+    skip_lf = False
 
     async for chunk in chunks:
-        buffer += decoder.decode(chunk)
+        text = decoder.decode(chunk)
+        if not text:
+            continue
+        if skip_lf and text.startswith("\n"):
+            text = text[1:]
+        skip_lf = text.endswith("\r")
+        buffer += text.replace("\r\n", "\n").replace("\r", "\n")
         while "\n" in buffer:
             line, buffer = buffer.split("\n", 1)
             line = line.rstrip("\r")
