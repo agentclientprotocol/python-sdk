@@ -82,12 +82,12 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
 
     tree = ast.parse(
         "from typing import Any\n"
-        "from schema import SetProviderRequest, SuggestNesRequest\n"
+        "from schema import SetProviderRequest, StringPropertySchema\n"
         "class Methods:\n"
         '    @param_model(SetProviderRequest, method="providers/set", unstable=True)\n'
         "    async def set_provider(self, **kwargs: Any): ...\n"
-        "    @param_model(SuggestNesRequest)\n"
-        "    async def suggest_nes(self, **kwargs: Any): ...\n"
+        "    @param_model(StringPropertySchema)\n"
+        "    async def string_property(self, **kwargs: Any): ...\n"
     )
     NodeTransformer().visit(tree)
     ast.fix_missing_locations(tree)
@@ -106,17 +106,18 @@ def test_signature_generation_preserves_inline_literal_values() -> None:
         "method": "providers/set",
         "unstable": True,
     }
-    suggest = methods.body[-1]
-    assert isinstance(suggest, ast.AsyncFunctionDef)
-    trigger = next(arg for arg in suggest.args.args if arg.arg == "trigger_kind")
-    annotation = ast.unparse(trigger.annotation)
+    # Schema 1.33 removed SuggestNesRequest. StringPropertySchema.format is a multi-value Literal with no schema alias.
+    choose = methods.body[-1]
+    assert isinstance(choose, ast.AsyncFunctionDef)
+    fmt = next(arg for arg in choose.args.args + choose.args.kwonlyargs if arg.arg == "format")
+    annotation = ast.unparse(fmt.annotation)
 
     class Annotated:
-        __annotations__ = {"trigger": annotation}
+        __annotations__ = {"format": annotation}
 
     assert (
-        get_type_hints(Annotated, globalns={"Literal": Literal})["trigger"]
-        == Literal["automatic", "diagnostic", "manual"]
+        get_type_hints(Annotated, globalns={"Literal": Literal})["format"]
+        == Literal["email", "uri", "date", "date-time"] | None
     )
 
 

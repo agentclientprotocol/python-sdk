@@ -9,7 +9,7 @@ from typing import Any
 from pydantic import BaseModel, field_validator
 
 from acp._deserialize import salvage_on_error, skip_invalid_items
-from acp.schema import ReadTextFileRequest, ToolCallUpdate, WriteTextFileRequest
+from acp.schema import ToolCallLocation, ToolCallUpdate, WriteTextFileRequest
 
 
 class _Salvage(BaseModel):
@@ -50,9 +50,10 @@ def test_meta_is_salvaged_to_none() -> None:
 
 
 def test_default_on_error_field_is_salvaged() -> None:
-    salvaged = ReadTextFileRequest.model_validate({"sessionId": "s", "path": "/p", "line": "nan"})
+    # Schema 1.33 dropped x-deserialize-default-on-error from ReadTextFileRequest.line; ToolCallLocation.line keeps it.
+    salvaged = ToolCallLocation.model_validate({"path": "/p", "line": "nan"})
     assert salvaged.line is None
-    kept = ReadTextFileRequest.model_validate({"sessionId": "s", "path": "/p", "line": 5})
+    kept = ToolCallLocation.model_validate({"path": "/p", "line": 5})
     assert kept.line == 5
 
 

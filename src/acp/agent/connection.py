@@ -17,6 +17,8 @@ from ..schema import (
     AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
+    AuthAccount,
+    AuthStatusUpdateNotification,
     AvailableCommandsUpdate,
     CancelElicitationResponse,
     CompleteElicitationNotification,
@@ -53,7 +55,9 @@ from ..schema import (
     SessionNotification,
     SessionUpdateCompactionSummaryChunk,
     SessionUpdateCompactionUpdate,
+    SessionUpdateCursorUpdate,
     SessionUpdateNotice,
+    SessionUpdatePromptSuggestionsUpdate,
     SessionUpdateSessionMessage,
     SessionUpdateSessionMessageChunk,
     SessionUpdateSubagentUpdate,
@@ -69,14 +73,7 @@ from ..schema import (
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
-from ..utils import (
-    compatible_class,
-    notify_model,
-    param_model,
-    request_model,
-    request_optional_model,
-    serialize_params,
-)
+from ..utils import compatible_class, notify_model, param_model, request_model, request_optional_model, serialize_params
 from .router import build_agent_router
 
 __all__ = ["AgentSideConnection"]
@@ -128,16 +125,13 @@ class AgentSideConnection:
         agent, handler = self._prepare(to_agent, use_unstable_protocol=use_unstable_protocol)
         self._conn = connection
         self._notify_connected(agent)
-        return self, handler
+        return (self, handler)
 
     def _prepare(
-        self,
-        to_agent: Callable[[AgentSideConnection], Agent] | Agent,
-        *,
-        use_unstable_protocol: bool,
+        self, to_agent: Callable[[AgentSideConnection], Agent] | Agent, *, use_unstable_protocol: bool
     ) -> tuple[Agent, MethodHandler]:
         agent = cast(Agent, to_agent(self) if callable(to_agent) else to_agent)
-        return agent, build_agent_router(agent, use_unstable_protocol=use_unstable_protocol)
+        return (agent, build_agent_router(agent, use_unstable_protocol=use_unstable_protocol))
 
     def _notify_connected(self, agent: Agent) -> None:
         if on_connect := getattr(agent, "on_connect", None):
@@ -167,6 +161,8 @@ class AgentSideConnection:
         | SessionUpdateNotice
         | SessionUpdateCompactionUpdate
         | SessionUpdateCompactionSummaryChunk
+        | SessionUpdatePromptSuggestionsUpdate
+        | SessionUpdateCursorUpdate
         | SessionUpdateSubagentUpdate
         | SessionUpdateSessionMessage
         | SessionUpdateSessionMessageChunk,
@@ -292,6 +288,14 @@ class AgentSideConnection:
             self._conn,
             CLIENT_METHODS["elicitation_complete"],
             CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None),
+        )
+
+    @param_model(AuthStatusUpdateNotification)
+    async def auth_status_update(self, state: str, accounts: list[AuthAccount] | None = None, **kwargs: Any) -> None:
+        await notify_model(
+            self._conn,
+            CLIENT_METHODS["auth_status_update"],
+            AuthStatusUpdateNotification(state=state, accounts=accounts, field_meta=kwargs or None),
         )
 
     @param_model(MessageMcpRequest)
