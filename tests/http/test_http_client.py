@@ -10,6 +10,7 @@ import httpx2
 import pytest
 
 from acp._sse import serialize_sse_event
+from acp.connection import Connection
 from acp.http.client import AcpHttpStatusError, create_http_stream
 from acp.http.protocol import CONNECTION_ID_HEADER, CONTENT_TYPE_JSON, SESSION_ID_HEADER
 
@@ -256,6 +257,34 @@ async def test_post_error_status_raises() -> None:
     finally:
         await transport.close()
         await client.aclose()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("payload", [b"<html>not an ACP response</html>", b"{invalid"])
+async def test_invalid_post_json_rejects_request_without_losing_connection(payload: bytes) -> None:
+    server = FakeServer()
+
+    def handler(request: httpx2.Request) -> httpx2.Response:
+        if request.method == "POST":
+            message = json.loads(request.content)
+            if message.get("method") == "broken":
+                return httpx2.Response(200, content=payload)
+            if message.get("method") == "after":
+                return httpx2.Response(200, json={"jsonrpc": "2.0", "id": message["id"], "result": "ok"})
+        return server.handler(request)
+
+    async def noop(method: str, params: Any, is_notification: bool) -> None:
+        pass
+
+    async with httpx2.AsyncClient(transport=httpx2.MockTransport(handler)) as client:
+        transport = create_http_stream("http://testserver/acp", client=client)
+        await transport.send({"jsonrpc": "2.0", "id": "init", "method": "initialize", "params": {}})
+        await asyncio.wait_for(transport.receive(), timeout=1)
+
+        async with Connection(noop, transport) as connection:
+            with pytest.raises(json.JSONDecodeError):
+                await asyncio.wait_for(connection.send_request("broken", {}), timeout=1)
+            assert await asyncio.wait_for(connection.send_request("after", {}), timeout=1) == "ok"
 
 
 @pytest.mark.asyncio

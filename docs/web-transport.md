@@ -56,6 +56,10 @@ header, then opens the connection-scoped SSE stream. When a new `sessionId`
 appears it opens that session-scoped stream too. A single SSE attempt is made per
 stream; reconnect/retry is the caller's responsibility (v1 of the RFD).
 
+When a server returns an inline JSON response in a `200 OK` POST body, invalid
+JSON raises `json.JSONDecodeError` in the sending call. The request fails promptly
+and the connection remains available for subsequent requests.
+
 ### Loading an existing session
 
 Both HTTP and WebSocket support `load_session()` when the agent advertises
