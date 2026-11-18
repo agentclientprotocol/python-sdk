@@ -200,11 +200,12 @@ Check the peer's advertised capabilities before calling these methods.
 | `session/delete` | `delete_session(session_id=...)` | Agent |
 | `providers/list`, `providers/set`, `providers/disable` | `list_providers`, `set_provider`, `disable_provider` | Agent |
 | `logout` | `logout()` | Agent |
+| `session/archive`, `session/unarchive` | `archive_session`, `unarchive_session` | Agent |
+| `session/status`, `session/options`, `session/set_title` | `session_status`, `session_options`, `set_session_title` | Agent |
+| `auth/status` | `auth_status()` | Agent |
+| `auth/status_update` (notification) | `auth_status_update` | Client |
 | `mcp/message` (request) | `mcp_message` | Client/provider |
 | `mcp/message` (notification) | `notify_mcp` | Agent |
-| `nes/start`, `nes/suggest`, `nes/close` | `start_nes`, `suggest_nes`, `close_nes` | Agent |
-| `nes/accept`, `nes/reject` | `accept_nes`, `reject_nes` | Agent |
-| `document/didOpen`, `document/didChange`, `document/didClose`, `document/didSave`, `document/didFocus` | `did_open`, `did_change`, `did_close`, `did_save`, `did_focus` | Agent |
 
 For example, an agent that advertises session deletion implements:
 

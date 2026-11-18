@@ -156,8 +156,17 @@ async def test_request_metadata_notifications_and_error_domains(peers, schema):
         "data": None,
         "vendor": 1,
     }
+    # v1 1.35 adds the optional `sessionId` and `toolCallId` to the envelope; v2 does not have them yet.
+    added = {"session_id", "tool_call_id"} & set(schema.MessageMcpRequest.model_fields)
     assert client.calls == [
-        {"server_id": "s", "request_id": "logical", "method": "tools/call", "params": inner, "trace": "outer"}
+        {
+            "server_id": "s",
+            "request_id": "logical",
+            "method": "tools/call",
+            "params": inner,
+            **dict.fromkeys(added),
+            "trace": "outer",
+        }
     ]
     notification = await asyncio.wait_for(agent.notifications.get(), 1)
     assert notification == {

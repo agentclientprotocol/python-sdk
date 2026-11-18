@@ -137,6 +137,7 @@ class TestClient:
         self.notifications: list[SessionNotification] = []
         self.elicitation_requests: list[tuple[str, ElicitationMode, dict[str, Any]]] = []
         self.completed_elicitations: list[CompleteElicitationNotification] = []
+        self.auth_status_updates: list[dict[str, Any]] = []
         self.ext_calls: list[tuple[str, dict]] = []
         self.ext_notes: list[tuple[str, dict]] = []
         self._agent_conn = None
@@ -234,6 +235,9 @@ class TestClient:
         self.completed_elicitations.append(
             CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None)
         )
+
+    async def auth_status_update(self, state: str, accounts: list[Any] | None = None, **kwargs: Any) -> None:
+        self.auth_status_updates.append({"state": state, "accounts": accounts, **kwargs})
 
     async def mcp_message(
         self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any

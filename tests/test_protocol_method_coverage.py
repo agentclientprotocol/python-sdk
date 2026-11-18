@@ -28,53 +28,22 @@ REQUESTS = [
     ),
     ("disable_provider", "providers/disable", {"provider_id": "p"}, schema.DisableProviderResponse()),
     ("logout", "logout", {}, schema.LogoutResponse()),
-    ("start_nes", "nes/start", {"workspace_uri": "file:///workspace"}, schema.StartNesResponse(session_id="n")),
+    ("archive_session", "session/archive", {"session_id": "s"}, schema.ArchiveSessionResponse()),
+    ("unarchive_session", "session/unarchive", {"session_id": "s"}, schema.UnarchiveSessionResponse()),
+    ("session_status", "session/status", {"session_id": "s"}, schema.SessionStatusResponse(status="open")),
     (
-        "suggest_nes",
-        "nes/suggest",
-        {
-            "session_id": "n",
-            "uri": "file:///a",
-            "version": 1,
-            "position": schema.Position(line=0, character=0),
-            "trigger_kind": "manual",
-        },
-        schema.SuggestNesResponse(suggestions=[]),
-    ),
-    ("close_nes", "nes/close", {"session_id": "n"}, schema.CloseNesResponse()),
-]
-POSITION = schema.Position(line=0, character=0)
-NOTIFICATIONS = [
-    ("accept_nes", "nes/accept", {"session_id": "n", "id": "edit"}),
-    ("reject_nes", "nes/reject", {"session_id": "n", "id": "edit", "reason": "rejected"}),
-    (
-        "did_open",
-        "document/didOpen",
-        {"session_id": "n", "uri": "file:///a", "language_id": "python", "version": 1, "text": "hello"},
+        "session_options",
+        "session/options",
+        {"cwd": "/w", "additional_directories": ["/x"], "session_id": "s"},
+        schema.SessionOptionsResponse(config_options=[]),
     ),
     (
-        "did_change",
-        "document/didChange",
-        {
-            "session_id": "n",
-            "uri": "file:///a",
-            "version": 2,
-            "content_changes": [schema.TextDocumentContentChangeEvent(text="world")],
-        },
+        "set_session_title",
+        "session/set_title",
+        {"session_id": "s", "title": "t"},
+        schema.SetSessionTitleResponse(title="t"),
     ),
-    ("did_close", "document/didClose", {"session_id": "n", "uri": "file:///a"}),
-    ("did_save", "document/didSave", {"session_id": "n", "uri": "file:///a", "text": "world"}),
-    (
-        "did_focus",
-        "document/didFocus",
-        {
-            "session_id": "n",
-            "uri": "file:///a",
-            "version": 2,
-            "position": POSITION,
-            "visible_range": schema.Range(start=POSITION, end=POSITION),
-        },
-    ),
+    ("auth_status", "auth/status", {}, schema.AuthStatusResponse(state="authenticated")),
 ]
 
 
@@ -96,23 +65,6 @@ async def test_agent_request_roundtrip(connect, agent, name, wire_method, params
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize(("name", "wire_method", "params"), NOTIFICATIONS)
-async def test_agent_notification_roundtrip(connect, agent, name, wire_method, params):
-    received = asyncio.Event()
-    calls = []
-
-    async def handler(**kwargs):
-        calls.append(kwargs)
-        received.set()
-
-    setattr(agent, name, handler)
-    _, connection = connect(use_unstable_protocol=True)
-    await getattr(connection, name)(**params, trace="test")
-    await asyncio.wait_for(received.wait(), 2)
-    assert calls[0].items() >= (params | {"trace": "test"}).items()
-
-
-@pytest.mark.asyncio
 @pytest.mark.parametrize("result", [None, {}, {"tools": []}, [1, "x"], False, 42])
 async def test_mcp_requests_and_notifications_share_method(connect, agent, client, result):
     received = asyncio.Event()
@@ -131,12 +83,24 @@ async def test_mcp_requests_and_notifications_share_method(connect, agent, clien
     client.mcp_message = AsyncMock(return_value=schema.McpResultResponse(result=result))
     agent_side, client_side = connect(use_unstable_protocol=True)
     response = await agent_side.mcp_message(
-        server_id="s", request_id="r", method="tools/list", params={"cursor": "next"}, trace="test"
+        server_id="s",
+        request_id="r",
+        method="tools/list",
+        params={"cursor": "next"},
+        session_id="sess",
+        tool_call_id="call",
+        trace="test",
     )
     assert isinstance(response, schema.McpResultResponse)
     assert response.result == result
     client.mcp_message.assert_awaited_once_with(
-        server_id="s", request_id="r", method="tools/list", params={"cursor": "next"}, trace="test"
+        server_id="s",
+        request_id="r",
+        method="tools/list",
+        params={"cursor": "next"},
+        session_id="sess",
+        tool_call_id="call",
+        trace="test",
     )
     await client_side.notify_mcp(server_id="s", request_id="r", method="notifications/progress", trace="test")
     await asyncio.wait_for(received.wait(), 2)
@@ -211,3 +175,20 @@ async def test_stable_methods_work_without_unstable_flag(connect, agent, name, p
     _, connection = connect()
     assert await getattr(connection, name)(**params) == response
     handler.assert_awaited_once_with(**params)
+
+
+@pytest.mark.asyncio
+async def test_auth_status_update_reaches_the_client(connect, client):
+    received = asyncio.Event()
+    calls: list[dict[str, Any]] = []
+
+    async def handler(**kwargs: Any) -> None:
+        calls.append(kwargs)
+        received.set()
+
+    client.auth_status_update = handler
+    agent_side, _ = connect(use_unstable_protocol=True)
+    await agent_side.auth_status_update(state="unauthenticated", trace="test")
+    await asyncio.wait_for(received.wait(), 2)
+    assert calls[0]["state"] == "unauthenticated"
+    assert calls[0]["trace"] == "test"

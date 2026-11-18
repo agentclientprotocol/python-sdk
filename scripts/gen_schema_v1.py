@@ -50,18 +50,7 @@ for variant_names in (
         "PlanUpdateContent",
         "oneOf",
         "allOf",
-        ("PlanUpdateItems", "PlanUpdateFile", "PlanUpdateMarkdown"),
-    ),
-    variant_model_map(
-        "NesSuggestion",
-        "oneOf",
-        "allOf",
-        (
-            "NesEditSuggestionVariant",
-            "NesJumpSuggestionVariant",
-            "NesRenameSuggestionVariant",
-            "NesSearchAndReplaceSuggestionVariant",
-        ),
+        ("PlanUpdateItems", "PlanUpdateMarkdown"),
     ),
     variant_model_map(
         "SessionUpdate",

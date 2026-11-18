@@ -15,7 +15,7 @@ from acp.schema import (
     HttpMcpServer,
     McpServerHttp,
     NewSessionRequest,
-    ReadTextFileRequest,
+    ToolCallLocation,
     ToolCallUpdate,
     WriteTextFileRequest,
 )
@@ -59,9 +59,10 @@ def test_meta_is_salvaged_to_none() -> None:
 
 
 def test_default_on_error_field_is_salvaged() -> None:
-    salvaged = ReadTextFileRequest.model_validate({"sessionId": "s", "path": "/p", "line": "nan"})
+    # Schema 1.33 dropped x-deserialize-default-on-error from ReadTextFileRequest.line; ToolCallLocation.line keeps it.
+    salvaged = ToolCallLocation.model_validate({"path": "/p", "line": "nan"})
     assert salvaged.line is None
-    kept = ReadTextFileRequest.model_validate({"sessionId": "s", "path": "/p", "line": 5})
+    kept = ToolCallLocation.model_validate({"path": "/p", "line": 5})
     assert kept.line == 5
 
 
@@ -106,9 +107,12 @@ def test_new_session_request_rejects_untagged_mcp_server_instance() -> None:
     )
     assert [s.name for s in ok.mcp_servers] == ["m"]
     # Incoming JSON is unchanged: the same fields as a dict parse (type defaults to "http"),
-    # and a malformed server is still skipped.
-    wire = NewSessionRequest.model_validate({
-        "cwd": "/w",
-        "mcpServers": [{"name": "m", "url": "u", "headers": []}, {"bogus": 1}],
-    })
+    # and since schema 1.33 (`mcpServers` is no longer `x-deserialize-skip-invalid-items`) a
+    # malformed server is an error, not skipped.
+    wire = NewSessionRequest.model_validate({"cwd": "/w", "mcpServers": [{"name": "m", "url": "u", "headers": []}]})
     assert [s.name for s in wire.mcp_servers] == ["m"]
+    with pytest.raises(ValidationError):
+        NewSessionRequest.model_validate({
+            "cwd": "/w",
+            "mcpServers": [{"name": "m", "url": "u", "headers": []}, {"bogus": 1}],
+        })
