@@ -7,6 +7,7 @@ import logging
 import platform
 import sys
 from asyncio import transports as aio_transports
+from asyncio.streams import FlowControlMixin
 from collections.abc import AsyncIterator, Callable, Mapping
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -28,26 +29,24 @@ __all__ = [
 ]
 
 
-class _WritePipeProtocol(asyncio.BaseProtocol):
+class _WritePipeProtocol(FlowControlMixin):
     def __init__(self) -> None:
-        self._loop = asyncio.get_running_loop()
-        self._paused = False
-        self._drain_waiter: asyncio.Future[None] | None = None
+        loop = asyncio.get_running_loop()
+        super().__init__(loop=loop)
+        self._closed: asyncio.Future[None] = loop.create_future()
+        # Callers may handle a failed drain without also awaiting wait_closed.
+        self._closed.add_done_callback(lambda future: None if future.cancelled() else future.exception())
 
-    def pause_writing(self) -> None:  # type: ignore[override]
-        self._paused = True
-        if self._drain_waiter is None:
-            self._drain_waiter = self._loop.create_future()
+    def connection_lost(self, exc: Exception | None) -> None:
+        super().connection_lost(exc)
+        if not self._closed.done():
+            if exc is None:
+                self._closed.set_result(None)
+            else:
+                self._closed.set_exception(exc)
 
-    def resume_writing(self) -> None:  # type: ignore[override]
-        self._paused = False
-        if self._drain_waiter is not None and not self._drain_waiter.done():
-            self._drain_waiter.set_result(None)
-        self._drain_waiter = None
-
-    async def _drain_helper(self) -> None:
-        if self._paused and self._drain_waiter is not None:
-            await self._drain_waiter
+    def _get_close_waiter(self, stream: asyncio.StreamWriter) -> asyncio.Future[None]:
+        return self._closed
 
 
 def _start_stdin_feeder(loop: asyncio.AbstractEventLoop, reader: asyncio.StreamReader) -> None:
@@ -68,8 +67,9 @@ def _start_stdin_feeder(loop: asyncio.AbstractEventLoop, reader: asyncio.StreamR
 
 
 class _StdoutTransport(asyncio.BaseTransport):
-    def __init__(self) -> None:
+    def __init__(self, protocol: _WritePipeProtocol) -> None:
         self._is_closing = False
+        self._protocol = protocol
 
     def write(self, data: bytes) -> None:  # type: ignore[override]
         if self._is_closing:
@@ -77,8 +77,10 @@ class _StdoutTransport(asyncio.BaseTransport):
         try:
             sys.stdout.buffer.write(data)
             sys.stdout.buffer.flush()
-        except Exception:
+        except Exception as exc:
             _logger.exception("Error writing to stdout")
+            self._is_closing = True
+            self._protocol.connection_lost(exc)
 
     def can_write_eof(self) -> bool:  # type: ignore[override]
         return False
@@ -87,9 +89,12 @@ class _StdoutTransport(asyncio.BaseTransport):
         return self._is_closing
 
     def close(self) -> None:  # type: ignore[override]
+        if self._is_closing:
+            return
         self._is_closing = True
         with contextlib.suppress(Exception):
             sys.stdout.flush()
+        self._protocol.connection_lost(None)
 
     def abort(self) -> None:  # type: ignore[override]
         self.close()
@@ -108,7 +113,7 @@ async def _windows_stdio_streams(
     _start_stdin_feeder(loop, reader)
 
     write_protocol = _WritePipeProtocol()
-    transport = _StdoutTransport()
+    transport = _StdoutTransport(write_protocol)
     writer = asyncio.StreamWriter(cast(aio_transports.WriteTransport, transport), write_protocol, None, loop)
     return reader, writer
 
@@ -131,6 +136,10 @@ async def _posix_stdio_streams(
 
 async def stdio_streams(limit: int | None = None) -> tuple[asyncio.StreamReader, asyncio.StreamWriter]:
     """Create stdio asyncio streams; on Windows use a thread feeder + custom stdout transport.
+
+    The writer supports ``close()`` followed by ``await wait_closed()``.
+    ``drain()`` reports a disconnected output pipe, including while waiting for
+    buffered output to be consumed.
 
     Args:
         limit: Optional buffer limit for the stdin reader.
