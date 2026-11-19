@@ -41,6 +41,8 @@ class MethodRouter:
         response = await handler(**model_to_kwargs(request, type(request)))
         if response is None and spec.empty_response:
             response = {}
+        if spec.adapt_result is not None:
+            response = spec.adapt_result(response)
         return spec.response.validate_python(response)
 
     async def handle_notification(self, spec: NotificationSpec, params: Any) -> None:

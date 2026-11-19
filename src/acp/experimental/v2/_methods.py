@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from functools import cache
 from typing import Any, get_type_hints
@@ -16,6 +17,7 @@ class RequestSpec:
     request: TypeAdapter[Any]
     response: TypeAdapter[Any]
     empty_response: bool = False
+    adapt_result: Callable[[Any], Any] | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -48,6 +50,7 @@ def protocol_specs(protocol: type) -> tuple[tuple[RequestSpec, ...], tuple[Notif
                 TypeAdapter(metadata.request_type),
                 TypeAdapter(get_type_hints(handler, include_extras=True)["return"]),
                 empty_response=metadata.default_result == {},
+                adapt_result=metadata.adapt_result,
             )
     return tuple(requests.values()), tuple(notifications.values())
 

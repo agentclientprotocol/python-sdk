@@ -20,7 +20,7 @@ class BaseModel(_BaseModel):
         "OtherPlanUpdateContent": ("type", frozenset({"file", "items", "markdown"})),
         "OtherReplayFrom": ("type", frozenset({"start"})),
         "OtherSessionConfigOption": ("type", frozenset({"boolean", "select"})),
-        "OtherSessionStateUpdate": ("state", frozenset({"idle", "requires_action", "running"})),
+        "OtherSessionStateUpdate": ("state", frozenset({"idle", "requires_action", "running", "unknown"})),
         "OtherSessionUpdate": (
             "sessionUpdate",
             frozenset({
@@ -44,9 +44,12 @@ class BaseModel(_BaseModel):
                 "usage_update",
                 "user_message",
                 "user_message_chunk",
+                "subagent_update",
+                "session_message",
+                "session_message_chunk",
             }),
         ),
-        "OtherState": ("state", frozenset({"idle", "requires_action", "running"})),
+        "OtherState": ("state", frozenset({"idle", "requires_action", "running", "unknown"})),
         "OtherToolCallContent": ("type", frozenset({"content", "diff", "terminal"})),
         "SetSessionConfigOptionOtherRequest": ("type", frozenset({"boolean", "id"})),
         "CreateOtherSessionElicitationRequest": ("mode", frozenset({"form", "url"})),
