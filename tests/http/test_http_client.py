@@ -288,3 +288,61 @@ async def test_load_opens_session_stream_from_request_id(result: Any) -> None:
     finally:
         await transport.close()
         await client.aclose()
+
+
+@pytest.mark.parametrize("line_ending", ["\n", "\r\n", "\r"])
+@pytest.mark.asyncio
+async def test_connection_sse_accepts_standard_line_endings(line_ending: str) -> None:
+    """A complete event is delivered while its connection remains open."""
+    server = FakeServer()
+    transport, client = _make_transport(server)
+    message = {"jsonrpc": "2.0", "method": "_test/update", "params": {"text": "ready"}}
+    try:
+        await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
+        await asyncio.wait_for(transport.receive(), timeout=1)
+        data = json.dumps(message)
+        server.conn_stream.put_nowait(f"data: {data}{line_ending}{line_ending}".encode())
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == message
+    finally:
+        await transport.close()
+        await client.aclose()
+
+
+@pytest.mark.parametrize("layout", ["cr", "crlf-split", "mixed", "bytewise"])
+@pytest.mark.asyncio
+async def test_connection_sse_preserves_split_and_multiline_events(layout: str) -> None:
+    """CRLF split across reads is one ending, including before a second data field."""
+    server = FakeServer()
+    transport, client = _make_transport(server)
+    first = {"jsonrpc": "2.0", "method": "_test/update", "params": {"text": "\u4e2d\u6587\u0085\u2028"}}
+    second = {"jsonrpc": "2.0", "method": "_test/done"}
+    head = 'data: {"jsonrpc":"2.0",'
+    tail = 'data: "method":"_test/update","params":{"text":"\u4e2d\u6587\u0085\u2028"}}'
+    last = "data: " + json.dumps(second)
+    if layout == "cr":
+        chunks = [(head + "\r" + tail + "\r\r" + last + "\r\r").encode()]
+    elif layout == "crlf-split":
+        chunks = [
+            (head + "\r").encode(),
+            b"",
+            ("\n" + tail + "\r").encode(),
+            b"\n\r",
+            ("\n" + last + "\r").encode(),
+            b"\n\r",
+            b"\n",
+        ]
+    elif layout == "mixed":
+        chunks = [(head + "\r" + tail + "\n\r\n" + last + "\r\r").encode()]
+    else:
+        data = (head + "\r\n" + tail + "\r\r" + last + "\n\n").encode()
+        chunks = [data[index : index + 1] for index in range(len(data))]
+    try:
+        await transport.send({"jsonrpc": "2.0", "id": 0, "method": "initialize", "params": {}})
+        await asyncio.wait_for(transport.receive(), timeout=1)
+        for chunk in chunks:
+            server.conn_stream.put_nowait(chunk)
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == first
+        assert await asyncio.wait_for(transport.receive(), timeout=1) == second
+    finally:
+        await transport.close()
+        await client.aclose()
