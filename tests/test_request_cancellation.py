@@ -106,14 +106,14 @@ class _GatedTransport:
 
     def __init__(self) -> None:
         self.incoming: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
-        self.sent: list[dict[str, Any]] = []
+        self.sent: list[dict[str, Any] | list[Any]] = []
         self.sending = asyncio.Event()
         self.release = asyncio.Event()
         self.settled = asyncio.Event()
         self.send_cancelled = False
         self._receiving = False
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         self.sending.set()
         try:
             await self.release.wait()
@@ -125,7 +125,7 @@ class _GatedTransport:
         finally:
             self.settled.set()
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> dict[str, Any] | list[Any] | None:
         self._receiving = True
         try:
             return await self.incoming.get()
@@ -172,7 +172,7 @@ async def test_cancel_request_during_response_send_keeps_the_response(handler_ca
         assert not transport.send_cancelled, "the cancellation aborted the response send"
 
     if handler_cancelled:
-        assert [(m["id"], m["error"]["code"]) for m in transport.sent] == [(0, -32800)]
+        assert [_error_code_and_id(m) for m in transport.sent] == [(0, -32800)]
     else:
         assert transport.sent == [{"jsonrpc": "2.0", "id": 0, "result": {"ok": True}}]
 
@@ -218,6 +218,11 @@ async def test_cancel_request_only_affects_the_targeted_request(server, caplog: 
             await asyncio.wait_for(server.client_reader.readline(), timeout=0.1)
 
 
+def _error_code_and_id(message: Any) -> tuple[Any, Any]:
+    assert isinstance(message, dict)
+    return message["id"], message["error"]["code"]
+
+
 async def _cancel_while_pending(request_id: Any, cancel: dict[str, Any]) -> dict[str, Any]:
     """Deliver ``cancel`` while request ``request_id`` is in flight, then let it finish and return its response."""
     transport = _GatedTransport()
@@ -238,6 +243,7 @@ async def _cancel_while_pending(request_id: Any, cancel: dict[str, Any]) -> dict
         await asyncio.wait_for(transport.settled.wait(), timeout=1)
 
     [response] = transport.sent
+    assert isinstance(response, dict)
     return response
 
 

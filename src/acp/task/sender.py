@@ -21,7 +21,7 @@ class MessageSender:
         self._closed = False
         self._failure: BaseException | None = None
 
-    async def send(self, payload: dict[str, Any]) -> None:
+    async def send(self, payload: dict[str, Any] | list[Any]) -> None:
         data = (json.dumps(payload, separators=(",", ":")) + "\n").encode("utf-8")
         async with self._lock:
             if self._closed:

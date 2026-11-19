@@ -235,5 +235,8 @@ async def test_agent_protocol_router_isolates_connections() -> None:
 
 def _initialize_count(events: list[StreamEvent]) -> int:
     return sum(
-        event.direction == StreamDirection.OUTGOING and event.message.get("method") == "initialize" for event in events
+        event.direction == StreamDirection.OUTGOING
+        and isinstance(event.message, dict)
+        and event.message.get("method") == "initialize"
+        for event in events
     )

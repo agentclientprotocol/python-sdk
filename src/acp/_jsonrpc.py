@@ -5,13 +5,20 @@ from typing import Any
 
 from .exceptions import RequestError
 
+JsonRpcMessage = dict[str, Any] | list[Any]
 
-def decode_message(payload: str | bytes) -> dict[str, Any] | None:
-    """Decode a message, returning None for unsupported non-empty batches."""
+
+def decode_message(payload: str | bytes) -> JsonRpcMessage | None:
+    """Decode a JSON-RPC message, returning a non-empty batch as a list."""
     try:
         message = json.loads(payload)
     except (json.JSONDecodeError, UnicodeDecodeError) as exc:
         raise RequestError.parse_error() from exc
+    if isinstance(message, list):
+        # An empty batch is not a batch: the spec answers it with a single -32600 object.
+        if not message:
+            raise RequestError.invalid_request()
+        return message
     return require_message_object(message)
 
 

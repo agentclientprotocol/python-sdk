@@ -11,7 +11,7 @@ import asyncio
 import contextlib
 from typing import TYPE_CHECKING, Any, Protocol, runtime_checkable
 
-from ._jsonrpc import decode_message, error_response
+from ._jsonrpc import JsonRpcMessage, decode_message, error_response
 from .exceptions import RequestError
 
 if TYPE_CHECKING:
@@ -36,9 +36,9 @@ class Transport(Protocol):
     response exists); callers correlate such failures with pending requests.
     """
 
-    async def send(self, message: dict[str, Any]) -> None: ...
+    async def send(self, message: dict[str, Any] | list[Any]) -> None: ...
 
-    async def receive(self) -> dict[str, Any] | None: ...
+    async def receive(self) -> JsonRpcMessage | None: ...
 
     async def close(self) -> None: ...
 
@@ -58,10 +58,10 @@ class NdjsonTransport:
         self._receive_timeout = receive_timeout
         self._error_send_failed = False
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         await self._sender.send(message)
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> JsonRpcMessage | None:
         while True:
             line = await self._read_line()
             if not line:
@@ -109,19 +109,19 @@ class _MemoryTransport:
 
     def __init__(
         self,
-        outbox: asyncio.Queue[dict[str, Any] | None],
-        inbox: asyncio.Queue[dict[str, Any] | None],
+        outbox: asyncio.Queue[JsonRpcMessage | None],
+        inbox: asyncio.Queue[JsonRpcMessage | None],
     ) -> None:
         self._outbox = outbox
         self._inbox = inbox
         self._closed = False
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         if self._closed:
             raise ConnectionError("Transport closed")
-        await self._outbox.put(dict(message))
+        await self._outbox.put(dict(message) if isinstance(message, dict) else list(message))
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> JsonRpcMessage | None:
         return await self._inbox.get()
 
     async def close(self) -> None:
@@ -138,8 +138,8 @@ def memory_transport_pair() -> tuple[Transport, Transport]:
     A message ``send`` on one end becomes available via ``receive`` on the
     other. Closing an end enqueues an EOF (``None``) for its peer.
     """
-    a_to_b: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
-    b_to_a: asyncio.Queue[dict[str, Any] | None] = asyncio.Queue()
+    a_to_b: asyncio.Queue[JsonRpcMessage | None] = asyncio.Queue()
+    b_to_a: asyncio.Queue[JsonRpcMessage | None] = asyncio.Queue()
     left = _MemoryTransport(outbox=a_to_b, inbox=b_to_a)
     right = _MemoryTransport(outbox=b_to_a, inbox=a_to_b)
     return left, right

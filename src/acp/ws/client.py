@@ -13,7 +13,7 @@ import json
 from typing import TYPE_CHECKING, Any
 
 from .._cookies import MemoryAcpCookieStore
-from .._jsonrpc import decode_message, error_response
+from .._jsonrpc import JsonRpcMessage, decode_message, error_response
 from ..exceptions import RequestError
 
 try:
@@ -40,12 +40,12 @@ class _WebSocketTransport:
         self._ws = connection
         self._closed = False
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         if self._closed:
             raise ConnectionError("Transport closed")
         await self._ws.send(json.dumps(message, separators=(",", ":")))
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> JsonRpcMessage | None:
         while True:
             try:
                 frame = await self._ws.recv()

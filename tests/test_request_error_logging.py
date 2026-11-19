@@ -9,7 +9,7 @@ can see server-side handler crashes.
 from __future__ import annotations
 
 import logging
-from typing import Any
+from typing import Any, cast
 
 import pytest
 
@@ -21,12 +21,12 @@ class _RecordingTransport:
     """Message transport that records outgoing frames."""
 
     def __init__(self) -> None:
-        self.sent: list[dict[str, Any]] = []
+        self.sent: list[dict[str, Any] | list[Any]] = []
 
-    async def send(self, message: dict[str, Any]) -> None:
+    async def send(self, message: dict[str, Any] | list[Any]) -> None:
         self.sent.append(message)
 
-    async def receive(self) -> dict[str, Any] | None:
+    async def receive(self) -> dict[str, Any] | list[Any] | None:
         return None
 
     async def close(self) -> None:
@@ -70,7 +70,7 @@ async def test_run_request_unhandled_exception_is_logged_and_sent_as_internal_er
 
     # A handled application exception becomes exactly one JSON-RPC error frame.
     assert len(transport.sent) == 1
-    response = transport.sent[0]
+    response = cast("dict[str, Any]", transport.sent[0])
     assert response["id"] == 7
     assert "result" not in response
     assert response["error"] == {"code": -32603, "message": "Internal error", "data": {"details": "kaboom"}}
@@ -101,7 +101,7 @@ async def test_run_notification_unhandled_exception_is_logged_and_not_answered(c
 @pytest.mark.asyncio
 async def test_response_send_failure_is_not_mapped_to_a_handler_error(caplog):
     class _FailingTransport(_RecordingTransport):
-        async def send(self, message: dict[str, Any]) -> None:
+        async def send(self, message: dict[str, Any] | list[Any]) -> None:
             raise ConnectionError("send failed")
 
     async def successful_handler(method: str, params: Any, is_notification: bool) -> Any:
