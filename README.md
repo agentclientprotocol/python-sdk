@@ -45,6 +45,7 @@ See real adopters like kimi-cli in the [Use Cases list](https://agentclientproto
 | Quickstart         | <https://agentclientprotocol.github.io/python-sdk/quickstart/>         |
 | Use cases          | <https://agentclientprotocol.github.io/python-sdk/use-cases/>          |
 | Contrib helpers    | <https://agentclientprotocol.github.io/python-sdk/contrib/>            |
+| ACP TCK checks     | <https://agentclientprotocol.github.io/python-sdk/tck/>                |
 | Releasing workflow | <https://agentclientprotocol.github.io/python-sdk/releasing/>          |
 | Examples           | <https://github.com/agentclientprotocol/python-sdk/tree/main/examples> |
 | Tests              | <https://github.com/agentclientprotocol/python-sdk/tree/main/tests>    |
@@ -63,6 +64,7 @@ See real adopters like kimi-cli in the [Use Cases list](https://agentclientproto
 - `make install` provisions the `uv` virtualenv and installs pre-commit hooks.
 - `make check` runs Ruff formatting/linting, type analysis, dependency hygiene, and lock verification.
 - `make test` executes `pytest` (with doctests) inside the managed environment.
+- `scripts/run_tck.py --tck-v1-dir <checkout> --tck-v2-dir <alpha.5-checkout>` runs the pinned external Agent-side TCK against this checkout (see [ACP TCK checks](docs/tck.md)).
 - `ACP_SCHEMA_VERSION=<ref> make gen-all` refreshes protocol artifacts when the schema advances.
 
 Keep docs and examples current whenever you ship public API or transport changes, and prefer Conventional Commits (`feat:`, `fix:`, etc.) when submitting patches.

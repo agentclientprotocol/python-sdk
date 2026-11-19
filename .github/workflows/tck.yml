@@ -1,0 +1,54 @@
+name: ACP TCK
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review]
+
+jobs:
+  agent-stdio:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Check out SDK
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@d0cc045d04ccac9d8b7881df0226f9e82c39688e
+        with:
+          version: "0.11.14"
+          enable-cache: true
+
+      - name: Install Python 3.14
+        run: uv python install 3.14
+
+      - name: Install current SDK checkout
+        run: uv sync --frozen --python 3.14
+
+      - name: Check out pinned v1 ACP TCK
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          repository: agentclientprotocol/acp-tck
+          ref: b7f40fb3c003c45926547be5a1f7e2b374035815
+          path: .tck-v1
+          persist-credentials: false
+
+      - name: Check out alpha.5 v2 ACP TCK
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          repository: agentclientprotocol/acp-tck
+          ref: fa00ccdc13dfaa4b288a91877c1f3e468af4aa7d
+          path: .tck-v2
+          persist-credentials: false
+
+      - name: Run version-matched TCK suites
+        run: .venv/bin/python scripts/run_tck.py --tck-v1-dir .tck-v1 --tck-v2-dir .tck-v2
+
+      - name: Upload TCK reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: acp-tck-reports
+          path: build/tck/*
+          if-no-files-found: warn
