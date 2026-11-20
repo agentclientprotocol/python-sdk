@@ -11,7 +11,7 @@ from __future__ import annotations
 from collections.abc import Callable
 from typing import Any
 
-from pydantic import ValidationError
+from pydantic import BaseModel, ValidationError
 from pydantic_core import PydanticUseDefault
 
 
@@ -50,6 +50,11 @@ def skip_invalid_items(value: Any, handler: Callable[[Any], Any], _info: Any = N
 
     Restores ``x-deserialize-skip-invalid-items``. Each item is validated through the field's
     own list handler, so item coercion and salvaging still apply to the survivors.
+
+    Only wire data is skipped. An item that is already a model instance was built in local
+    code, so a validation failure there is a programming error (for example passing
+    ``McpServerHttp`` where the tagged ``HttpMcpServer`` is expected) and is raised instead of
+    being dropped silently.
     """
     if not isinstance(value, list):
         return handler(value)
@@ -58,5 +63,7 @@ def skip_invalid_items(value: Any, handler: Callable[[Any], Any], _info: Any = N
         try:
             salvaged.append(handler([item])[0])
         except ValidationError:
+            if isinstance(item, BaseModel):
+                raise
             continue
     return salvaged
