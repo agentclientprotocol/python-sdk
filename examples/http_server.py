@@ -21,6 +21,7 @@ from typing import Any
 from uuid import uuid4
 
 from acp import (
+    PROTOCOL_VERSION,
     Agent,
     InitializeResponse,
     NewSessionResponse,
@@ -44,7 +45,7 @@ class EchoAgent(Agent):
         client_info: Implementation | None = None,
         **kwargs: Any,
     ) -> InitializeResponse:
-        return InitializeResponse(protocol_version=protocol_version)
+        return InitializeResponse(protocol_version=PROTOCOL_VERSION)
 
     async def new_session(self, cwd: str = "", **kwargs: Any) -> NewSessionResponse:
         return NewSessionResponse(session_id=uuid4().hex)
