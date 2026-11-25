@@ -164,8 +164,7 @@ class _HttpStreamTransport:
             raise AcpHttpStatusError(response.status_code, f"POST {method} failed")
         # Some servers may answer initialize-like 200 bodies; for 200 with a body enqueue it.
         if response.status_code == 200 and response.content:
-            with contextlib.suppress(Exception):
-                self._handle_incoming(response.json())
+            self._handle_incoming(response.json())
 
     def _open_stream(self, *, session_id: str | None) -> None:
         if self._closed:
