@@ -1,5 +1,5 @@
 # Generated from schema/schema.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.23.0
+# Schema ref: refs/tags/schema-v1.35.0
 
 from __future__ import annotations
 
@@ -8,7 +8,16 @@ from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
 from acp._deserialize import coerce_protocol_version, skip_invalid_items, use_default_on_error
 from acp._schema_base import BaseModel, ElicitationContent
-from pydantic import AnyUrl, ConfigDict, Field, RootModel, ValidationInfo, ValidatorFunctionWrapHandler, field_validator
+from pydantic import (
+    AnyUrl,
+    ConfigDict,
+    Field,
+    RootModel,
+    StrictInt,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+)
 
 
 class ReadTextFileRequest(BaseModel):
@@ -34,13 +43,8 @@ class ReadTextFileRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
-
-    @field_validator("limit", "line", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
 
 
 class TextResourceContents(BaseModel):
@@ -62,7 +66,7 @@ class TextResourceContents(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("mime_type", mode="wrap")
@@ -90,7 +94,7 @@ class BlobResourceContents(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("mime_type", mode="wrap")
@@ -106,7 +110,7 @@ class Diff(BaseModel):
     """
     old_text: Annotated[Optional[str], Field(alias="oldText")] = None
     """
-    The original content (None for new files).
+    The original content (omitted or `null` for new files).
     """
     new_text: Annotated[str, Field(alias="newText")]
     """
@@ -118,7 +122,7 @@ class Diff(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("old_text", mode="wrap")
@@ -138,7 +142,22 @@ class Terminal(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionReference(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The referenced session.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -149,7 +168,7 @@ class ToolCallLocation(BaseModel):
     """
     line: Annotated[Optional[int], Field(ge=0)] = None
     """
-    Optional line number within the file.
+    Optional 1-based line number within the file.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -157,7 +176,7 @@ class ToolCallLocation(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("line", mode="wrap")
@@ -181,7 +200,7 @@ class EnvVariable(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -200,7 +219,7 @@ class TerminalOutputRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -219,7 +238,7 @@ class ReleaseTerminalRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -238,7 +257,7 @@ class WaitForTerminalExitRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -257,7 +276,7 @@ class KillTerminalRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -274,7 +293,7 @@ class CreateFormElicitationRequestBase(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: Literal["form"] = "form"
 
@@ -292,7 +311,7 @@ class CreateUrlElicitationRequestBase(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: Literal["url"] = "url"
 
@@ -360,7 +379,7 @@ class EnumOption(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("description", mode="wrap")
@@ -432,7 +451,7 @@ class StringPropertySchema(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("default", "description", "title", mode="wrap")
@@ -480,7 +499,7 @@ class NumberPropertySchema(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("default", "description", "title", mode="wrap")
@@ -528,7 +547,7 @@ class IntegerPropertySchema(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("default", "description", "title", mode="wrap")
@@ -564,7 +583,7 @@ class BooleanPropertySchema(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("default", "description", "title", mode="wrap")
@@ -600,7 +619,7 @@ class StringMultiSelectItemsBase(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -617,7 +636,7 @@ class TitledMultiSelectItems(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -650,35 +669,20 @@ class ElicitationUrlMode(RootModel[Union[ElicitationUrlSessionMode, ElicitationU
     """
 
 
-class DisconnectMcpRequest(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
-    """
-    The MCP-over-ACP connection to close.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
 class PromptCapabilities(BaseModel):
     image: Optional[bool] = False
     """
-    Agent supports [`ContentBlock::Image`].
+    Agent supports `image` content blocks.
     """
     audio: Optional[bool] = False
     """
-    Agent supports [`ContentBlock::Audio`].
+    Agent supports `audio` content blocks.
     """
     embedded_context: Annotated[Optional[bool], Field(alias="embeddedContext")] = False
     """
     Agent supports embedded context in `session/prompt` requests.
 
-    When enabled, the Client is allowed to include [`ContentBlock::Resource`]
+    When enabled, the Client is allowed to include `resource` content blocks
     in prompt requests for pieces of context that are referenced in the message.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
@@ -687,7 +691,7 @@ class PromptCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("audio", "embedded_context", "image", mode="wrap")
@@ -699,11 +703,11 @@ class PromptCapabilities(BaseModel):
 class McpCapabilities(BaseModel):
     http: Optional[bool] = False
     """
-    Agent supports [`McpServer::Http`].
+    Agent supports `http` MCP servers.
     """
     sse: Optional[bool] = False
     """
-    Agent supports [`McpServer::Sse`].
+    Agent supports `sse` MCP servers.
     """
     acp: Optional[bool] = False
     """
@@ -711,7 +715,7 @@ class McpCapabilities(BaseModel):
 
     This capability is not part of the spec yet, and may be removed or changed at any point.
 
-    Agent supports [`McpServer::Acp`].
+    Agent supports `acp` MCP servers.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -719,7 +723,7 @@ class McpCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("acp", "http", "sse", mode="wrap")
@@ -735,7 +739,7 @@ class SessionListCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -746,7 +750,7 @@ class SessionDeleteCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -757,7 +761,18 @@ class SessionAdditionalDirectoriesCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionSystemPromptOverrideCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -768,7 +783,51 @@ class SessionForkCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionArchiveCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionStatusCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionOptionsCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionTitleCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -779,7 +838,7 @@ class SessionResumeCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -790,7 +849,18 @@ class SessionCloseCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class AuthStatusCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -801,7 +871,7 @@ class LogoutCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -812,144 +882,7 @@ class ProvidersCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesDocumentDidOpenCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesDocumentDidCloseCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesDocumentDidSaveCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesDocumentDidFocusCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesRecentFilesCapabilities(BaseModel):
-    max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
-    """
-    Maximum number of recent files the agent can use.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("max_count", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NesRelatedSnippetsCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesEditHistoryCapabilities(BaseModel):
-    max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
-    """
-    Maximum number of edit history entries the agent can use.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("max_count", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NesUserActionsCapabilities(BaseModel):
-    max_count: Annotated[Optional[int], Field(alias="maxCount", ge=0)] = None
-    """
-    Maximum number of user actions the agent can use.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("max_count", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NesOpenFilesCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesDiagnosticsCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -964,7 +897,7 @@ class AuthMethodTerminal(BaseModel):
     """
     description: Optional[str] = None
     """
-    Optional description providing more details about this authentication method.
+    Optional human-readable description of this authentication method.
     """
     args: Optional[List[str]] = None
     """
@@ -981,18 +914,13 @@ class AuthMethodTerminal(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("description", "env", mode="wrap")
+    @field_validator("description", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
-
-    @field_validator("args", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
 
 
 class AuthMethodAgent(BaseModel):
@@ -1006,7 +934,7 @@ class AuthMethodAgent(BaseModel):
     """
     description: Optional[str] = None
     """
-    Optional description providing more details about this authentication method.
+    Optional human-readable description of this authentication method.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1014,7 +942,7 @@ class AuthMethodAgent(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("description", mode="wrap")
@@ -1027,14 +955,14 @@ class Implementation(BaseModel):
     name: str
     """
     Intended for programmatic or logical use, but can be used as a display
-    name fallback if title isn’t present.
+    name fallback if title isn't present.
     """
     title: Optional[str] = None
     """
-    Intended for UI and end-user contexts — optimized to be human-readable
+    Intended for UI and end-user contexts and optimized to be human-readable
     and easily understood.
 
-    If not provided, the name should be used for display.
+    If not provided, the name SHOULD be used for display.
     """
     version: str
     """
@@ -1047,7 +975,7 @@ class Implementation(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("title", mode="wrap")
@@ -1063,7 +991,7 @@ class AuthenticateResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1085,7 +1013,7 @@ class ProviderCurrentConfig(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1096,7 +1024,7 @@ class SetProviderResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1107,7 +1035,7 @@ class DisableProviderResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1118,8 +1046,62 @@ class LogoutResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
+
+
+class AuthAccount(BaseModel):
+    label: str
+    """
+    Human-readable name for the account, suitable for display on its own,
+    for example `Claude Max`, `OpenAI API key`, or `Vertex AI`.
+    """
+    description: Optional[str] = None
+    """
+    Short text shown with the label, such as the credential source, for example
+    `API key helper`. MUST NOT contain credentials.
+
+    Optional. Omitted and `null` are equivalent and mean no description is reported.
+    """
+    active: Optional[bool] = None
+    """
+    Whether the agent currently uses this account by default.
+
+    Several accounts MAY be active, for example one per provider.
+
+    Optional. Omitted and `null` are equivalent and mean the agent does not indicate whether this account is in effect.
+    """
+    name: Optional[str] = None
+    """
+    Display name of the user, such as a username or full name.
+
+    Optional. Omitted and `null` are equivalent and mean no name is reported.
+    """
+    email: Optional[str] = None
+    """
+    Email address of the user.
+
+    Optional. Omitted and `null` are equivalent and mean no email is reported.
+    """
+    organization: Optional[str] = None
+    """
+    Display name of the organization, team, or workspace the account is using.
+
+    Optional. Omitted and `null` are equivalent and mean no organization is reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("active", "description", "email", "name", "organization", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionMode(BaseModel):
@@ -1141,7 +1123,7 @@ class SessionMode(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("description", mode="wrap")
@@ -1169,7 +1151,7 @@ class SessionConfigSelectOption(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("description", mode="wrap")
@@ -1196,7 +1178,7 @@ class SessionInfo(BaseModel):
     """
     additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
     """
-    Additional workspace roots reported for this session. Each path must be absolute.
+    Additional workspace roots reported for this session. Each path MUST be absolute.
 
     When present, this is the complete ordered additional-root list reported
     by the Agent. Omitted and empty values are equivalent: the response
@@ -1210,16 +1192,27 @@ class SessionInfo(BaseModel):
     """
     ISO 8601 timestamp of last activity
     """
+    archived: Optional[bool] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the session is archived.
+
+    Optional. Omitted and `null` are equivalent and mean the archive state is not reported.
+    Agents that advertise the `sessionCapabilities.archive` capability MUST include it on every listed session.
+    """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("title", "updated_at", mode="wrap")
+    @field_validator("archived", "title", "updated_at", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -1237,7 +1230,47 @@ class DeleteSessionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class ArchiveSessionResponse(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class UnarchiveSessionResponse(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SetSessionTitleResponse(BaseModel):
+    title: str
+    """
+    The title the Agent stored.
+
+    This differs from the requested title if the Agent normalized it. Clients SHOULD
+    display this value rather than the one they sent.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1248,7 +1281,7 @@ class CloseSessionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1259,7 +1292,7 @@ class SetSessionModeResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1294,158 +1327,13 @@ class Usage(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("cached_read_tokens", "cached_write_tokens", "thought_tokens", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
-
-
-class StartNesResponse(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for the newly started NES session.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class Position(BaseModel):
-    line: Annotated[int, Field(ge=0)]
-    """
-    Zero-based line number.
-    """
-    character: Annotated[int, Field(ge=0)]
-    """
-    Zero-based character offset (encoding-dependent).
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesJumpSuggestion(BaseModel):
-    id: str
-    """
-    Unique identifier for accept/reject tracking.
-    """
-    uri: str
-    """
-    The file to navigate to.
-    """
-    position: Position
-    """
-    The target position within the file.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesRenameSuggestion(BaseModel):
-    id: str
-    """
-    Unique identifier for accept/reject tracking.
-    """
-    uri: str
-    """
-    The file URI containing the symbol.
-    """
-    position: Position
-    """
-    The position of the symbol to rename.
-    """
-    new_name: Annotated[str, Field(alias="newName")]
-    """
-    The new name for the symbol.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesSearchAndReplaceSuggestion(BaseModel):
-    id: str
-    """
-    Unique identifier for accept/reject tracking.
-    """
-    uri: str
-    """
-    The file URI to search within.
-    """
-    search: str
-    """
-    The text or pattern to find.
-    """
-    replace: str
-    """
-    The replacement text.
-    """
-    is_regex: Annotated[Optional[bool], Field(alias="isRegex")] = None
-    """
-    Whether `search` is a regular expression. Defaults to `false`.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class CloseNesResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class PlanFile(BaseModel):
-    plan_id: Annotated[str, Field(alias="planId")]
-    """
-    The plan ID to update.
-    """
-    uri: str
-    """
-    The URI of the file containing the plan.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
 
 
 class PlanMarkdown(BaseModel):
@@ -1455,7 +1343,15 @@ class PlanMarkdown(BaseModel):
     """
     content: str
     """
-    Markdown content for the plan.
+    The complete plan as Markdown, not just the text that changed.
+    """
+    path: Optional[str] = None
+    """
+    The absolute path of the file that holds this plan.
+
+    Omitted and `null` both mean the plan has no file. A supplied path MUST
+    be absolute. `content` is the plan to display whether or not `path` is set.
+    Clients can use `path` to open the file.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1463,14 +1359,19 @@ class PlanMarkdown(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
+
+    @field_validator("path", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class PlanRemoved(BaseModel):
     plan_id: Annotated[str, Field(alias="planId")]
     """
-    The plan ID to remove.
+    The plan ID to remove. Clients MUST ignore a removal for an unknown ID.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1478,7 +1379,7 @@ class PlanRemoved(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1493,7 +1394,7 @@ class UnstructuredCommandInput(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1508,7 +1409,7 @@ class CurrentModeUpdateBase(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1527,7 +1428,7 @@ class SessionInfoUpdateBase(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1538,7 +1439,8 @@ class Cost(BaseModel):
     """
     currency: str
     """
-    ISO 4217 currency code (e.g., "USD", "EUR").
+    Unit of `amount`: an ISO 4217 currency code (e.g., "USD", "EUR") for money, or another
+    unit such as "credits".
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1546,7 +1448,7 @@ class Cost(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1569,7 +1471,7 @@ class UsageUpdateBase(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1601,6 +1503,488 @@ class Notice(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
+class CursorForkCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Omitted and `null` are equivalent and mean no metadata.
+    Implementations MUST NOT assign meaning to keys they do not recognize.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class CursorAnchor7(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    type: str
+    """
+    Custom or future anchor type.
+
+    Values beginning with `_` are reserved for implementation-specific
+    extensions. Unknown values that do not begin with `_` are reserved for
+    future ACP variants.
+    """
+
+
+class CursorMessageAnchor(BaseModel):
+    message_id: Annotated[str, Field(alias="messageId")]
+    """
+    The ID of the anchored message.
+    """
+    position: Union[Literal["before"], Literal["after"], str]
+    """
+    On which side of the message the cursor is.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Omitted and `null` are equivalent and mean no metadata.
+    Implementations MUST NOT assign meaning to keys they do not recognize.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class CursorToolCallAnchor(BaseModel):
+    tool_call_id: Annotated[str, Field(alias="toolCallId")]
+    """
+    The ID of the anchored tool call.
+    """
+    position: Union[Literal["before"], Literal["after"], str]
+    """
+    On which side of the tool call the cursor is.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Omitted and `null` are equivalent and mean no metadata.
+    Implementations MUST NOT assign meaning to keys they do not recognize.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class CursorCompactionAnchor(BaseModel):
+    compaction_id: Annotated[str, Field(alias="compactionId")]
+    """
+    The ID of the anchored compaction.
+    """
+    position: Union[Literal["before"], Literal["after"], str]
+    """
+    On which side of the compaction the cursor is.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Omitted and `null` are equivalent and mean no metadata.
+    Implementations MUST NOT assign meaning to keys they do not recognize.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionCancelCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class StateUpdate21(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["end_turn"], Field(alias="stopReason")] = "end_turn"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate22(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["max_tokens"], Field(alias="stopReason")] = "max_tokens"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate23(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["max_turn_requests"], Field(alias="stopReason")] = "max_turn_requests"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate24(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["refusal"], Field(alias="stopReason")] = "refusal"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate25(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["cancelled"], Field(alias="stopReason")] = "cancelled"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate27(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[str, Field(alias="stopReason")]
+    """
+    Unrecognized stop reason.
+    """
+
+
+class StateUpdate28(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[None, Field(alias="stopReason")] = None
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate29(BaseModel):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate210(StateUpdate21, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate211(StateUpdate22, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate212(StateUpdate23, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate213(StateUpdate24, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate214(StateUpdate25, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate216(StateUpdate27, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate217(StateUpdate28, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class StateUpdate5(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    state: str
+    """
+    Unrecognized state discriminator.
+    """
+
+
+class RunningStateUpdate(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+
+
+class IdleStateUpdate1(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["end_turn"], Field(alias="stopReason")] = "end_turn"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class IdleStateUpdate2(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["max_tokens"], Field(alias="stopReason")] = "max_tokens"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class IdleStateUpdate3(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["max_turn_requests"], Field(alias="stopReason")] = "max_turn_requests"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class IdleStateUpdate4(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["refusal"], Field(alias="stopReason")] = "refusal"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class IdleStateUpdate5(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["cancelled"], Field(alias="stopReason")] = "cancelled"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class IdleStateUpdate7(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[str, Field(alias="stopReason")]
+    """
+    Unrecognized stop reason.
+    """
+
+
+class IdleStateUpdate8(BaseModel):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[None, Field(alias="stopReason")] = None
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class RequiresActionStateUpdate(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+
+
+class UnknownStateUpdate(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+
+
 class CompleteElicitationNotification(BaseModel):
     elicitation_id: Annotated[str, Field(alias="elicitationId")]
     """
@@ -1614,24 +1998,25 @@ class CompleteElicitationNotification(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
-class MessageMcpNotification(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
+class AuthStatusUpdateNotification(BaseModel):
+    state: Union[Literal["authenticated"], Literal["unauthenticated"], Literal["not_required"], Literal["unknown"], str]
     """
-    The MCP-over-ACP connection this message is sent on.
-    """
-    method: str
-    """
-    The inner MCP method name.
-    """
-    params: Optional[Dict[str, Any]] = None
-    """
-    Optional inner MCP params.
+    Whether the agent can start sessions without the user signing in first.
 
-    If omitted or set to `null`, the inner MCP message has no params.
+    Clients use this field to decide whether sign-in is needed. Clients MUST treat
+    values they do not recognize as `unknown`.
+    """
+    accounts: Optional[List[AuthAccount]] = None
+    """
+    The accounts the agent has configured, for display.
+
+    Optional. Omitted and empty are equivalent and mean no accounts are reported.
+    Agents that hold credentials for several providers or accounts SHOULD list each
+    of them and mark the ones in effect with `active`.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1639,13 +2024,13 @@ class MessageMcpNotification(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("params", mode="wrap")
+    @field_validator("accounts", mode="wrap")
     @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
 class FileSystemCapabilities(BaseModel):
@@ -1663,7 +2048,7 @@ class FileSystemCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("read_text_file", "write_text_file", mode="wrap")
@@ -1683,12 +2068,58 @@ class BooleanConfigOptionCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
 class NoticeCapabilities(BaseModel):
     pass
+
+
+class PromptSuggestionsImageCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class PromptSuggestionsAudioCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class PromptSuggestionsEmbeddedContextCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionCursorsCapabilities(BaseModel):
+    pass
+
+
+class SubagentCapabilities(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+    """
 
 
 class PlanCapabilities(BaseModel):
@@ -1698,7 +2129,7 @@ class PlanCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1707,9 +2138,9 @@ class AuthCapabilities(BaseModel):
     """
     Whether the client supports `terminal` authentication methods.
 
-    The client should set this to `true` only when it can reproduce the
+    The client SHOULD set this to `true` only when it can reproduce the
     configured agent invocation in an interactive terminal. When `true`, the
-    agent may include `terminal` entries in its authentication methods.
+    agent MAY include `terminal` entries in its authentication methods.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1717,7 +2148,7 @@ class AuthCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("terminal", mode="wrap")
@@ -1735,7 +2166,7 @@ class ElicitationFormCapabilities(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1748,40 +2179,7 @@ class ElicitationUrlCapabilities(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesJumpCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesRenameCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesSearchAndReplaceCapabilities(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1797,7 +2195,7 @@ class AuthenticateRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1808,7 +2206,7 @@ class ListProvidersRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1839,7 +2237,7 @@ class SetProviderRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1854,7 +2252,7 @@ class DisableProviderRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1865,7 +2263,18 @@ class LogoutRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class AuthStatusRequest(BaseModel):
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1884,7 +2293,7 @@ class HttpHeader(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1907,7 +2316,7 @@ class McpServerHttp(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1930,7 +2339,7 @@ class McpServerSse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1952,7 +2361,7 @@ class McpServerAcp(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -1979,18 +2388,14 @@ class McpServerStdio(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
-class ListSessionsRequest(BaseModel):
-    cwd: Optional[str] = None
+class InitialSessionConfigOption1(BaseModel):
+    config_id: Annotated[str, Field(alias="configId")]
     """
-    Filter sessions by working directory. Must be an absolute path.
-    """
-    cursor: Optional[str] = None
-    """
-    Opaque cursor token from a previous response's nextCursor field for cursor-based pagination
+    The ID of the configuration option to set.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -1998,7 +2403,31 @@ class ListSessionsRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+    type: Literal["boolean"] = "boolean"
+    value: bool
+    """
+    The boolean value.
+    """
+
+
+class InitialSessionConfigOption2(BaseModel):
+    config_id: Annotated[str, Field(alias="configId")]
+    """
+    The ID of the configuration option to set.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+    value: str
+    """
+    The value ID.
     """
 
 
@@ -2013,7 +2442,108 @@ class DeleteSessionRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class ArchiveSessionRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session to archive.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class UnarchiveSessionRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session to unarchive.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionStatusRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session to check.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SessionOptionsRequest(BaseModel):
+    cwd: str
+    """
+    The working directory to resolve options for. Must be an absolute path.
+    """
+    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
+    """
+    Additional workspace roots to resolve options for. Each path MUST be absolute.
+
+    Optional. Omitted and `null` are equivalent to an empty list.
+    """
+    session_id: Annotated[Optional[str], Field(alias="sessionId")] = None
+    """
+    The session to resolve options for.
+
+    Optional. Omitted and `null` are equivalent and mean a new session. When present,
+    the Agent returns what `session/load` or `session/resume` with the same `cwd` and
+    `additionalDirectories` would return, with the same `cwd` rules. A session the
+    Agent does not know gets `-32002`.
+    Clients MUST only send this when the Agent supports `session/load` (`loadSession`)
+    or `session/resume` (`sessionCapabilities.resume`).
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class SetSessionTitleRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session to retitle.
+    """
+    title: str
+    """
+    The new title for the session.
+
+    Required and non-null. Omission and explicit `null` are both invalid. The Agent MAY
+    normalize the title before storing it, for example by trimming whitespace or
+    truncating it. The Agent rejects a title that fails its validation, including one
+    that is empty after normalization, with `-32602`.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2028,7 +2558,7 @@ class CloseSessionRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2047,7 +2577,7 @@ class SetSessionModeRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2066,13 +2596,13 @@ class SetSessionConfigOptionBooleanRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
+    type: Literal["boolean"] = "boolean"
     value: bool
     """
     The boolean value.
     """
-    type: Literal["boolean"] = "boolean"
 
 
 class SetSessionConfigOptionSelectRequest(BaseModel):
@@ -2090,160 +2620,11 @@ class SetSessionConfigOptionSelectRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     value: str
     """
     The value ID.
-    """
-
-
-class WorkspaceFolder(BaseModel):
-    uri: str
-    """
-    The URI of the folder.
-    """
-    name: str
-    """
-    The display name of the folder.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesRepository(BaseModel):
-    name: str
-    """
-    The repository name.
-    """
-    owner: str
-    """
-    The repository owner.
-    """
-    remote_url: Annotated[str, Field(alias="remoteUrl")]
-    """
-    The remote URL of the repository.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesRecentFile(BaseModel):
-    uri: str
-    """
-    The URI of the file.
-    """
-    language_id: Annotated[str, Field(alias="languageId")]
-    """
-    The language identifier.
-    """
-    text: str
-    """
-    The full text content of the file.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesExcerpt(BaseModel):
-    start_line: Annotated[int, Field(alias="startLine", ge=0)]
-    """
-    The start line of the excerpt (zero-based).
-    """
-    end_line: Annotated[int, Field(alias="endLine", ge=0)]
-    """
-    The end line of the excerpt (zero-based).
-    """
-    text: str
-    """
-    The text content of the excerpt.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesEditHistoryEntry(BaseModel):
-    uri: str
-    """
-    The URI of the edited file.
-    """
-    diff: str
-    """
-    A diff representing the edit.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesUserAction(BaseModel):
-    action: str
-    """
-    The kind of action (e.g., "insertChar", "cursorMovement").
-    """
-    uri: str
-    """
-    The URI of the file where the action occurred.
-    """
-    position: Position
-    """
-    The position where the action occurred.
-    """
-    timestamp_ms: Annotated[int, Field(alias="timestampMs", ge=0)]
-    """
-    Timestamp in milliseconds since epoch.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class CloseNesRequest(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The ID of the NES session to close.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
     """
 
 
@@ -2254,7 +2635,7 @@ class WriteTextFileResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2269,7 +2650,7 @@ class ReadTextFileResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2288,7 +2669,7 @@ class SelectedPermissionOutcome(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2303,7 +2684,7 @@ class CreateTerminalResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2322,7 +2703,7 @@ class TerminalExitStatus(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("exit_code", "signal", mode="wrap")
@@ -2338,7 +2719,7 @@ class ReleaseTerminalResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2357,7 +2738,7 @@ class WaitForTerminalExitResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("exit_code", "signal", mode="wrap")
@@ -2373,7 +2754,7 @@ class KillTerminalResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2386,7 +2767,7 @@ class DeclineElicitationResponse(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     action: Literal["decline"] = "decline"
 
@@ -2400,7 +2781,7 @@ class CancelElicitationResponse(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     action: Literal["cancel"] = "cancel"
 
@@ -2417,7 +2798,7 @@ class OtherElicitationResponse(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     action: str
     """
@@ -2432,7 +2813,7 @@ class OtherElicitationResponse(BaseModel):
 class ElicitationContentValue(RootModel[Union[str, int, float, bool, List[str]]]):
     root: Union[str, int, float, bool, List[str]]
     """
-    Allowed wire representations for [`ElicitationContentValue`].
+    Allowed wire representations for `ElicitationContentValue`.
     """
 
 
@@ -2443,29 +2824,32 @@ class ElicitationAcceptAction(BaseModel):
     """
 
 
-class ConnectMcpResponse(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
+class McpResultResponse(BaseModel):
+    result: Any
     """
-    The unique identifier for this MCP-over-ACP connection.
+    Required, even if JSON null.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Optional ACP carrier metadata.
     """
 
 
-class DisconnectMcpResponse(BaseModel):
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+class McpError(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+    )
+    code: StrictInt
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Inner MCP error code. Never an ACP error code.
+    """
+    message: str
+    """
+    Inner MCP error message.
+    """
+    data: Optional[Any] = None
+    """
+    Optional error data. Explicit null is retained.
     """
 
 
@@ -2480,30 +2864,28 @@ class CancelNotification(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
-class DidOpenDocumentNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
+class MessageMcpNotification(BaseModel):
+    server_id: Annotated[str, Field(alias="serverId")]
     """
-    The session ID for this notification.
+    The declared ACP MCP server handling the associated request.
     """
-    uri: str
+    request_id: Annotated[str, Field(alias="requestId")]
     """
-    The URI of the opened document.
+    The identifier of the active inner MCP request.
     """
-    language_id: Annotated[str, Field(alias="languageId")]
+    method: str
     """
-    The language identifier of the document (e.g., "rust", "python").
+    The inner MCP method name.
     """
-    version: int
+    params: Optional[Dict[str, Any]] = None
     """
-    The version number of the document.
-    """
-    text: str
-    """
-    The full text content of the document.
+    Optional inner MCP params.
+
+    If omitted or set to `null`, the inner MCP message has no params.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -2511,64 +2893,7 @@ class DidOpenDocumentNotification(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class DidCloseDocumentNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for this notification.
-    """
-    uri: str
-    """
-    The URI of the closed document.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class DidSaveDocumentNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for this notification.
-    """
-    uri: str
-    """
-    The URI of the saved document.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class AcceptNesNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for this notification.
-    """
-    id: str
-    """
-    The ID of the accepted suggestion.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2583,7 +2908,61 @@ class CancelRequestNotification(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class ProxySuccessorRequest(BaseModel):
+    method: str
+    """
+    Method name of the wrapped request.
+    """
+    params: Optional[Any] = None
+    """
+    Params of the wrapped request, forwarded unchanged.
+
+    Optional. Omitted and `null` are equivalent and mean the wrapped request has no params.
+    When present, it MUST be a JSON object or array, as JSON-RPC requires.
+    The wrapped request's own `_meta` stays inside these params.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Metadata for the `proxy/successor` envelope itself, separate from the wrapped
+    message's `_meta`. It is hop-local: the conductor does not copy it into the message
+    it unwraps.
+
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class ProxySuccessorNotification(BaseModel):
+    method: str
+    """
+    Method name of the wrapped notification.
+    """
+    params: Optional[Any] = None
+    """
+    Params of the wrapped notification, forwarded unchanged.
+
+    Optional. Omitted and `null` are equivalent and mean the wrapped notification has no params.
+    When present, it MUST be a JSON object or array, as JSON-RPC requires.
+    The wrapped notification's own `_meta` stays inside these params.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Metadata for the `proxy/successor` envelope itself, separate from the wrapped
+    message's `_meta`. It is hop-local: the conductor does not copy it into the message
+    it unwraps.
+
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2606,7 +2985,7 @@ class WriteTextFileRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2616,6 +2995,10 @@ class FileEditToolCallContent(Diff):
 
 class TerminalToolCallContent(Terminal):
     type: Literal["terminal"] = "terminal"
+
+
+class ToolCallContentSession(SessionReference):
+    type: Literal["session"] = "session"
 
 
 class Annotations(BaseModel):
@@ -2637,7 +3020,7 @@ class Annotations(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("last_modified", "priority", mode="wrap")
@@ -2666,7 +3049,7 @@ class TextContent(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("annotations", mode="wrap")
@@ -2698,7 +3081,7 @@ class ImageContent(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("annotations", "uri", mode="wrap")
@@ -2726,7 +3109,7 @@ class AudioContent(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("annotations", mode="wrap")
@@ -2770,7 +3153,7 @@ class ResourceLink(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("annotations", "description", "mime_type", "size", "title", mode="wrap")
@@ -2794,7 +3177,7 @@ class EmbeddedResource(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("annotations", mode="wrap")
@@ -2822,7 +3205,7 @@ class PermissionOption(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -2864,18 +3247,8 @@ class CreateTerminalRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
-
-    @field_validator("cwd", "output_byte_limit", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-    @field_validator("args", "env", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
 
 
 class CreateUrlSessionElicitationRequestBase(ElicitationSessionScope):
@@ -2913,7 +3286,7 @@ class CreateUrlSessionElicitationRequest(CreateUrlSessionElicitationRequestBase,
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: Literal["url"] = "url"
 
@@ -2931,7 +3304,7 @@ class CreateUrlRequestElicitationRequest(CreateUrlRequestElicitationRequestBase,
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: Literal["url"] = "url"
 
@@ -2952,7 +3325,7 @@ class CreateOtherSessionElicitationRequest(ElicitationSessionScope):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: str
     """
@@ -2980,7 +3353,7 @@ class CreateOtherRequestElicitationRequest(ElicitationRequestScope):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: str
     """
@@ -3055,7 +3428,7 @@ class MultiSelectPropertySchema(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("description", "title", mode="wrap")
@@ -3069,25 +3442,14 @@ class MultiSelectPropertySchema(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class ConnectMcpRequest(BaseModel):
+class MessageMcpRequest(BaseModel):
     server_id: Annotated[str, Field(alias="serverId")]
     """
-    The ACP MCP server ID that was provided by the component declaring the MCP server.
+    The declared ACP MCP server receiving this request.
     """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    request_id: Annotated[str, Field(alias="requestId")]
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class MessageMcpRequest(BaseModel):
-    connection_id: Annotated[str, Field(alias="connectionId")]
-    """
-    The MCP-over-ACP connection this message is sent on.
+    The caller-generated identifier for the inner MCP request.
     """
     method: str
     """
@@ -3099,69 +3461,26 @@ class MessageMcpRequest(BaseModel):
 
     If omitted or set to `null`, the inner MCP message has no params.
     """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    session_id: Annotated[Optional[str], Field(alias="sessionId")] = None
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
+    The session whose work caused this request. It is the `sessionId` the
+    Agent uses on `session/update` for that work. For a child session's work,
+    that is the child's ID.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Optional. Omitted and `null` are equivalent and mean the Agent supplied
+    no session. The Agent SHOULD include it when it knows the session, and
+    MUST NOT send another session's ID when it does not. A provider that
+    needs the session to run the request MAY reject a request without it.
     """
+    tool_call_id: Annotated[Optional[str], Field(alias="toolCallId")] = None
+    """
+    The tool call in that session that this request is part of. It is the
+    `toolCallId` the Agent uses to report the call in `session/update`. The
+    Agent SHOULD report the tool call before it sends the request.
 
-
-class SessionCapabilities(BaseModel):
-    list: Optional[SessionListCapabilities] = None
-    """
-    Whether the agent supports `session/list`.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support.
-    Supplying `{}` means the agent supports listing sessions.
-    """
-    delete: Optional[SessionDeleteCapabilities] = None
-    """
-    Whether the agent supports `session/delete`.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support.
-    Supplying `{}` means the agent supports deleting sessions from `session/list`.
-    """
-    additional_directories: Annotated[
-        Optional[SessionAdditionalDirectoriesCapabilities], Field(alias="additionalDirectories")
-    ] = None
-    """
-    Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support.
-    Supplying `{}` means the agent supports `additionalDirectories` on
-    supported session lifecycle requests.
-
-    Agents that also support `session/list` may return
-    `SessionInfo.additionalDirectories` to report the complete ordered
-    additional-root list associated with a listed session.
-    """
-    fork: Optional[SessionForkCapabilities] = None
-    """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
-    Whether the agent supports `session/fork`.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support.
-    Supplying `{}` means the agent supports forking sessions.
-    """
-    resume: Optional[SessionResumeCapabilities] = None
-    """
-    Whether the agent supports `session/resume`.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support.
-    Supplying `{}` means the agent supports resuming sessions.
-    """
-    close: Optional[SessionCloseCapabilities] = None
-    """
-    Whether the agent supports `session/close`.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support.
-    Supplying `{}` means the agent supports closing sessions.
+    Optional. Omitted and `null` are equivalent and mean the Agent supplied
+    no tool call. The Agent MUST NOT send it without `sessionId`. More than
+    one request can name the same tool call.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -3169,16 +3488,51 @@ class SessionCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("additional_directories", "close", "delete", "fork", "list", "resume", mode="wrap")
+    @field_validator("tool_call_id", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class SessionSystemPromptModeCapabilities(BaseModel):
+    override: Optional[SessionSystemPromptOverrideCapabilities] = None
+    """
+    Whether the agent supports `override` mode.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports replacing its built-in default
+    instructions with the client-provided system prompt.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("override", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
 
 
 class AgentAuthCapabilities(BaseModel):
+    status: Optional[AuthStatusCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the agent supports the `auth/status` method.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports the `auth/status` method.
+    """
     logout: Optional[LogoutCapabilities] = None
     """
     Whether the agent supports the logout method.
@@ -3192,67 +3546,10 @@ class AgentAuthCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("logout", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NesDocumentDidChangeCapabilities(BaseModel):
-    sync_kind: Annotated[Literal["full", "incremental"], Field(alias="syncKind")]
-    """
-    The sync kind the agent wants: `"full"` or `"incremental"`.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesContextCapabilities(BaseModel):
-    recent_files: Annotated[Optional[NesRecentFilesCapabilities], Field(alias="recentFiles")] = None
-    """
-    Whether the agent wants recent files context.
-    """
-    related_snippets: Annotated[Optional[NesRelatedSnippetsCapabilities], Field(alias="relatedSnippets")] = None
-    """
-    Whether the agent wants related snippets context.
-    """
-    edit_history: Annotated[Optional[NesEditHistoryCapabilities], Field(alias="editHistory")] = None
-    """
-    Whether the agent wants edit history context.
-    """
-    user_actions: Annotated[Optional[NesUserActionsCapabilities], Field(alias="userActions")] = None
-    """
-    Whether the agent wants user actions context.
-    """
-    open_files: Annotated[Optional[NesOpenFilesCapabilities], Field(alias="openFiles")] = None
-    """
-    Whether the agent wants open files context.
-    """
-    diagnostics: Optional[NesDiagnosticsCapabilities] = None
-    """
-    Whether the agent wants diagnostics context.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator(
-        "diagnostics", "edit_history", "open_files", "recent_files", "related_snippets", "user_actions", mode="wrap"
-    )
+    @field_validator("logout", "status", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -3276,7 +3573,7 @@ class ProviderInfo(BaseModel):
     required: bool
     """
     Whether this provider is mandatory and cannot be disabled via `providers/disable`.
-    If true, clients must not call `providers/disable` for this provider ID.
+    If true, clients MUST NOT call `providers/disable` for this provider ID.
     """
     current: Optional[ProviderCurrentConfig] = None
     """
@@ -3289,10 +3586,41 @@ class ProviderInfo(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("supported", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
+
+
+class AuthStatusResponse(BaseModel):
+    state: Union[Literal["authenticated"], Literal["unauthenticated"], Literal["not_required"], Literal["unknown"], str]
+    """
+    Whether the agent can start sessions without the user signing in first.
+
+    Clients use this field to decide whether sign-in is needed. Clients MUST treat
+    values they do not recognize as `unknown`.
+    """
+    accounts: Optional[List[AuthAccount]] = None
+    """
+    The accounts the agent has configured, for display.
+
+    Optional. Omitted and empty are equivalent and mean no accounts are reported.
+    Agents that hold credentials for several providers or accounts SHOULD list each
+    of them and mark the ones in effect with `active`.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("accounts", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
@@ -3313,7 +3641,7 @@ class SessionModeState(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("available_modes", mode="wrap")
@@ -3336,7 +3664,9 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     Optional description for the Client to display to the user.
     """
     category: Optional[
-        Union[Literal["mode"], Literal["model"], Literal["model_config"], Literal["thought_level"], str]
+        Union[
+            Literal["mode"], Literal["model"], Literal["model_config"], Literal["speed"], Literal["thought_level"], str
+        ]
     ] = None
     """
     Optional semantic category for this option (UX only).
@@ -3347,7 +3677,7 @@ class SessionConfigOptionBoolean(SessionConfigBoolean):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     type: Literal["boolean"] = "boolean"
 
@@ -3371,7 +3701,7 @@ class SessionConfigSelectGroup(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("options", mode="wrap")
@@ -3396,7 +3726,7 @@ class ListSessionsResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("next_cursor", mode="wrap")
@@ -3408,6 +3738,23 @@ class ListSessionsResponse(BaseModel):
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+
+class SessionStatusResponse(BaseModel):
+    status: Union[Literal["open"], Literal["saved"], str]
+    """
+    Whether the Agent has the session in memory.
+
+    Required. Clients MUST treat a value they do not recognize as `saved`.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
 
 
 class PromptResponse(BaseModel):
@@ -3431,44 +3778,13 @@ class PromptResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("usage", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
-
-
-class NesJumpSuggestionVariant(NesJumpSuggestion):
-    kind: Literal["jump"] = "jump"
-
-
-class NesRenameSuggestionVariant(NesRenameSuggestion):
-    kind: Literal["rename"] = "rename"
-
-
-class NesSearchAndReplaceSuggestionVariant(NesSearchAndReplaceSuggestion):
-    kind: Literal["searchAndReplace"] = "searchAndReplace"
-
-
-class Range(BaseModel):
-    start: Position
-    """
-    The start position (inclusive).
-    """
-    end: Position
-    """
-    The end position (exclusive).
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
 
 
 class Error(BaseModel):
@@ -3485,12 +3801,12 @@ class Error(BaseModel):
     ]
     """
     A number indicating the error type that occurred.
-    This must be an integer as defined in the JSON-RPC specification.
+    This MUST be an integer as defined in the JSON-RPC specification.
     """
     message: str
     """
     A string providing a short description of the error.
-    The message should be limited to a concise single sentence.
+    The message SHOULD be limited to a concise single sentence.
     """
     data: Optional[Any] = None
     """
@@ -3554,7 +3870,7 @@ class PlanEntry(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -3563,8 +3879,8 @@ class Plan(BaseModel):
     """
     The list of tasks to be accomplished.
 
-    When updating a plan, the agent must send a complete list of all entries
-    with their current status. The client replaces the entire plan with each update.
+    The Agent MUST send all entries with their current status.
+    The Client MUST replace the entire checklist with each update.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -3572,17 +3888,13 @@ class Plan(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("entries", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
-
-
-class PlanUpdateFile(PlanFile):
-    type: Literal["file"] = "file"
 
 
 class PlanUpdateMarkdown(PlanMarkdown):
@@ -3598,8 +3910,8 @@ class PlanItems(BaseModel):
     """
     The list of tasks to be accomplished.
 
-    When updating an item-based plan, the agent must send a complete list of all entries
-    with their current status. The client replaces that plan with each update.
+    The Agent MUST send all entries with their current status.
+    The Client MUST replace the checklist with this `planId` on each update.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -3607,7 +3919,7 @@ class PlanItems(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("entries", mode="wrap")
@@ -3620,6 +3932,187 @@ class AvailableCommandInput(RootModel[UnstructuredCommandInput]):
     root: UnstructuredCommandInput
     """
     The input specification for a command.
+    """
+
+
+class CursorCapabilities(BaseModel):
+    fork: Optional[CursorForkCapabilities] = None
+    """
+    Permits the Client to fork the session at this cursor with `session/fork`.
+
+    Omitted and `null` are equivalent and mean unsupported. An object (including `{}`)
+    means supported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Omitted and `null` are equivalent and mean no metadata.
+    Implementations MUST NOT assign meaning to keys they do not recognize.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("fork", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class CursorAnchor1(CursorMessageAnchor):
+    type: Literal["user_message"] = "user_message"
+
+
+class CursorAnchor2(CursorMessageAnchor):
+    type: Literal["agent_message"] = "agent_message"
+
+
+class CursorAnchor3(CursorMessageAnchor):
+    type: Literal["agent_thought"] = "agent_thought"
+
+
+class CursorAnchor4(CursorMessageAnchor):
+    type: Literal["session_message"] = "session_message"
+
+
+class CursorAnchor5(CursorToolCallAnchor):
+    type: Literal["tool_call"] = "tool_call"
+
+
+class CursorAnchor6(CursorCompactionAnchor):
+    type: Literal["compaction"] = "compaction"
+
+
+class CursorUpdate(BaseModel):
+    cursor_id: Annotated[str, Field(alias="cursorId")]
+    """
+    The Agent-owned ID of this cursor, unique within the session.
+    """
+    capabilities: Optional[CursorCapabilities] = None
+    """
+    The methods that currently accept this cursor.
+
+    Omission leaves the capabilities unchanged, `null` clears them, and an object replaces
+    the whole previous value. A new cursor starts with none.
+    """
+    anchor: Optional[
+        Union[CursorAnchor1, CursorAnchor2, CursorAnchor3, CursorAnchor4, CursorAnchor5, CursorAnchor6, CursorAnchor7]
+    ] = None
+    """
+    Where the cursor is, relative to an entity the Client holds.
+
+    Required on the first update for a cursor. The Agent MUST NOT change it afterwards.
+    A later update can omit it or repeat the same anchor. Omitted and `null` are
+    equivalent and leave the stored anchor unchanged.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Extensible metadata patch for this cursor.
+    """
+
+    @field_validator("capabilities", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class SubagentSessionCapabilities(BaseModel):
+    cancel: Optional[SessionCancelCapabilities] = None
+    """
+    Permits the client to cancel this child's current work without ending
+    the session. Omitted or `null` means unsupported. An object (including
+    `{}`) means supported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+    """
+
+    @field_validator("cancel", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class StateUpdate1(RunningStateUpdate):
+    state: Literal["running"] = "running"
+
+
+class StateUpdate3(RequiresActionStateUpdate):
+    state: Literal["requires_action"] = "requires_action"
+
+
+class StateUpdate4(UnknownStateUpdate):
+    state: Literal["unknown"] = "unknown"
+
+
+class ErrorStopReason(BaseModel):
+    error: Optional[Error] = None
+    """
+    The failure, as a JSON-RPC error object.
+
+    Optional. Omitted or `null` both mean the agent is not reporting failure details.
+    Agents SHOULD include it.
+    """
+
+    @field_validator("error", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class IdleStateUpdate6(ErrorStopReason):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["error"], Field(alias="stopReason")] = "error"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class IdleStateUpdate(
+    RootModel[
+        Union[
+            IdleStateUpdate1,
+            IdleStateUpdate2,
+            IdleStateUpdate3,
+            IdleStateUpdate4,
+            IdleStateUpdate5,
+            IdleStateUpdate6,
+            IdleStateUpdate7,
+            IdleStateUpdate8,
+        ]
+    ]
+):
+    root: Union[
+        IdleStateUpdate1,
+        IdleStateUpdate2,
+        IdleStateUpdate3,
+        IdleStateUpdate4,
+        IdleStateUpdate5,
+        IdleStateUpdate6,
+        IdleStateUpdate7,
+        IdleStateUpdate8,
+    ]
+    """
+    Foreground work is not in progress. The parent can give the child more work.
+
+    An omitted or `null` `stopReason` means not reported.
     """
 
 
@@ -3639,10 +4132,50 @@ class SessionConfigOptionsCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("boolean", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class PromptSuggestionsCapabilities(BaseModel):
+    image: Optional[PromptSuggestionsImageCapabilities] = None
+    """
+    Whether prompt suggestions may include `image` content blocks.
+
+    Optional. Omitted or `null` both mean the client does not advertise support.
+    Supplying `{}` means the client can offer suggestions that include images.
+    """
+    audio: Optional[PromptSuggestionsAudioCapabilities] = None
+    """
+    Whether prompt suggestions may include `audio` content blocks.
+
+    Optional. Omitted or `null` both mean the client does not advertise support.
+    Supplying `{}` means the client can offer suggestions that include audio.
+    """
+    embedded_context: Annotated[
+        Optional[PromptSuggestionsEmbeddedContextCapabilities], Field(alias="embeddedContext")
+    ] = None
+    """
+    Whether prompt suggestions may include `resource` content blocks.
+
+    Optional. Omitted or `null` both mean the client does not advertise support.
+    Supplying `{}` means the client can offer suggestions that include
+    embedded resources.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("audio", "embedded_context", "image", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -3671,38 +4204,10 @@ class ElicitationCapabilities(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("form", "url", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class ClientNesCapabilities(BaseModel):
-    jump: Optional[NesJumpCapabilities] = None
-    """
-    Whether the client supports the `jump` suggestion kind.
-    """
-    rename: Optional[NesRenameCapabilities] = None
-    """
-    Whether the client supports the `rename` suggestion kind.
-    """
-    search_and_replace: Annotated[Optional[NesSearchAndReplaceCapabilities], Field(alias="searchAndReplace")] = None
-    """
-    Whether the client supports the `searchAndReplace` suggestion kind.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("jump", "rename", "search_and_replace", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -3720,29 +4225,26 @@ class AcpMcpServer(McpServerAcp):
     type: Literal["acp"] = "acp"
 
 
-class LoadSessionRequest(BaseModel):
-    mcp_servers: Annotated[
-        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]], Field(alias="mcpServers")
-    ]
+class ListSessionsRequest(BaseModel):
+    cwd: Optional[str] = None
     """
-    List of MCP servers to connect to for this session.
+    Filter sessions by working directory. Must be an absolute path.
     """
-    cwd: str
+    cursor: Optional[str] = None
     """
-    The working directory for this session. Must be an absolute path.
+    Opaque cursor token from a previous response's nextCursor field for cursor-based pagination
     """
-    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
+    archived: Optional[Union[Literal["exclude"], Literal["include"], Literal["only"], str]] = None
     """
-    Additional workspace roots to activate for this session. Each path must be absolute.
+    **UNSTABLE**
 
-    When omitted or empty, no additional roots are activated. When non-empty,
-    this is the complete resulting additional-root list for the loaded
-    session. It may differ from any previously used or reported list as long as
-    the request `cwd` matches the session's `cwd`.
-    """
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The ID of the session to load.
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Filter sessions by archive state.
+
+    Optional. Omitted and `null` are equivalent and mean `exclude`. Only send this when
+    the Agent advertises the `sessionCapabilities.archive` capability. The filter combines with `cwd` and
+    applies before pagination. Clients keep the same value when following `nextCursor`.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -3750,195 +4252,7 @@ class LoadSessionRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("additional_directories", "mcp_servers", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class ForkSessionRequest(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The ID of the session to fork.
-    """
-    cwd: str
-    """
-    The working directory for this session. Must be an absolute path.
-    """
-    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
-    """
-    Additional workspace roots to activate for this session. Each path must be absolute.
-
-    When omitted or empty, no additional roots are activated. When non-empty,
-    this is the complete resulting additional-root list for the forked
-    session.
-    """
-    mcp_servers: Annotated[
-        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]], Field(alias="mcpServers")
-    ] = None
-    """
-    List of MCP servers to connect to for this session.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("additional_directories", "mcp_servers", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class ResumeSessionRequest(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The ID of the session to resume.
-    """
-    cwd: str
-    """
-    The working directory for this session. Must be an absolute path.
-    """
-    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
-    """
-    Additional workspace roots to activate for this session. Each path must be absolute.
-
-    When omitted or empty, no additional roots are activated. When non-empty,
-    this is the complete resulting additional-root list for the resumed
-    session. It may differ from any previously used or reported list as long as
-    the request `cwd` matches the session's `cwd`.
-    """
-    mcp_servers: Annotated[
-        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]], Field(alias="mcpServers")
-    ] = None
-    """
-    List of MCP servers to connect to for this session.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("additional_directories", "mcp_servers", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class StartNesRequest(BaseModel):
-    workspace_uri: Annotated[Optional[str], Field(alias="workspaceUri")] = None
-    """
-    The root URI of the workspace.
-    """
-    workspace_folders: Annotated[Optional[List[WorkspaceFolder]], Field(alias="workspaceFolders")] = None
-    """
-    The workspace folders.
-    """
-    repository: Optional[NesRepository] = None
-    """
-    Repository metadata, if the workspace is a git repository.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("repository", "workspace_uri", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NesRelatedSnippet(BaseModel):
-    uri: str
-    """
-    The URI of the file containing the snippets.
-    """
-    excerpts: List[NesExcerpt]
-    """
-    The code excerpts.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesOpenFile(BaseModel):
-    uri: str
-    """
-    The URI of the file.
-    """
-    language_id: Annotated[str, Field(alias="languageId")]
-    """
-    The language identifier.
-    """
-    visible_range: Annotated[Optional[Range], Field(alias="visibleRange")] = None
-    """
-    The visible range in the editor, if any.
-    """
-    last_focused_ms: Annotated[Optional[int], Field(alias="lastFocusedMs", ge=0)] = None
-    """
-    Timestamp in milliseconds since epoch of when the file was last focused.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("last_focused_ms", "visible_range", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NesDiagnostic(BaseModel):
-    uri: str
-    """
-    The URI of the file containing the diagnostic.
-    """
-    range: Range
-    """
-    The range of the diagnostic.
-    """
-    severity: Literal["error", "warning", "information", "hint"]
-    """
-    The severity of the diagnostic.
-    """
-    message: str
-    """
-    The diagnostic message.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -3976,7 +4290,7 @@ class TerminalOutputResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("exit_status", mode="wrap")
@@ -3994,87 +4308,53 @@ class AcceptElicitationResponse(ElicitationAcceptAction):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     action: Literal["accept"] = "accept"
 
 
-class TextDocumentContentChangeEvent(BaseModel):
-    range: Optional[Range] = None
+class McpErrorResponse(BaseModel):
+    error: McpError
     """
-    The range of the document that changed. If `None`, the entire content is replaced.
-    """
-    text: str
-    """
-    The new text for the range, or the full document content if `range` is `None`.
+    Required, non-null MCP error object.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Optional ACP carrier metadata.
     """
 
 
-class DidFocusDocumentNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
+class ClientNotification(BaseModel):
+    method: str
     """
-    The session ID for this notification.
+    The notification method name.
     """
-    uri: str
+    params: Optional[Union[CancelNotification, MessageMcpNotification, Any]] = None
     """
-    The URI of the focused document.
-    """
-    version: int
-    """
-    The version number of the document.
-    """
-    position: Position
-    """
-    The current cursor position.
-    """
-    visible_range: Annotated[Range, Field(alias="visibleRange")]
-    """
-    The portion of the file currently visible in the editor viewport.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Method-specific notification parameters.
     """
 
 
-class RejectNesNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
+class ProxyResponse2(BaseModel):
+    id: Optional[Union[int, str]]
     """
-    The session ID for this notification.
+    The id of the request this response answers.
     """
-    id: str
+    error: Error
     """
-    The ID of the rejected suggestion.
-    """
-    reason: Optional[Literal["rejected", "ignored", "replaced", "cancelled"]] = None
-    """
-    The reason for rejection.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    Method-specific error data.
     """
 
-    @field_validator("reason", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
+
+class ProxyNotification(BaseModel):
+    method: str
+    """
+    The notification method name.
+    """
+    params: Optional[ProxySuccessorNotification] = None
+    """
+    Method-specific notification parameters.
+    """
 
 
 class TextContentBlock(TextContent):
@@ -4113,7 +4393,7 @@ class Content(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -4132,26 +4412,12 @@ class AgentErrorMessage(BaseModel):
     """
 
 
-class NesDocumentEventCapabilities(BaseModel):
-    did_open: Annotated[Optional[NesDocumentDidOpenCapabilities], Field(alias="didOpen")] = None
+class SessionSystemPromptCapabilities(BaseModel):
+    mode: Optional[SessionSystemPromptModeCapabilities] = None
     """
-    Whether the agent wants `document/didOpen` events.
-    """
-    did_change: Annotated[Optional[NesDocumentDidChangeCapabilities], Field(alias="didChange")] = None
-    """
-    Whether the agent wants `document/didChange` events, and the sync kind.
-    """
-    did_close: Annotated[Optional[NesDocumentDidCloseCapabilities], Field(alias="didClose")] = None
-    """
-    Whether the agent wants `document/didClose` events.
-    """
-    did_save: Annotated[Optional[NesDocumentDidSaveCapabilities], Field(alias="didSave")] = None
-    """
-    Whether the agent wants `document/didSave` events.
-    """
-    did_focus: Annotated[Optional[NesDocumentDidFocusCapabilities], Field(alias="didFocus")] = None
-    """
-    Whether the agent wants `document/didFocus` events.
+    Delivery modes the agent supports in addition to `append`.
+
+    Optional. Omitted or `null` both mean the agent supports only `append`.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -4159,10 +4425,10 @@ class NesDocumentEventCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("did_change", "did_close", "did_focus", "did_open", "did_save", mode="wrap")
+    @field_validator("mode", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -4179,7 +4445,7 @@ class ListProvidersResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -4194,59 +4460,12 @@ class SessionConfigSelect(BaseModel):
     """
 
 
-class NesTextEdit(BaseModel):
-    range: Range
-    """
-    The range to replace.
-    """
-    new_text: Annotated[str, Field(alias="newText")]
-    """
-    The replacement text.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesEditSuggestion(BaseModel):
-    id: str
-    """
-    Unique identifier for accept/reject tracking.
-    """
-    uri: str
-    """
-    The URI of the file to edit.
-    """
-    edits: List[NesTextEdit]
-    """
-    The text edits to apply.
-    """
-    cursor_position: Annotated[Optional[Position], Field(alias="cursorPosition")] = None
-    """
-    Optional suggested cursor position after applying edits.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("cursor_position", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
 class AgentPlanUpdate(Plan):
     session_update: Annotated[Literal["plan"], Field(alias="sessionUpdate")] = "plan"
+
+
+class SessionUpdateCursorUpdate(CursorUpdate):
+    session_update: Annotated[Literal["cursor_update"], Field(alias="sessionUpdate")] = "cursor_update"
 
 
 class ContentChunk(BaseModel):
@@ -4272,7 +4491,7 @@ class ContentChunk(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("message_id", mode="wrap")
@@ -4286,9 +4505,9 @@ class PlanUpdateItems(PlanItems):
 
 
 class PlanUpdate(BaseModel):
-    plan: Annotated[Union[PlanUpdateItems, PlanUpdateFile, PlanUpdateMarkdown], Field(discriminator="type")]
+    plan: Annotated[Union[PlanUpdateItems, PlanUpdateMarkdown], Field(discriminator="type")]
     """
-    The updated plan content.
+    Replaces the whole plan with this `planId`, even if its `type` changes.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -4296,7 +4515,7 @@ class PlanUpdate(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -4319,7 +4538,7 @@ class AvailableCommand(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("input", mode="wrap")
@@ -4339,7 +4558,7 @@ class AvailableCommandsUpdateBase(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -4367,11 +4586,11 @@ class CompactionUpdate(BaseModel):
         ]
     ] = None
     """
-    Complete replacement user-displayable summary retained by the compaction.
+    Complete replacement user-displayable summary content for the compaction.
     """
     error: Optional[str] = None
     """
-    Human-readable description of why the compaction failed.
+    Human-readable error details for the compaction.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -4409,15 +4628,281 @@ class CompactionSummaryChunk(BaseModel):
     """
 
 
+class PromptSuggestion(BaseModel):
+    prompt: Annotated[
+        List[
+            Annotated[
+                Union[
+                    TextContentBlock,
+                    ImageContentBlock,
+                    AudioContentBlock,
+                    ResourceContentBlock,
+                    EmbeddedResourceContentBlock,
+                ],
+                Field(discriminator="type"),
+            ]
+        ],
+        Field(min_length=1),
+    ]
+    """
+    The content of the suggested prompt.
+
+    Required and non-null. Must contain at least one content block. This is
+    the same type as the `prompt` field of `session/prompt`, and the Client
+    can send it in that field unchanged.
+
+    Agents MUST only use `text` and `resource_link` content blocks, and
+    other content block types that both the Agent's prompt capabilities
+    and the Client's `session.promptSuggestions` capability advertise.
+    Agents MUST NOT send a prompt whose only content is empty or
+    whitespace-only text.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class PromptSuggestionsUpdate(BaseModel):
+    suggestions: List[PromptSuggestion]
+    """
+    The suggestions the Client can offer, ordered most likely first.
+
+    Required and non-null. An empty list withdraws the suggestions the
+    Client is offering.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("suggestions", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
+
+
+class StateUpdate26(ErrorStopReason):
+    usage: Optional[Usage] = None
+    """
+    **UNSTABLE** Token usage for completed foreground work.
+
+    Optional. Omitted or `null` means not reported.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP for additional metadata.
+    Implementations MUST NOT make assumptions about values at these keys.
+    Optional. Omitted and `null` mean no metadata for this state snapshot.
+    """
+    stop_reason: Annotated[Literal["error"], Field(alias="stopReason")] = "error"
+    """
+    Why foreground work stopped. The value selects one of this type's variants, which may add fields of their own.
+
+    Optional. Omitted or `null` both mean the agent is not reporting a stop reason.
+
+    See protocol docs: [Work state](https://agentclientprotocol.com/protocol/v1/draft/subagents#work-state)
+    """
+
+
+class StateUpdate215(StateUpdate26, StateUpdate29):
+    state: Literal["idle"] = "idle"
+
+
+class SubagentUpdate(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The opaque session ID identifying the child in all ACP messages.
+    """
+    title: Optional[str] = None
+    """
+    The parent's human-readable display title for this child. It need not be unique.
+
+    Omitted means unchanged. `null` clears it. If unset, the Client chooses
+    a fallback presentation.
+    """
+    description: Optional[str] = None
+    """
+    The parent's human-readable description of the child's role or purpose.
+
+    Omitted means unchanged. `null` clears it. If unset, the Client chooses
+    a fallback presentation. This is current display metadata, not the
+    history of instructions sent to the child.
+    """
+    capabilities: Optional[SubagentSessionCapabilities] = None
+    """
+    Client-initiated session mutations permitted for this subagent session.
+
+    Omitted means unchanged. `null` clears the capability set and disables
+    child mutations. If never supplied, no session mutations are permitted.
+    Read-only operations retain their normal protocol semantics and capability
+    requirements. A concrete object replaces the whole capability set.
+    """
+    state: Optional[
+        Union[
+            StateUpdate1,
+            StateUpdate3,
+            StateUpdate4,
+            StateUpdate5,
+            StateUpdate210,
+            StateUpdate211,
+            StateUpdate212,
+            StateUpdate213,
+            StateUpdate214,
+            StateUpdate215,
+            StateUpdate216,
+            StateUpdate217,
+        ]
+    ] = None
+    """
+    Current state snapshot for the child session.
+
+    Omitted means unchanged. `null` clears the current activity without
+    asserting idle or sending an `unknown` snapshot. A concrete state
+    replaces the previous state object wholesale. If never supplied, the
+    current activity is unset/unconfirmed.
+    """
+    cwd: Optional[str] = None
+    """
+    The child's working directory. Must be an absolute path.
+
+    Optional and nullable. Omitted means unchanged. `null` clears the
+    reported value. While unset, the child inherits its immediate parent's
+    effective working directory. Clients use this value for the child's
+    root set and as the default terminal working directory.
+    """
+    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
+    """
+    Additional workspace roots for the child. Each path MUST be absolute.
+
+    Optional and nullable. Omitted means unchanged. `null` clears the
+    reported value. While unset, the child inherits its immediate parent's
+    effective additional directories, independently of `cwd`. A concrete
+    array replaces the whole list. `[]` reports no additional directories.
+    Clients use these values for the child's root set.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    Omitted means unchanged. `null` removes the metadata.
+    """
+
+    @field_validator("capabilities", "description", "state", "title", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class SessionMessage(BaseModel):
+    message_id: Annotated[str, Field(alias="messageId")]
+    """
+    Identifier of this message within the enclosing session's transcript.
+    """
+    sender_session_id: Annotated[Optional[str], Field(alias="senderSessionId")] = None
+    """
+    The sending session.
+
+    Omitted leaves the stored value unchanged. `null` clears it. A value replaces it.
+    """
+    recipient_session_id: Annotated[Optional[str], Field(alias="recipientSessionId")] = None
+    """
+    The receiving session.
+
+    Omitted leaves the stored value unchanged. `null` clears it. A value replaces it.
+    """
+    sender_message_id: Annotated[Optional[str], Field(alias="senderMessageId")] = None
+    """
+    On an incoming view, the `messageId` of the same message's outgoing view in the
+    sender's transcript.
+
+    Omitted leaves the stored value unchanged. `null` clears it. A value replaces it. It can arrive
+    after the message starts streaming.
+    """
+    recipient_message_id: Annotated[Optional[str], Field(alias="recipientMessageId")] = None
+    """
+    On an outgoing view, the `messageId` of the same message's incoming view in the
+    recipient's transcript.
+
+    Omitted leaves the stored value unchanged. `null` clears it. A value replaces it. It can arrive
+    after the message starts streaming.
+    """
+    content: Optional[
+        List[
+            Annotated[
+                Union[
+                    TextContentBlock,
+                    ImageContentBlock,
+                    AudioContentBlock,
+                    ResourceContentBlock,
+                    EmbeddedResourceContentBlock,
+                ],
+                Field(discriminator="type"),
+            ]
+        ]
+    ] = None
+    """
+    Omitted leaves content unchanged. `null` or `[]` clears it.
+    A non-empty array replaces all content.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Omitted leaves metadata unchanged. `null` removes it.
+
+    Implementations MUST NOT make assumptions about values in `_meta`.
+    """
+
+    @field_validator(
+        "recipient_message_id", "recipient_session_id", "sender_message_id", "sender_session_id", mode="wrap"
+    )
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+    @field_validator("content", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
+
+
+class SessionMessageChunk(BaseModel):
+    message_id: Annotated[str, Field(alias="messageId")]
+    """
+    Identifier of this message within the enclosing session's transcript.
+    """
+    content: Annotated[
+        Union[
+            TextContentBlock, ImageContentBlock, AudioContentBlock, ResourceContentBlock, EmbeddedResourceContentBlock
+        ],
+        Field(discriminator="type"),
+    ]
+    """
+    A single content block appended to the message.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    Optional and nullable chunk-scoped metadata. Omitted or `null` means none.
+
+    Implementations MUST NOT make assumptions about values in `_meta`.
+    """
+
+
 class ClientSessionCapabilities(BaseModel):
     compaction: Optional[CompactionCapabilities] = None
     """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
     Support for ID-addressed context compaction updates. Omitted or `null`
-    means unsupported; `{}` advertises the complete compaction contract.
+    means unsupported. `{}` advertises the complete compaction contract.
     """
     config_options: Annotated[Optional[SessionConfigOptionsCapabilities], Field(alias="configOptions")] = None
     """
@@ -4428,14 +4913,33 @@ class ClientSessionCapabilities(BaseModel):
     """
     notices: Optional[NoticeCapabilities] = None
     """
+    Support for live user-facing `notice` session updates.
+
+    Optional. Omitted or `null` both mean the client does not advertise support.
+    Supplying `{}` means the client can present notices to the user.
+    """
+    prompt_suggestions: Annotated[Optional[PromptSuggestionsCapabilities], Field(alias="promptSuggestions")] = None
+    """
     **UNSTABLE**
 
     This capability is not part of the spec yet, and may be removed or changed at any point.
 
-    Support for live advisory `notice` session updates.
+    Support for `prompt_suggestions_update` session updates.
 
     Optional. Omitted or `null` both mean the client does not advertise support.
-    Supplying `{}` means the client can present notices to the user.
+    Supplying `{}` means the client can offer prompt suggestions made of
+    `text` and `resource_link` content blocks.
+    """
+    cursors: Optional[SessionCursorsCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Support for `cursor_update` session updates.
+
+    Optional. Omitted or `null` both mean the client does not advertise support.
+    Supplying `{}` means the client handles `cursor_update`.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -4443,33 +4947,109 @@ class ClientSessionCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("compaction", "config_options", "notices", mode="wrap")
+    @field_validator("compaction", "config_options", "cursors", "notices", "prompt_suggestions", mode="wrap")
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
 
 
-class NewSessionRequest(BaseModel):
+class SystemPrompt(BaseModel):
+    mode: Union[Literal["append"], Literal["override"], str]
+    """
+    How the Agent combines `content` with its own instructions.
+
+    Required. Agents MUST return an error for a mode they do not support rather than
+    treating it as `append` or `override`.
+    """
+    content: List[
+        Annotated[
+            Union[
+                TextContentBlock,
+                ImageContentBlock,
+                AudioContentBlock,
+                ResourceContentBlock,
+                EmbeddedResourceContentBlock,
+            ],
+            Field(discriminator="type"),
+        ]
+    ]
+    """
+    The system prompt content.
+
+    Agents advertising the capability MUST accept `text` content blocks.
+    Clients MUST NOT send other content block types until a future
+    capability allows them, and Agents MUST return an error for content
+    blocks they do not support.
+
+    Clients MUST NOT send an empty array. Agents MAY reject one with
+    `-32602` without creating, loading, or resuming the session.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class LoadSessionRequest(BaseModel):
+    mcp_servers: Annotated[
+        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]], Field(alias="mcpServers")
+    ]
+    """
+    List of MCP servers to connect to for this session.
+    """
     cwd: str
     """
     The working directory for this session. Must be an absolute path.
     """
     additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
     """
-    Additional workspace roots for this session. Each path must be absolute.
+    Additional workspace roots to activate for this session. Each path MUST be absolute.
 
-    These expand the session's filesystem scope without changing `cwd`, which
-    remains the base for relative paths. When omitted or empty, no
-    additional roots are activated for the new session.
+    When omitted or empty, no additional roots are activated. When non-empty,
+    this is the complete resulting additional-root list for the loaded
+    session. It MAY differ from any previously used or reported list as long as
+    the request `cwd` matches the session's `cwd`.
     """
-    mcp_servers: Annotated[
-        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]], Field(alias="mcpServers")
-    ]
+    session_id: Annotated[str, Field(alias="sessionId")]
     """
-    List of MCP (Model Context Protocol) servers the agent should connect to.
+    The ID of the session to load.
+    """
+    system_prompt: Annotated[Optional[SystemPrompt], Field(alias="systemPrompt")] = None
+    """
+    System-level instructions for the loaded session.
+
+    Optional. Omitted and `null` are equivalent. The Agent MAY then keep a
+    system prompt it stored with the session or use its default instructions.
+    Clients MUST only send this when the Agent advertises
+    `sessionCapabilities.systemPrompt`, and SHOULD send the same value they used
+    when the session was created.
+    """
+    config_options: Annotated[
+        Optional[List[Union[InitialSessionConfigOption1, InitialSessionConfigOption2]]], Field(alias="configOptions")
+    ] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Initial values for the session's config options.
+
+    Optional. Omitted and `null` are equivalent to an empty list. Clients MUST only send
+    this when the Agent advertises `sessionCapabilities.options`.
+
+    The Agent applies the entries in list order, as if the Client had called
+    `session/set_config_option` for each entry after the session was set up. Malformed
+    entries and duplicate `configId` values fail the request with `-32602`. The Agent MUST
+    ignore an entry whose `configId` is unknown, whose `type` does not match the option,
+    or whose value is not allowed when it is applied. The `configOptions` in the response contain the values the session actually
+    has. The Agent SHOULD NOT send `config_option_update` notifications for these entries.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -4477,13 +5057,153 @@ class NewSessionRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("additional_directories", "mcp_servers", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
+
+class ForkSessionRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session to fork.
+    """
+    cursor_id: Annotated[Optional[str], Field(alias="cursorId")] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    The session cursor to fork at. The new session's history is the source
+    session's history before the cursor.
+
+    Optional. Omitted and `null` are equivalent and fork the whole session.
+    Clients MUST only send the ID of a cursor that the Agent announced on the
+    source session and that currently advertises `capabilities.fork`. The Agent
+    rejects any other ID with `-32602`. It does not fall back to forking the
+    whole session.
+    """
+    cwd: str
+    """
+    The working directory for this session. Must be an absolute path.
+    """
+    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
+    """
+    Additional workspace roots to activate for this session. Each path MUST be absolute.
+
+    When omitted or empty, no additional roots are activated. When non-empty,
+    this is the complete resulting additional-root list for the forked
+    session.
+    """
+    mcp_servers: Annotated[
+        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]], Field(alias="mcpServers")
+    ] = None
+    """
+    List of MCP servers to connect to for this session.
+    """
+    system_prompt: Annotated[Optional[SystemPrompt], Field(alias="systemPrompt")] = None
+    """
+    System-level instructions for the forked session.
+
+    Optional. Omitted and `null` are equivalent. The Agent MAY then keep a
+    system prompt it stored with the source session or use its default
+    instructions. Clients MUST only send this when the Agent advertises
+    `sessionCapabilities.systemPrompt`, and SHOULD send the same value they used
+    for the source session.
+    """
+    config_options: Annotated[
+        Optional[List[Union[InitialSessionConfigOption1, InitialSessionConfigOption2]]], Field(alias="configOptions")
+    ] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Initial values for the forked session's config options.
+
+    Optional. Omitted and `null` are equivalent to an empty list. Clients MUST only send
+    this when the Agent advertises `sessionCapabilities.options`.
+
+    The Agent applies the entries in list order on top of the configuration the fork
+    starts with, as if the Client had called `session/set_config_option` for each entry
+    after the session was set up. Malformed entries and duplicate `configId` values fail
+    the request with `-32602`. The Agent MUST ignore an entry whose `configId` is unknown,
+    whose `type` does not match the option, or whose value is not allowed when it is
+    applied. The `configOptions` in the response contain the values the session actually
+    has. The Agent SHOULD NOT send `config_option_update` notifications for these entries,
+    and SHOULD NOT send other `session/update` notifications caused by applying them
+    before it responds.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class ResumeSessionRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session to resume.
+    """
+    cwd: str
+    """
+    The working directory for this session. Must be an absolute path.
+    """
+    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
+    """
+    Additional workspace roots to activate for this session. Each path MUST be absolute.
+
+    When omitted or empty, no additional roots are activated. When non-empty,
+    this is the complete resulting additional-root list for the resumed
+    session. It MAY differ from any previously used or reported list as long as
+    the request `cwd` matches the session's `cwd`.
+    """
+    mcp_servers: Annotated[
+        Optional[List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]]], Field(alias="mcpServers")
+    ] = None
+    """
+    List of MCP servers to connect to for this session.
+    """
+    system_prompt: Annotated[Optional[SystemPrompt], Field(alias="systemPrompt")] = None
+    """
+    System-level instructions for the resumed session.
+
+    Optional. Omitted and `null` are equivalent. The Agent MAY then keep a
+    system prompt it stored with the session or use its default instructions.
+    Clients MUST only send this when the Agent advertises
+    `sessionCapabilities.systemPrompt`, and SHOULD send the same value they used
+    when the session was created.
+    """
+    config_options: Annotated[
+        Optional[List[Union[InitialSessionConfigOption1, InitialSessionConfigOption2]]], Field(alias="configOptions")
+    ] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Initial values for the session's config options.
+
+    Optional. Omitted and `null` are equivalent to an empty list. Clients MUST only send
+    this when the Agent advertises `sessionCapabilities.options`.
+
+    The Agent applies the entries in list order, as if the Client had called
+    `session/set_config_option` for each entry after the session was set up. Malformed
+    entries and duplicate `configId` values fail the request with `-32602`. The Agent MUST
+    ignore an entry whose `configId` is unknown, whose `type` does not match the option,
+    or whose value is not allowed when it is applied. The `configOptions` in the response contain the values the session actually
+    has. The Agent SHOULD NOT send `config_option_update` notifications for these entries.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
 
 
 class PromptRequest(BaseModel):
@@ -4506,15 +5226,15 @@ class PromptRequest(BaseModel):
     """
     The blocks of content that compose the user's message.
 
-    As a baseline, the Agent MUST support [`ContentBlock::Text`] and [`ContentBlock::ResourceLink`],
-    while other variants are optionally enabled via [`PromptCapabilities`].
+    As a baseline, the Agent MUST support `text` and `resource_link` content blocks,
+    while other variants are optionally enabled via `PromptCapabilities`.
 
-    The Client MUST adapt its interface according to [`PromptCapabilities`].
+    The Client MUST adapt its interface according to `PromptCapabilities`.
 
     The client MAY include referenced pieces of context as either
-    [`ContentBlock::Resource`] or [`ContentBlock::ResourceLink`].
+    `resource` or `resource_link` content blocks.
 
-    When available, [`ContentBlock::Resource`] is preferred
+    When available, `resource` is preferred
     as it avoids extra round-trips and allows the message to include
     pieces of context from sources the agent may not have access to.
     """
@@ -4524,42 +5244,7 @@ class PromptRequest(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class NesSuggestContext(BaseModel):
-    recent_files: Annotated[Optional[List[NesRecentFile]], Field(alias="recentFiles")] = None
-    """
-    Recently accessed files.
-    """
-    related_snippets: Annotated[Optional[List[NesRelatedSnippet]], Field(alias="relatedSnippets")] = None
-    """
-    Related code snippets.
-    """
-    edit_history: Annotated[Optional[List[NesEditHistoryEntry]], Field(alias="editHistory")] = None
-    """
-    Recent edit history.
-    """
-    user_actions: Annotated[Optional[List[NesUserAction]], Field(alias="userActions")] = None
-    """
-    Recent user actions (typing, navigation, etc.).
-    """
-    open_files: Annotated[Optional[List[NesOpenFile]], Field(alias="openFiles")] = None
-    """
-    Currently open files in the editor.
-    """
-    diagnostics: Optional[List[NesDiagnostic]] = None
-    """
-    Current diagnostics (errors, warnings).
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -4574,40 +5259,8 @@ class RequestPermissionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
-
-
-class DidChangeDocumentNotification(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for this notification.
-    """
-    uri: str
-    """
-    The URI of the changed document.
-    """
-    version: int
-    """
-    The new version number of the document.
-    """
-    content_changes: Annotated[List[TextDocumentContentChangeEvent], Field(alias="contentChanges")]
-    """
-    The content changes.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("content_changes", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
 
 
 class ContentToolCallContent(Content):
@@ -4642,7 +5295,7 @@ class ElicitationSchema(BaseModel):
         Field(validate_default=True),
     ] = {}
     """
-    Property definitions (must be primitive types).
+    Property definitions (MUST be primitive types).
     """
     required: Optional[List[str]] = None
     """
@@ -4664,7 +5317,7 @@ class ElicitationSchema(BaseModel):
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("description", "title", "type", mode="wrap")
@@ -4694,10 +5347,115 @@ class ElicitationFormMode(RootModel[Union[ElicitationFormSessionMode, Elicitatio
     """
 
 
-class NesEventCapabilities(BaseModel):
-    document: Optional[NesDocumentEventCapabilities] = None
+class SessionCapabilities(BaseModel):
+    list: Optional[SessionListCapabilities] = None
     """
-    Document event capabilities.
+    Whether the agent supports `session/list`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports listing sessions.
+    """
+    delete: Optional[SessionDeleteCapabilities] = None
+    """
+    Whether the agent supports `session/delete`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports deleting sessions from `session/list`.
+    """
+    additional_directories: Annotated[
+        Optional[SessionAdditionalDirectoriesCapabilities], Field(alias="additionalDirectories")
+    ] = None
+    """
+    Whether the agent supports `additionalDirectories` on supported session lifecycle requests.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports `additionalDirectories` on
+    supported session lifecycle requests.
+
+    Agents that also support `session/list` may return
+    `SessionInfo.additionalDirectories` to report the complete ordered
+    additional-root list associated with a listed session.
+    """
+    system_prompt: Annotated[Optional[SessionSystemPromptCapabilities], Field(alias="systemPrompt")] = None
+    """
+    Whether the agent supports `systemPrompt` on session lifecycle requests.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports `systemPrompt` in `append` mode.
+    """
+    fork: Optional[SessionForkCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the agent supports `session/fork`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports forking sessions.
+    """
+    archive: Optional[SessionArchiveCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the agent supports `session/archive` and `session/unarchive`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports both methods, the `archived` filter on
+    `session/list`, and `SessionInfo.archived`. Agents that advertise it MUST also advertise `sessionCapabilities.list`.
+    """
+    status: Optional[SessionStatusCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the agent supports `session/status`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports checking session status.
+    """
+    options: Optional[SessionOptionsCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the agent supports `session/options`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports `session/options` and accepts initial
+    config option values on session setup requests.
+    """
+    title: Optional[SessionTitleCapabilities] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    Whether the agent supports `session/set_title`.
+
+    Agents report titles through `session/list` and `session_info_update` without this
+    capability. It only advertises that Clients can set titles.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports setting session titles.
+    """
+    resume: Optional[SessionResumeCapabilities] = None
+    """
+    Whether the agent supports `session/resume`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports resuming sessions.
+    """
+    close: Optional[SessionCloseCapabilities] = None
+    """
+    Whether the agent supports `session/close`.
+
+    Optional. Omitted or `null` both mean the agent does not advertise support.
+    Supplying `{}` means the agent supports closing sessions.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -4705,10 +5463,23 @@ class NesEventCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("document", mode="wrap")
+    @field_validator(
+        "additional_directories",
+        "archive",
+        "close",
+        "delete",
+        "fork",
+        "list",
+        "options",
+        "resume",
+        "status",
+        "system_prompt",
+        "title",
+        mode="wrap",
+    )
     @classmethod
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
@@ -4728,7 +5499,9 @@ class SessionConfigOptionSelect(SessionConfigSelect):
     Optional description for the Client to display to the user.
     """
     category: Optional[
-        Union[Literal["mode"], Literal["model"], Literal["model_config"], Literal["thought_level"], str]
+        Union[
+            Literal["mode"], Literal["model"], Literal["model_config"], Literal["speed"], Literal["thought_level"], str
+        ]
     ] = None
     """
     Optional semantic category for this option (UX only).
@@ -4739,7 +5512,7 @@ class SessionConfigOptionSelect(SessionConfigSelect):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     type: Literal["select"] = "select"
 
@@ -4749,7 +5522,7 @@ class LoadSessionResponse(BaseModel):
     """
     Initial mode state if supported by the Agent
 
-    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)
+    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/v1/draft/session-modes)
     """
     config_options: Annotated[
         Optional[
@@ -4766,7 +5539,7 @@ class LoadSessionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("modes", mode="wrap")
@@ -4789,7 +5562,7 @@ class ForkSessionResponse(BaseModel):
     """
     Initial mode state if supported by the Agent
 
-    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)
+    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/v1/draft/session-modes)
     """
     config_options: Annotated[
         Optional[
@@ -4806,7 +5579,46 @@ class ForkSessionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
+
+
+class SessionOptionsResponse(BaseModel):
+    modes: Optional[SessionModeState] = None
+    """
+    The mode state the session would start with, if the Agent supports modes.
+
+    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/v1/draft/session-modes)
+    """
+    config_options: Annotated[
+        Optional[
+            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
+        ],
+        Field(alias="configOptions"),
+    ] = None
+    """
+    The config options the session would start with, with the same rules as on
+    `NewSessionResponse`.
+
+    Optional. Omitted, `null`, or empty means no config options are advertised.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("modes", mode="wrap")
@@ -4825,7 +5637,7 @@ class ResumeSessionResponse(BaseModel):
     """
     Initial mode state if supported by the Agent
 
-    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)
+    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/v1/draft/session-modes)
     """
     config_options: Annotated[
         Optional[
@@ -4842,7 +5654,7 @@ class ResumeSessionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("modes", mode="wrap")
@@ -4870,17 +5682,13 @@ class SetSessionConfigOptionResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("config_options", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
-
-
-class NesEditSuggestionVariant(NesEditSuggestion):
-    kind: Literal["edit"] = "edit"
 
 
 class UserMessageChunk(ContentChunk):
@@ -4920,6 +5728,24 @@ class SessionUpdateCompactionSummaryChunk(CompactionSummaryChunk):
     )
 
 
+class SessionUpdatePromptSuggestionsUpdate(PromptSuggestionsUpdate):
+    session_update: Annotated[Literal["prompt_suggestions_update"], Field(alias="sessionUpdate")] = (
+        "prompt_suggestions_update"
+    )
+
+
+class SessionUpdateSubagentUpdate(SubagentUpdate):
+    session_update: Annotated[Literal["subagent_update"], Field(alias="sessionUpdate")] = "subagent_update"
+
+
+class SessionUpdateSessionMessage(SessionMessage):
+    session_update: Annotated[Literal["session_message"], Field(alias="sessionUpdate")] = "session_message"
+
+
+class SessionUpdateSessionMessageChunk(SessionMessageChunk):
+    session_update: Annotated[Literal["session_message_chunk"], Field(alias="sessionUpdate")] = "session_message_chunk"
+
+
 class ToolCall(BaseModel):
     tool_call_id: Annotated[str, Field(alias="toolCallId")]
     """
@@ -4950,7 +5776,7 @@ class ToolCall(BaseModel):
     content: Optional[
         List[
             Annotated[
-                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
+                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent, ToolCallContentSession],
                 Field(discriminator="type"),
             ]
         ]
@@ -4977,7 +5803,7 @@ class ToolCall(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("kind", "name", "raw_input", "raw_output", "status", mode="wrap")
@@ -5005,7 +5831,7 @@ class ConfigOptionUpdateBase(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -5029,16 +5855,23 @@ class ClientCapabilities(BaseModel):
     Optional. Omitted or `null` both mean the client does not advertise any
     session-related extensions.
     """
+    subagents: Optional[SubagentCapabilities] = None
+    """
+    Whether the client understands exposed subagent sessions.
+
+    Optional and nullable. Omitted or `null` both mean the client does not
+    advertise support.
+    Supplying `{}` means the client understands child associations, work-state
+    snapshots, session-directed messages, and restricted-session semantics.
+
+    See protocol docs: [Subagents](https://agentclientprotocol.com/protocol/v1/draft/subagents)
+    """
     plan: Optional[PlanCapabilities] = None
     """
-    **UNSTABLE**
+    Whether the Client supports `plan_update` and `plan_removed` session updates.
 
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
-    Whether the client supports `plan_update` and `plan_removed` session updates.
-
-    Optional. Omitted or `null` both mean the client does not advertise support.
-    Supplying `{}` means the client can receive both update types.
+    Optional. Omitted or `null` both mean the Client does not advertise support.
+    Supplying `{}` means the Client can receive both update types.
     """
     auth: Annotated[Optional[AuthCapabilities], Field(validate_default=True)] = {"terminal": False}
     """
@@ -5054,26 +5887,69 @@ class ClientCapabilities(BaseModel):
     Optional. Omitted or `null` both mean the client does not advertise
     elicitation support.
     """
-    nes: Optional[ClientNesCapabilities] = None
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
-    **UNSTABLE**
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
 
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
-    NES (Next Edit Suggestions) capabilities supported by the client.
-
-    Optional. Omitted or `null` both mean the client does not advertise any
-    NES suggestion-kind extensions.
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
-    position_encodings: Annotated[
-        Optional[List[Literal["utf-16", "utf-32", "utf-8"]]], Field(alias="positionEncodings")
+
+    @field_validator("auth", "elicitation", "fs", "plan", "session", "subagents", "terminal", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class NewSessionRequest(BaseModel):
+    cwd: str
+    """
+    The working directory for this session. Must be an absolute path.
+    """
+    additional_directories: Annotated[Optional[List[str]], Field(alias="additionalDirectories")] = None
+    """
+    Additional workspace roots for this session. Each path MUST be absolute.
+
+    These expand the session's filesystem scope without changing `cwd`, which
+    remains the base for relative paths. When omitted or empty, no
+    additional roots are activated for the new session.
+    """
+    mcp_servers: Annotated[
+        List[Union[HttpMcpServer, SseMcpServer, AcpMcpServer, McpServerStdio]], Field(alias="mcpServers")
+    ]
+    """
+    List of MCP (Model Context Protocol) servers the agent should connect to.
+    """
+    system_prompt: Annotated[Optional[SystemPrompt], Field(alias="systemPrompt")] = None
+    """
+    System-level instructions for the new session.
+
+    Optional. Omitted and `null` are equivalent and mean the Agent uses its
+    own default instructions. Clients MUST only send this when the Agent
+    advertises `sessionCapabilities.systemPrompt`.
+    """
+    config_options: Annotated[
+        Optional[List[Union[InitialSessionConfigOption1, InitialSessionConfigOption2]]], Field(alias="configOptions")
     ] = None
     """
     **UNSTABLE**
 
     This capability is not part of the spec yet, and may be removed or changed at any point.
 
-    The position encodings supported by the client, in order of preference.
+    Initial values for the session's config options.
+
+    Optional. Omitted and `null` are equivalent to an empty list. Clients MUST only send
+    this when the Agent advertises `sessionCapabilities.options`.
+
+    The Agent applies the entries in list order, as if the Client had called
+    `session/set_config_option` for each entry after the session was set up. Malformed
+    entries and duplicate `configId` values fail the request with `-32602`. The Agent MUST
+    ignore an entry whose `configId` is unknown, whose `type` does not match the option,
+    or whose value is not allowed when it is applied. The `configOptions` in the response contain the values the session actually
+    has. The Agent SHOULD NOT send `config_option_update` notifications for these entries,
+    and SHOULD NOT send other `session/update` notifications caused by applying them
+    before it responds.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -5081,56 +5957,7 @@ class ClientCapabilities(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("auth", "elicitation", "fs", "nes", "plan", "session", "terminal", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-    @field_validator("position_encodings", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class SuggestNesRequest(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for this request.
-    """
-    uri: str
-    """
-    The URI of the document to suggest for.
-    """
-    version: int
-    """
-    The version number of the document.
-    """
-    position: Position
-    """
-    The current cursor position.
-    """
-    selection: Optional[Range] = None
-    """
-    The current text selection range, if any.
-    """
-    trigger_kind: Annotated[Literal["automatic", "diagnostic", "manual"], Field(alias="triggerKind")]
-    """
-    What triggered this suggestion request.
-    """
-    context: Optional[NesSuggestContext] = None
-    """
-    Context for the suggestion, included based on agent capabilities.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -5148,12 +5975,12 @@ class ClientResponseMessage(BaseModel):
         ReleaseTerminalResponse,
         WaitForTerminalExitResponse,
         KillTerminalResponse,
-        ConnectMcpResponse,
-        DisconnectMcpResponse,
         AcceptElicitationResponse,
         DeclineElicitationResponse,
         CancelElicitationResponse,
         OtherElicitationResponse,
+        McpResultResponse,
+        McpErrorResponse,
         Any,
     ]
     """
@@ -5165,30 +5992,6 @@ class ClientResponse(RootModel[Union[ClientResponseMessage, ClientErrorMessage]]
     root: Union[ClientResponseMessage, ClientErrorMessage]
     """
     A JSON-RPC response object.
-    """
-
-
-class ClientNotification(BaseModel):
-    method: str
-    """
-    The notification method name.
-    """
-    params: Optional[
-        Union[
-            CancelNotification,
-            DidOpenDocumentNotification,
-            DidChangeDocumentNotification,
-            DidCloseDocumentNotification,
-            DidSaveDocumentNotification,
-            DidFocusDocumentNotification,
-            AcceptNesNotification,
-            RejectNesNotification,
-            MessageMcpNotification,
-            Any,
-        ]
-    ] = None
-    """
-    Method-specific notification parameters.
     """
 
 
@@ -5221,7 +6024,7 @@ class ToolCallUpdate(BaseModel):
     content: Optional[
         List[
             Annotated[
-                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent],
+                Union[ContentToolCallContent, FileEditToolCallContent, TerminalToolCallContent, ToolCallContentSession],
                 Field(discriminator="type"),
             ]
         ]
@@ -5247,7 +6050,7 @@ class ToolCallUpdate(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("kind", "name", "raw_input", "raw_output", "status", "title", mode="wrap")
@@ -5288,7 +6091,7 @@ class CreateFormSessionElicitationRequest(CreateFormSessionElicitationRequestBas
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: Literal["form"] = "form"
 
@@ -5306,177 +6109,9 @@ class CreateFormRequestElicitationRequest(CreateFormRequestElicitationRequestBas
 
     Optional. Omitted and `null` are equivalent and mean no metadata.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
     mode: Literal["form"] = "form"
-
-
-class NesCapabilities(BaseModel):
-    events: Optional[NesEventCapabilities] = None
-    """
-    Events the agent wants to receive.
-    """
-    context: Optional[NesContextCapabilities] = None
-    """
-    Context the agent wants attached to each suggestion request.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("context", "events", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class NewSessionResponse(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    Unique identifier for the created session.
-
-    Used in all subsequent requests for this conversation.
-    """
-    modes: Optional[SessionModeState] = None
-    """
-    Initial mode state if supported by the Agent
-
-    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/session-modes)
-    """
-    config_options: Annotated[
-        Optional[
-            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
-        ],
-        Field(alias="configOptions"),
-    ] = None
-    """
-    Initial session configuration options if supported by the Agent.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("modes", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-    @field_validator("config_options", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class SuggestNesResponse(BaseModel):
-    suggestions: List[
-        Annotated[
-            Union[
-                NesEditSuggestionVariant,
-                NesJumpSuggestionVariant,
-                NesRenameSuggestionVariant,
-                NesSearchAndReplaceSuggestionVariant,
-            ],
-            Field(discriminator="kind"),
-        ]
-    ]
-    """
-    The list of suggestions.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-
-class ToolCallStart(ToolCall):
-    session_update: Annotated[Literal["tool_call"], Field(alias="sessionUpdate")] = "tool_call"
-
-
-class ToolCallProgress(ToolCallUpdate):
-    session_update: Annotated[Literal["tool_call_update"], Field(alias="sessionUpdate")] = "tool_call_update"
-
-
-class ConfigOptionUpdate(ConfigOptionUpdateBase):
-    session_update: Annotated[Literal["config_option_update"], Field(alias="sessionUpdate")] = "config_option_update"
-
-    @field_validator("config_options", mode="wrap")
-    @classmethod
-    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return skip_invalid_items(v, handler, info)
-
-
-class InitializeRequest(BaseModel):
-    protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
-    """
-    The latest protocol version supported by the client.
-    """
-    client_capabilities: Annotated[
-        Optional[ClientCapabilities], Field(alias="clientCapabilities", validate_default=True)
-    ] = {"fs": {"readTextFile": False, "writeTextFile": False}, "terminal": False, "auth": {"terminal": False}}
-    """
-    Capabilities supported by the client.
-    """
-    client_info: Annotated[Optional[Implementation], Field(alias="clientInfo")] = None
-    """
-    Information about the Client name and version sent to the Agent.
-
-    Note: in future versions of the protocol, this will be required.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
-
-    @field_validator("protocol_version", mode="before")
-    @classmethod
-    def coerce_protocol_version_validator(cls, v: Any, info: ValidationInfo) -> Any:
-        return coerce_protocol_version(v, info)
-
-    @field_validator("client_capabilities", "client_info", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
-
-class RequestPermissionRequest(BaseModel):
-    session_id: Annotated[str, Field(alias="sessionId")]
-    """
-    The session ID for this request.
-    """
-    tool_call: Annotated[ToolCallUpdate, Field(alias="toolCall")]
-    """
-    Details about the tool call requiring permission.
-    """
-    options: List[PermissionOption]
-    """
-    Available permission options for the user to choose from.
-    """
-    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
-    """
-    The _meta property is reserved by ACP to allow clients and agents to attach additional
-    metadata to their interactions. Implementations MUST NOT make assumptions about values at
-    these keys.
-
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
-    """
 
 
 class AgentCapabilities(BaseModel):
@@ -5519,40 +6154,19 @@ class AgentCapabilities(BaseModel):
     Optional. Omitted or `null` both mean the agent does not advertise support.
     Supplying `{}` means the agent supports provider configuration methods.
     """
-    nes: Optional[NesCapabilities] = None
-    """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
-    NES (Next Edit Suggestions) capabilities supported by the agent.
-
-    Optional. Omitted or `null` both mean the agent does not advertise support
-    for NES methods.
-    """
-    position_encoding: Annotated[Optional[Literal["utf-16", "utf-32", "utf-8"]], Field(alias="positionEncoding")] = None
-    """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
-    The position encoding selected by the agent from the client's supported encodings.
-    """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
     The _meta property is reserved by ACP to allow clients and agents to attach additional
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator(
         "auth",
         "load_session",
         "mcp_capabilities",
-        "nes",
-        "position_encoding",
         "prompt_capabilities",
         "providers",
         "session_capabilities",
@@ -5563,34 +6177,27 @@ class AgentCapabilities(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class SessionNotification(BaseModel):
+class NewSessionResponse(BaseModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
-    The ID of the session this update pertains to.
+    Unique identifier for the created session.
+
+    Used in all subsequent requests for this conversation.
     """
-    update: Annotated[
-        Union[
-            UserMessageChunk,
-            AgentMessageChunk,
-            AgentThoughtChunk,
-            ToolCallStart,
-            ToolCallProgress,
-            AgentPlanUpdate,
-            AgentPlanContentUpdate,
-            AgentPlanRemovedUpdate,
-            AvailableCommandsUpdate,
-            CurrentModeUpdate,
-            ConfigOptionUpdate,
-            SessionInfoUpdate,
-            UsageUpdate,
-            SessionUpdateNotice,
-            SessionUpdateCompactionUpdate,
-            SessionUpdateCompactionSummaryChunk,
+    modes: Optional[SessionModeState] = None
+    """
+    Initial mode state if supported by the Agent
+
+    See protocol docs: [Session Modes](https://agentclientprotocol.com/protocol/v1/draft/session-modes)
+    """
+    config_options: Annotated[
+        Optional[
+            List[Annotated[Union[SessionConfigOptionSelect, SessionConfigOptionBoolean], Field(discriminator="type")]]
         ],
-        Field(discriminator="session_update"),
-    ]
+        Field(alias="configOptions"),
+    ] = None
     """
-    The actual update content.
+    Initial session configuration options if supported by the Agent.
     """
     field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
     """
@@ -5598,83 +6205,98 @@ class SessionNotification(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
+    @field_validator("modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
-class ClientRequest(BaseModel):
-    id: Optional[Union[int, str]]
-    """
-    The request id used to correlate the matching response.
-    """
-    method: str
-    """
-    The method name to invoke.
-    """
-    params: Optional[
-        Union[
-            InitializeRequest,
-            AuthenticateRequest,
-            ListProvidersRequest,
-            SetProviderRequest,
-            DisableProviderRequest,
-            LogoutRequest,
-            NewSessionRequest,
-            LoadSessionRequest,
-            ListSessionsRequest,
-            DeleteSessionRequest,
-            ForkSessionRequest,
-            ResumeSessionRequest,
-            CloseSessionRequest,
-            SetSessionModeRequest,
-            PromptRequest,
-            StartNesRequest,
-            SuggestNesRequest,
-            CloseNesRequest,
-            MessageMcpRequest,
-            SetSessionConfigOptionBooleanRequest,
-            SetSessionConfigOptionSelectRequest,
-            Any,
-        ]
-    ] = None
-    """
-    Method-specific request parameters.
-    """
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
 
 
-class AgentRequest(BaseModel):
-    id: Optional[Union[int, str]]
+class ToolCallStart(ToolCall):
+    session_update: Annotated[Literal["tool_call"], Field(alias="sessionUpdate")] = "tool_call"
+
+
+class ToolCallProgress(ToolCallUpdate):
+    session_update: Annotated[Literal["tool_call_update"], Field(alias="sessionUpdate")] = "tool_call_update"
+
+
+class ConfigOptionUpdate(ConfigOptionUpdateBase):
+    session_update: Annotated[Literal["config_option_update"], Field(alias="sessionUpdate")] = "config_option_update"
+
+    @field_validator("config_options", mode="wrap")
+    @classmethod
+    def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return skip_invalid_items(v, handler, info)
+
+
+class InitializeRequest(BaseModel):
+    protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
     """
-    The request id used to correlate the matching response.
+    The latest protocol version supported by the client.
     """
-    method: str
+    client_capabilities: Annotated[
+        Optional[ClientCapabilities], Field(alias="clientCapabilities", validate_default=True)
+    ] = {"fs": {"readTextFile": False, "writeTextFile": False}, "terminal": False, "auth": {"terminal": False}}
     """
-    The method name to invoke.
+    Capabilities supported by the client.
     """
-    params: Optional[
-        Union[
-            WriteTextFileRequest,
-            ReadTextFileRequest,
-            RequestPermissionRequest,
-            CreateTerminalRequest,
-            TerminalOutputRequest,
-            ReleaseTerminalRequest,
-            WaitForTerminalExitRequest,
-            KillTerminalRequest,
-            ConnectMcpRequest,
-            MessageMcpRequest,
-            DisconnectMcpRequest,
-            CreateOtherSessionElicitationRequest,
-            CreateOtherRequestElicitationRequest,
-            CreateFormSessionElicitationRequest,
-            CreateFormRequestElicitationRequest,
-            CreateUrlSessionElicitationRequest,
-            CreateUrlRequestElicitationRequest,
-            Any,
-        ]
-    ] = None
+    client_info: Annotated[Optional[Implementation], Field(alias="clientInfo")] = None
     """
-    Method-specific request parameters.
+    Information about the Client name and version sent to the Agent.
+
+    Note: in future versions of the protocol, this will be required.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+    @field_validator("protocol_version", mode="before")
+    @classmethod
+    def coerce_protocol_version_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return coerce_protocol_version(v, info)
+
+    @field_validator("client_capabilities", "client_info", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
+
+class InitializeProxyRequest(InitializeRequest):
+    pass
+
+
+class RequestPermissionRequest(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The session ID for this request.
+    """
+    tool_call: Annotated[ToolCallUpdate, Field(alias="toolCall")]
+    """
+    Details about the tool call requiring permission.
+    """
+    options: List[PermissionOption]
+    """
+    Available permission options for the user to choose from.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
 
@@ -5684,7 +6306,7 @@ class InitializeResponse(BaseModel):
     The protocol version the client specified if supported by the agent,
     or the latest protocol version supported by the agent.
 
-    The client should disconnect, if it doesn't support this version.
+    The client SHOULD disconnect, if it doesn't support this version.
     """
     agent_capabilities: Annotated[
         Optional[AgentCapabilities], Field(alias="agentCapabilities", validate_default=True)
@@ -5716,7 +6338,7 @@ class InitializeResponse(BaseModel):
     metadata to their interactions. Implementations MUST NOT make assumptions about values at
     these keys.
 
-    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/extensibility)
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
     @field_validator("agent_capabilities", "agent_info", mode="wrap")
@@ -5730,14 +6352,142 @@ class InitializeResponse(BaseModel):
         return skip_invalid_items(v, handler, info)
 
 
-class AgentNotification(BaseModel):
+class SessionNotification(BaseModel):
+    session_id: Annotated[str, Field(alias="sessionId")]
+    """
+    The ID of the session this update pertains to.
+    """
+    update: Annotated[
+        Union[
+            UserMessageChunk,
+            AgentMessageChunk,
+            AgentThoughtChunk,
+            ToolCallStart,
+            ToolCallProgress,
+            AgentPlanUpdate,
+            AgentPlanContentUpdate,
+            AgentPlanRemovedUpdate,
+            AvailableCommandsUpdate,
+            CurrentModeUpdate,
+            ConfigOptionUpdate,
+            SessionInfoUpdate,
+            UsageUpdate,
+            SessionUpdateNotice,
+            SessionUpdateCompactionUpdate,
+            SessionUpdateCompactionSummaryChunk,
+            SessionUpdatePromptSuggestionsUpdate,
+            SessionUpdateCursorUpdate,
+            SessionUpdateSubagentUpdate,
+            SessionUpdateSessionMessage,
+            SessionUpdateSessionMessageChunk,
+        ],
+        Field(discriminator="session_update"),
+    ]
+    """
+    The actual update content.
+    """
+    field_meta: Annotated[Optional[Dict[str, Any]], Field(alias="_meta")] = None
+    """
+    The _meta property is reserved by ACP to allow clients and agents to attach additional
+    metadata to their interactions. Implementations MUST NOT make assumptions about values at
+    these keys.
+
+    See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
+    """
+
+
+class ClientRequest(BaseModel):
+    id: Optional[Union[int, str]]
+    """
+    The request id used to correlate the matching response.
+    """
     method: str
     """
-    The notification method name.
+    The method name to invoke.
     """
-    params: Optional[Union[SessionNotification, CompleteElicitationNotification, MessageMcpNotification, Any]] = None
+    params: Optional[
+        Union[
+            InitializeRequest,
+            AuthenticateRequest,
+            ListProvidersRequest,
+            SetProviderRequest,
+            DisableProviderRequest,
+            LogoutRequest,
+            AuthStatusRequest,
+            NewSessionRequest,
+            LoadSessionRequest,
+            ListSessionsRequest,
+            DeleteSessionRequest,
+            ForkSessionRequest,
+            ArchiveSessionRequest,
+            UnarchiveSessionRequest,
+            SessionStatusRequest,
+            SessionOptionsRequest,
+            SetSessionTitleRequest,
+            ResumeSessionRequest,
+            CloseSessionRequest,
+            SetSessionModeRequest,
+            PromptRequest,
+            SetSessionConfigOptionBooleanRequest,
+            SetSessionConfigOptionSelectRequest,
+            Any,
+        ]
+    ] = None
     """
-    Method-specific notification parameters.
+    Method-specific request parameters.
+    """
+
+
+class ProxyRequest(BaseModel):
+    id: Optional[Union[int, str]]
+    """
+    The request id used to correlate the matching response.
+    """
+    method: str
+    """
+    The method name to invoke.
+    """
+    params: Optional[Union[InitializeProxyRequest, ProxySuccessorRequest]] = None
+    """
+    Method-specific request parameters.
+    """
+
+
+class InitializeProxyResponse(InitializeResponse):
+    pass
+
+
+class AgentRequest(BaseModel):
+    id: Optional[Union[int, str]]
+    """
+    The request id used to correlate the matching response.
+    """
+    method: str
+    """
+    The method name to invoke.
+    """
+    params: Optional[
+        Union[
+            WriteTextFileRequest,
+            ReadTextFileRequest,
+            RequestPermissionRequest,
+            CreateTerminalRequest,
+            TerminalOutputRequest,
+            ReleaseTerminalRequest,
+            WaitForTerminalExitRequest,
+            KillTerminalRequest,
+            MessageMcpRequest,
+            CreateOtherSessionElicitationRequest,
+            CreateOtherRequestElicitationRequest,
+            CreateFormSessionElicitationRequest,
+            CreateFormRequestElicitationRequest,
+            CreateUrlSessionElicitationRequest,
+            CreateUrlRequestElicitationRequest,
+            Any,
+        ]
+    ] = None
+    """
+    Method-specific request parameters.
     """
 
 
@@ -5753,19 +6503,22 @@ class AgentResponseMessage(BaseModel):
         SetProviderResponse,
         DisableProviderResponse,
         LogoutResponse,
+        AuthStatusResponse,
         NewSessionResponse,
         LoadSessionResponse,
         ListSessionsResponse,
         DeleteSessionResponse,
         ForkSessionResponse,
+        ArchiveSessionResponse,
+        UnarchiveSessionResponse,
+        SessionStatusResponse,
+        SessionOptionsResponse,
+        SetSessionTitleResponse,
         ResumeSessionResponse,
         CloseSessionResponse,
         SetSessionModeResponse,
         SetSessionConfigOptionResponse,
         PromptResponse,
-        StartNesResponse,
-        SuggestNesResponse,
-        CloseNesResponse,
         Any,
     ]
     """
@@ -5779,6 +6532,39 @@ class AgentResponse(RootModel[Union[AgentResponseMessage, AgentErrorMessage]]):
     A JSON-RPC response object.
     """
 
+
+class AgentNotification(BaseModel):
+    method: str
+    """
+    The notification method name.
+    """
+    params: Optional[Union[SessionNotification, CompleteElicitationNotification, AuthStatusUpdateNotification, Any]] = (
+        None
+    )
+    """
+    Method-specific notification parameters.
+    """
+
+
+class ProxyResponse1(BaseModel):
+    id: Optional[Union[int, str]]
+    """
+    The id of the request this response answers.
+    """
+    result: Union[InitializeProxyResponse, Any]
+    """
+    Method-specific response data.
+    """
+
+
+class ProxyResponse(RootModel[Union[ProxyResponse1, ProxyResponse2]]):
+    root: Union[ProxyResponse1, ProxyResponse2]
+    """
+    A JSON-RPC response object.
+    """
+
+
+MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
 
 PermissionOptionKind = Literal["allow_once", "allow_always", "reject_once", "reject_always"]
 PlanEntryPriority = Literal["high", "medium", "low"]

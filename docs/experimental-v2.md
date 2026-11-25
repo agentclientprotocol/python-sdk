@@ -3,7 +3,7 @@
 > **Experimental.** Protocol v2 is a draft. Import it from `acp.experimental` and
 > expect its API and generated models to change with the upstream schema.
 
-The bindings use `schema-v2.0.0-alpha.5`.
+The bindings use `schema-v2.0.0-alpha.7`.
 
 The v2 runtime is separate from the stable v1 API. Like v1, connection methods
 and agent/client handlers accept expanded, snake-case parameters. Responses and
@@ -155,3 +155,13 @@ by the shared connection layer, as in v1: cancelling the task awaiting a request
 sends a best-effort cancellation to the peer, and an incoming cancellation
 cancels the handler task, which answers with its result or `-32800`.
 `session/cancel` remains available for cancelling active session work.
+
+## Stateless MCP-over-ACP
+
+V2 uses the same [stateless MCP binding](quickstart.md#stateless-mcp-over-acp)
+as v1. Use the independent `v2.schema.McpResultResponse`, `McpErrorResponse`,
+`McpError`, and `MessageMcpResponse` types. The agent advertises support with
+`capabilities.session.mcp.acp = {}`; omission or null does not advertise support.
+After ACP initialization, agents send `mcp_message` requests and providers send
+`notify_mcp` notifications with explicit `server_id` and `request_id` strings.
+The old MCP connect/disconnect methods and reverse requests are removed.

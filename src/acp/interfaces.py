@@ -1,7 +1,11 @@
 from __future__ import annotations
 
+from functools import partial
 from typing import Any, Literal, Protocol
 
+from pydantic import TypeAdapter
+
+from ._mcp import validate_mcp_response
 from ._protocol_adapters import (
     elicitation_to_kwargs,
     validate_create_elicitation_request,
@@ -9,27 +13,28 @@ from ._protocol_adapters import (
 )
 from .meta import AGENT_METHODS, CLIENT_METHODS
 from .schema import (
-    AcceptNesNotification,
     AcpMcpServer,
     AgentMessageChunk,
     AgentPlanContentUpdate,
     AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
+    ArchiveSessionRequest,
+    ArchiveSessionResponse,
     AudioContentBlock,
+    AuthAccount,
     AuthenticateRequest,
     AuthenticateResponse,
+    AuthStatusRequest,
+    AuthStatusResponse,
+    AuthStatusUpdateNotification,
     AvailableCommandsUpdate,
     CancelNotification,
     ClientCapabilities,
-    CloseNesRequest,
-    CloseNesResponse,
     CloseSessionRequest,
     CloseSessionResponse,
     CompleteElicitationNotification,
     ConfigOptionUpdate,
-    ConnectMcpRequest,
-    ConnectMcpResponse,
     CreateElicitationResponse,
     CreateFormRequestElicitationRequest,
     CreateFormSessionElicitationRequest,
@@ -40,15 +45,8 @@ from .schema import (
     CurrentModeUpdate,
     DeleteSessionRequest,
     DeleteSessionResponse,
-    DidChangeDocumentNotification,
-    DidCloseDocumentNotification,
-    DidFocusDocumentNotification,
-    DidOpenDocumentNotification,
-    DidSaveDocumentNotification,
     DisableProviderRequest,
     DisableProviderResponse,
-    DisconnectMcpRequest,
-    DisconnectMcpResponse,
     ElicitationMode,
     EmbeddedResourceContentBlock,
     EnvVariable,
@@ -59,6 +57,8 @@ from .schema import (
     Implementation,
     InitializeRequest,
     InitializeResponse,
+    InitialSessionConfigOption1,
+    InitialSessionConfigOption2,
     KillTerminalRequest,
     KillTerminalResponse,
     ListProvidersRequest,
@@ -72,18 +72,14 @@ from .schema import (
     McpServerStdio,
     MessageMcpNotification,
     MessageMcpRequest,
-    NesRepository,
-    NesSuggestContext,
+    MessageMcpResponse,
     NewSessionRequest,
     NewSessionResponse,
     PermissionOption,
-    Position,
     PromptRequest,
     PromptResponse,
-    Range,
     ReadTextFileRequest,
     ReadTextFileResponse,
-    RejectNesNotification,
     ReleaseTerminalRequest,
     ReleaseTerminalResponse,
     RequestPermissionRequest,
@@ -93,9 +89,18 @@ from .schema import (
     ResumeSessionResponse,
     SessionInfoUpdate,
     SessionNotification,
+    SessionOptionsRequest,
+    SessionOptionsResponse,
+    SessionStatusRequest,
+    SessionStatusResponse,
     SessionUpdateCompactionSummaryChunk,
     SessionUpdateCompactionUpdate,
+    SessionUpdateCursorUpdate,
     SessionUpdateNotice,
+    SessionUpdatePromptSuggestionsUpdate,
+    SessionUpdateSessionMessage,
+    SessionUpdateSessionMessageChunk,
+    SessionUpdateSubagentUpdate,
     SetProviderRequest,
     SetProviderResponse,
     SetSessionConfigOptionBooleanRequest,
@@ -103,23 +108,22 @@ from .schema import (
     SetSessionConfigOptionSelectRequest,
     SetSessionModeRequest,
     SetSessionModeResponse,
+    SetSessionTitleRequest,
+    SetSessionTitleResponse,
     SseMcpServer,
-    StartNesRequest,
-    StartNesResponse,
-    SuggestNesRequest,
-    SuggestNesResponse,
+    SystemPrompt,
     TerminalOutputRequest,
     TerminalOutputResponse,
     TextContentBlock,
-    TextDocumentContentChangeEvent,
     ToolCallProgress,
     ToolCallStart,
     ToolCallUpdate,
+    UnarchiveSessionRequest,
+    UnarchiveSessionResponse,
     UsageUpdate,
     UserMessageChunk,
     WaitForTerminalExitRequest,
     WaitForTerminalExitResponse,
-    WorkspaceFolder,
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
@@ -129,23 +133,22 @@ __all__ = ["Agent", "Client"]
 
 
 class Client(Protocol):
-    @param_model(ConnectMcpRequest, method=CLIENT_METHODS["mcp_connect"], unstable=True)
-    async def connect_mcp(self, server_id: str, **kwargs: Any) -> ConnectMcpResponse: ...
-
     @param_model(
-        DisconnectMcpRequest, method=CLIENT_METHODS["mcp_disconnect"], unstable=True, adapt_result=normalize_result
+        MessageMcpRequest,
+        method=CLIENT_METHODS["mcp_message"],
+        unstable=True,
+        adapt_result=partial(validate_mcp_response, adapter=TypeAdapter(MessageMcpResponse)),
     )
-    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> DisconnectMcpResponse: ...
-
-    @param_model(MessageMcpRequest, method=CLIENT_METHODS["mcp_message"], unstable=True)
     async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any: ...
-
-    @param_model(MessageMcpNotification, method=CLIENT_METHODS["mcp_message"], kind="notification", unstable=True)
-    async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None: ...
+        self,
+        server_id: str,
+        request_id: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        tool_call_id: str | None = None,
+        **kwargs: Any,
+    ) -> MessageMcpResponse: ...
 
     @param_model(RequestPermissionRequest, method=CLIENT_METHODS["session_request_permission"])
     async def request_permission(
@@ -171,7 +174,12 @@ class Client(Protocol):
         | UsageUpdate
         | SessionUpdateNotice
         | SessionUpdateCompactionUpdate
-        | SessionUpdateCompactionSummaryChunk,
+        | SessionUpdateCompactionSummaryChunk
+        | SessionUpdatePromptSuggestionsUpdate
+        | SessionUpdateCursorUpdate
+        | SessionUpdateSubagentUpdate
+        | SessionUpdateSessionMessage
+        | SessionUpdateSessionMessageChunk,
         **kwargs: Any,
     ) -> None: ...
 
@@ -250,6 +258,20 @@ class Client(Protocol):
     )
     async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None: ...
 
+    @param_model(
+        AuthStatusUpdateNotification, method=CLIENT_METHODS["auth_status_update"], kind="notification", unstable=True
+    )
+    async def auth_status_update(
+        self,
+        state: Literal["authenticated"]
+        | Literal["unauthenticated"]
+        | Literal["not_required"]
+        | Literal["unknown"]
+        | str,
+        accounts: list[AuthAccount] | None = None,
+        **kwargs: Any,
+    ) -> None: ...
+
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]: ...
 
     async def ext_notification(self, method: str, params: dict[str, Any]) -> None: ...
@@ -260,6 +282,30 @@ class Client(Protocol):
 class Agent(Protocol):
     @param_model(DeleteSessionRequest, method=AGENT_METHODS["session_delete"], adapt_result=normalize_result)
     async def delete_session(self, session_id: str, **kwargs: Any) -> DeleteSessionResponse: ...
+
+    @param_model(
+        ArchiveSessionRequest, method=AGENT_METHODS["session_archive"], unstable=True, adapt_result=normalize_result
+    )
+    async def archive_session(self, session_id: str, **kwargs: Any) -> ArchiveSessionResponse: ...
+
+    @param_model(
+        UnarchiveSessionRequest, method=AGENT_METHODS["session_unarchive"], unstable=True, adapt_result=normalize_result
+    )
+    async def unarchive_session(self, session_id: str, **kwargs: Any) -> UnarchiveSessionResponse: ...
+
+    @param_model(SessionStatusRequest, method=AGENT_METHODS["session_status"], unstable=True)
+    async def session_status(self, session_id: str, **kwargs: Any) -> SessionStatusResponse: ...
+
+    @param_model(SessionOptionsRequest, method=AGENT_METHODS["session_options"], unstable=True)
+    async def session_options(
+        self, cwd: str, additional_directories: list[str] | None = None, session_id: str | None = None, **kwargs: Any
+    ) -> SessionOptionsResponse: ...
+
+    @param_model(SetSessionTitleRequest, method=AGENT_METHODS["session_set_title"], unstable=True)
+    async def set_session_title(self, session_id: str, title: str, **kwargs: Any) -> SetSessionTitleResponse: ...
+
+    @param_model(AuthStatusRequest, method=AGENT_METHODS["auth_status"], unstable=True)
+    async def auth_status(self, **kwargs: Any) -> AuthStatusResponse: ...
 
     @param_model(ListProvidersRequest, method=AGENT_METHODS["providers_list"], unstable=True)
     async def list_providers(self, **kwargs: Any) -> ListProvidersResponse: ...
@@ -289,87 +335,9 @@ class Agent(Protocol):
     @param_model(LogoutRequest, method=AGENT_METHODS["logout"], adapt_result=normalize_result)
     async def logout(self, **kwargs: Any) -> LogoutResponse: ...
 
-    @param_model(MessageMcpRequest, method=AGENT_METHODS["mcp_message"], unstable=True)
-    async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any: ...
-
     @param_model(MessageMcpNotification, method=AGENT_METHODS["mcp_message"], kind="notification", unstable=True)
     async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None: ...
-
-    @param_model(StartNesRequest, method=AGENT_METHODS["nes_start"], unstable=True)
-    async def start_nes(
-        self,
-        workspace_uri: str | None = None,
-        workspace_folders: list[WorkspaceFolder] | None = None,
-        repository: NesRepository | None = None,
-        **kwargs: Any,
-    ) -> StartNesResponse: ...
-
-    @param_model(SuggestNesRequest, method=AGENT_METHODS["nes_suggest"], unstable=True)
-    async def suggest_nes(
-        self,
-        session_id: str,
-        uri: str,
-        version: int,
-        position: Position,
-        trigger_kind: Literal["automatic", "diagnostic", "manual"],
-        selection: Range | None = None,
-        context: NesSuggestContext | None = None,
-        **kwargs: Any,
-    ) -> SuggestNesResponse: ...
-
-    @param_model(CloseNesRequest, method=AGENT_METHODS["nes_close"], unstable=True, adapt_result=normalize_result)
-    async def close_nes(self, session_id: str, **kwargs: Any) -> CloseNesResponse: ...
-
-    @param_model(AcceptNesNotification, method=AGENT_METHODS["nes_accept"], kind="notification", unstable=True)
-    async def accept_nes(self, session_id: str, id: str, **kwargs: Any) -> None: ...  # noqa: A002
-
-    @param_model(RejectNesNotification, method=AGENT_METHODS["nes_reject"], kind="notification", unstable=True)
-    async def reject_nes(
-        self,
-        session_id: str,
-        id: str,  # noqa: A002
-        reason: Literal["rejected", "ignored", "replaced", "cancelled"] | None = None,
-        **kwargs: Any,
-    ) -> None: ...
-
-    @param_model(
-        DidOpenDocumentNotification, method=AGENT_METHODS["document_did_open"], kind="notification", unstable=True
-    )
-    async def did_open(
-        self, session_id: str, uri: str, language_id: str, version: int, text: str, **kwargs: Any
-    ) -> None: ...
-
-    @param_model(
-        DidChangeDocumentNotification, method=AGENT_METHODS["document_did_change"], kind="notification", unstable=True
-    )
-    async def did_change(
-        self,
-        session_id: str,
-        uri: str,
-        version: int,
-        content_changes: list[TextDocumentContentChangeEvent],
-        **kwargs: Any,
-    ) -> None: ...
-
-    @param_model(
-        DidCloseDocumentNotification, method=AGENT_METHODS["document_did_close"], kind="notification", unstable=True
-    )
-    async def did_close(self, session_id: str, uri: str, **kwargs: Any) -> None: ...
-
-    @param_model(
-        DidSaveDocumentNotification, method=AGENT_METHODS["document_did_save"], kind="notification", unstable=True
-    )
-    async def did_save(self, session_id: str, uri: str, **kwargs: Any) -> None: ...
-
-    @param_model(
-        DidFocusDocumentNotification, method=AGENT_METHODS["document_did_focus"], kind="notification", unstable=True
-    )
-    async def did_focus(
-        self, session_id: str, uri: str, version: int, position: Position, visible_range: Range, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None: ...
 
     @param_model(InitializeRequest, method=AGENT_METHODS["initialize"])
@@ -387,6 +355,8 @@ class Agent(Protocol):
         cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> NewSessionResponse: ...
 
@@ -397,12 +367,18 @@ class Agent(Protocol):
         session_id: str,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         additional_directories: list[str] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse | None: ...
 
     @param_model(ListSessionsRequest, method=AGENT_METHODS["session_list"])
     async def list_sessions(
-        self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
+        self,
+        cwd: str | None = None,
+        cursor: str | None = None,
+        archived: Literal["exclude"] | Literal["include"] | Literal["only"] | str | None = None,
+        **kwargs: Any,
     ) -> ListSessionsResponse: ...
 
     @param_model(SetSessionModeRequest, method=AGENT_METHODS["session_set_mode"], adapt_result=normalize_result)
@@ -440,8 +416,11 @@ class Agent(Protocol):
         self,
         session_id: str,
         cwd: str,
+        cursor_id: str | None = None,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse: ...
 
@@ -452,6 +431,8 @@ class Agent(Protocol):
         cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse: ...
 

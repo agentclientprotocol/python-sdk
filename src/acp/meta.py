@@ -1,5 +1,5 @@
 # Generated from schema/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v1.23.0
+# Schema ref: refs/tags/schema-v1.35.0
 AGENT_METHODS = {
     "initialize": "initialize",
     "authenticate": "authenticate",
@@ -16,19 +16,15 @@ AGENT_METHODS = {
     "session_list": "session/list",
     "session_delete": "session/delete",
     "session_fork": "session/fork",
+    "session_archive": "session/archive",
+    "session_unarchive": "session/unarchive",
+    "session_status": "session/status",
+    "session_options": "session/options",
+    "session_set_title": "session/set_title",
     "session_resume": "session/resume",
     "session_close": "session/close",
     "logout": "logout",
-    "nes_start": "nes/start",
-    "nes_suggest": "nes/suggest",
-    "nes_accept": "nes/accept",
-    "nes_reject": "nes/reject",
-    "nes_close": "nes/close",
-    "document_did_open": "document/didOpen",
-    "document_did_change": "document/didChange",
-    "document_did_close": "document/didClose",
-    "document_did_save": "document/didSave",
-    "document_did_focus": "document/didFocus",
+    "auth_status": "auth/status",
 }
 CLIENT_METHODS = {
     "session_request_permission": "session/request_permission",
@@ -40,11 +36,10 @@ CLIENT_METHODS = {
     "terminal_release": "terminal/release",
     "terminal_wait_for_exit": "terminal/wait_for_exit",
     "terminal_kill": "terminal/kill",
-    "mcp_connect": "mcp/connect",
     "mcp_message": "mcp/message",
-    "mcp_disconnect": "mcp/disconnect",
     "elicitation_create": "elicitation/create",
     "elicitation_complete": "elicitation/complete",
+    "auth_status_update": "auth/status_update",
 }
 PROTOCOL_METHODS = {"cancel_request": "$/cancel_request"}
 PROTOCOL_VERSION = 1

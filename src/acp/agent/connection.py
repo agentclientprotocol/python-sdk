@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any, cast, final
+from typing import Any, Literal, cast, final
 
 from pydantic import TypeAdapter
 
@@ -17,12 +17,12 @@ from ..schema import (
     AgentPlanRemovedUpdate,
     AgentPlanUpdate,
     AgentThoughtChunk,
+    AuthAccount,
+    AuthStatusUpdateNotification,
     AvailableCommandsUpdate,
     CancelElicitationResponse,
     CompleteElicitationNotification,
     ConfigOptionUpdate,
-    ConnectMcpRequest,
-    ConnectMcpResponse,
     CreateElicitationResponse,
     CreateFormElicitationRequest,
     CreateFormRequestElicitationRequest,
@@ -34,8 +34,6 @@ from ..schema import (
     CreateUrlSessionElicitationRequest,
     CurrentModeUpdate,
     DeclineElicitationResponse,
-    DisconnectMcpRequest,
-    DisconnectMcpResponse,
     ElicitationFormRequestMode,
     ElicitationFormSessionMode,
     ElicitationMode,
@@ -44,8 +42,8 @@ from ..schema import (
     EnvVariable,
     KillTerminalRequest,
     KillTerminalResponse,
-    MessageMcpNotification,
     MessageMcpRequest,
+    MessageMcpResponse,
     PermissionOption,
     ReadTextFileRequest,
     ReadTextFileResponse,
@@ -57,7 +55,12 @@ from ..schema import (
     SessionNotification,
     SessionUpdateCompactionSummaryChunk,
     SessionUpdateCompactionUpdate,
+    SessionUpdateCursorUpdate,
     SessionUpdateNotice,
+    SessionUpdatePromptSuggestionsUpdate,
+    SessionUpdateSessionMessage,
+    SessionUpdateSessionMessageChunk,
+    SessionUpdateSubagentUpdate,
     TerminalOutputRequest,
     TerminalOutputResponse,
     ToolCallProgress,
@@ -70,20 +73,13 @@ from ..schema import (
     WriteTextFileRequest,
     WriteTextFileResponse,
 )
-from ..utils import (
-    compatible_class,
-    notify_model,
-    param_model,
-    request_model,
-    request_model_from_dict,
-    request_optional_model,
-    serialize_params,
-)
+from ..utils import compatible_class, notify_model, param_model, request_model, request_optional_model, serialize_params
 from .router import build_agent_router
 
 __all__ = ["AgentSideConnection"]
 _AGENT_CONNECTION_ERROR = "AgentSideConnection requires asyncio StreamWriter/StreamReader"
 _CREATE_ELICITATION_RESPONSE_ADAPTER = TypeAdapter(CreateElicitationResponse)
+_MCP_RESPONSE_ADAPTER = TypeAdapter(MessageMcpResponse)
 
 
 @final
@@ -129,16 +125,13 @@ class AgentSideConnection:
         agent, handler = self._prepare(to_agent, use_unstable_protocol=use_unstable_protocol)
         self._conn = connection
         self._notify_connected(agent)
-        return self, handler
+        return (self, handler)
 
     def _prepare(
-        self,
-        to_agent: Callable[[AgentSideConnection], Agent] | Agent,
-        *,
-        use_unstable_protocol: bool,
+        self, to_agent: Callable[[AgentSideConnection], Agent] | Agent, *, use_unstable_protocol: bool
     ) -> tuple[Agent, MethodHandler]:
         agent = cast(Agent, to_agent(self) if callable(to_agent) else to_agent)
-        return agent, build_agent_router(agent, use_unstable_protocol=use_unstable_protocol)
+        return (agent, build_agent_router(agent, use_unstable_protocol=use_unstable_protocol))
 
     def _notify_connected(self, agent: Agent) -> None:
         if on_connect := getattr(agent, "on_connect", None):
@@ -167,7 +160,12 @@ class AgentSideConnection:
         | UsageUpdate
         | SessionUpdateNotice
         | SessionUpdateCompactionUpdate
-        | SessionUpdateCompactionSummaryChunk,
+        | SessionUpdateCompactionSummaryChunk
+        | SessionUpdatePromptSuggestionsUpdate
+        | SessionUpdateCursorUpdate
+        | SessionUpdateSubagentUpdate
+        | SessionUpdateSessionMessage
+        | SessionUpdateSessionMessageChunk,
         **kwargs: Any,
     ) -> None:
         await notify_model(
@@ -292,46 +290,49 @@ class AgentSideConnection:
             CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None),
         )
 
-    @param_model(ConnectMcpRequest)
-    async def connect_mcp(self, server_id: str, **kwargs: Any) -> ConnectMcpResponse:
-        return await request_model(
+    @param_model(AuthStatusUpdateNotification)
+    async def auth_status_update(
+        self,
+        state: Literal["authenticated"]
+        | Literal["unauthenticated"]
+        | Literal["not_required"]
+        | Literal["unknown"]
+        | str,
+        accounts: list[AuthAccount] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        await notify_model(
             self._conn,
-            CLIENT_METHODS["mcp_connect"],
-            ConnectMcpRequest(server_id=server_id, field_meta=kwargs or None),
-            ConnectMcpResponse,
-        )
-
-    @param_model(DisconnectMcpRequest)
-    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> DisconnectMcpResponse:
-        return await request_model_from_dict(
-            self._conn,
-            CLIENT_METHODS["mcp_disconnect"],
-            DisconnectMcpRequest(connection_id=connection_id, field_meta=kwargs or None),
-            DisconnectMcpResponse,
+            CLIENT_METHODS["auth_status_update"],
+            AuthStatusUpdateNotification(state=state, accounts=accounts, field_meta=kwargs or None),
         )
 
     @param_model(MessageMcpRequest)
     async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any:
-        return await self._conn.send_request(
+        self,
+        server_id: str,
+        request_id: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        tool_call_id: str | None = None,
+        **kwargs: Any,
+    ) -> MessageMcpResponse:
+        response = await self._conn.send_request(
             CLIENT_METHODS["mcp_message"],
             serialize_params(
-                MessageMcpRequest(connection_id=connection_id, method=method, params=params, field_meta=kwargs or None)
+                MessageMcpRequest(
+                    server_id=server_id,
+                    request_id=request_id,
+                    method=method,
+                    params=params,
+                    session_id=session_id,
+                    tool_call_id=tool_call_id,
+                    field_meta=kwargs or None,
+                )
             ),
         )
-
-    @param_model(MessageMcpNotification)
-    async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None:
-        await notify_model(
-            self._conn,
-            CLIENT_METHODS["mcp_message"],
-            MessageMcpNotification(
-                connection_id=connection_id, method=method, params=params, field_meta=kwargs or None
-            ),
-        )
+        return _MCP_RESPONSE_ADAPTER.validate_python(response)
 
     async def ext_method(self, method: str, params: dict[str, Any]) -> dict[str, Any]:
         return await self._conn.send_request(f"_{method}", params)

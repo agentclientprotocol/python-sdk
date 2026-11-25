@@ -55,7 +55,7 @@ for variant_names in (
         "StateUpdate",
         "anyOf",
         "allOf",
-        ("RunningState", "IdleState", "RequiresActionState"),
+        ("RunningState", "IdleState", "RequiresActionState", "UnknownState"),
     ),
     variant_model_map(
         "ToolCallContent",
@@ -130,12 +130,17 @@ for variant_names in (
             "SessionNotice",
             "SessionCompactionUpdate",
             "SessionCompactionSummaryChunk",
+            "SessionSubagentUpdate",
+            "SessionMessageUpdate",
+            "SessionMessageChunkUpdate",
         ),
     ),
 ):
     MODEL_NAME_MAP.update(variant_names)
 
 MODEL_NAME_MAP.update({
+    inline_model_ref("MessageMcpResponse", ("anyOf", 0), ("object", None)): "McpResultResponse",
+    inline_model_ref("MessageMcpResponse", ("anyOf", 1), ("object", None)): "McpErrorResponse",
     inline_model_ref("AuthMethod", ("anyOf", 2), ("object", None)): "OtherAuthMethod",
     inline_model_ref("AvailableCommandInput", ("anyOf", 1), ("object", None)): "OtherAvailableCommandInput",
     inline_model_ref("ContentBlock", ("anyOf", 5), ("object", None)): "OtherContentBlock",
@@ -156,25 +161,27 @@ MODEL_NAME_MAP.update({
     inline_model_ref("SetSessionConfigOptionRequest", ("anyOf", 2), ("object", None)): (
         "SetSessionConfigOptionOtherRequest"
     ),
-    inline_model_ref("StateUpdate", ("anyOf", 3), ("object", None)): "OtherState",
+    inline_model_ref("StateUpdate", ("anyOf", 4), ("object", None)): "OtherState",
     inline_model_ref("ToolCallContent", ("anyOf", 3), ("object", None)): "OtherToolCallContent",
     inline_model_ref("PlanUpdateContent", ("anyOf", 3), ("object", None)): "OtherPlanUpdateContent",
     inline_model_ref("NesSuggestion", ("anyOf", 4), ("object", None)): "OtherNesSuggestion",
     inline_model_ref("ElicitationPropertySchema", ("anyOf", 5), ("object", None)): ("ElicitationOtherPropertySchema"),
     inline_model_ref("MultiSelectItems", ("anyOf", 1), ("object", None)): "OtherMultiSelectItems",
-    inline_model_ref("SessionUpdate", ("anyOf", 20), ("object", None)): "OtherSessionUpdate",
+    inline_model_ref("SessionUpdate", ("anyOf", 23), ("object", None)): "OtherSessionUpdate",
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 0), ("allOf", None)): ("RunningSessionStateUpdateBase"),
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 1), ("allOf", None)): ("IdleSessionStateUpdateBase"),
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 2), ("allOf", None)): (
         "RequiresActionSessionStateUpdateBase"
     ),
-    inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 3), ("object", None)): ("OtherSessionStateUpdateBase"),
+    inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 3), ("allOf", None)): "UnknownSessionStateUpdateBase",
+    inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", 4), ("object", None)): ("OtherSessionStateUpdateBase"),
     inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", None), ("allOf", None)): ("SessionStateUpdateBase"),
 })
 for index, name in enumerate((
     "RunningSessionStateUpdate",
     "IdleSessionStateUpdate",
     "RequiresActionSessionStateUpdate",
+    "UnknownSessionStateUpdate",
     "OtherSessionStateUpdate",
 )):
     MODEL_NAME_MAP[inline_model_ref("SessionUpdate", ("anyOf", 6), ("allOf", None), (f"union_model-{index}", None))] = (
@@ -229,7 +236,11 @@ SEMANTICS = SchemaSemantics(
     version_file=ROOT / "schema" / "v2" / "VERSION",
     schema_out=ROOT / "src" / "acp" / "experimental" / "v2" / "schema.py",
     base_class="acp.experimental.v2._schema_base.BaseModel",
+    compatibility_aliases='MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]',
     model_name_map=MODEL_NAME_MAP,
-    # The generator loses additionalProperties types on nullable objects.
-    field_type_overrides={"ElicitationAcceptAction.content": "acp._schema_base.ElicitationContent"},
+    # Preserve nullable object value types and reject non-integer MCP error codes.
+    field_type_overrides={
+        "ElicitationAcceptAction.content": "acp._schema_base.ElicitationContent",
+        "McpError.code": "pydantic.StrictInt",
+    },
 )

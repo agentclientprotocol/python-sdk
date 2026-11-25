@@ -12,24 +12,20 @@ from ..interfaces import Agent, Client
 from ..meta import AGENT_METHODS, CLIENT_METHODS
 from ..router import _resolve_handler, _warn_legacy_handler
 from ..schema import (
-    AcceptNesNotification,
     AcpMcpServer,
+    ArchiveSessionRequest,
+    ArchiveSessionResponse,
     AudioContentBlock,
     AuthenticateRequest,
     AuthenticateResponse,
+    AuthStatusRequest,
+    AuthStatusResponse,
     CancelNotification,
     ClientCapabilities,
-    CloseNesRequest,
-    CloseNesResponse,
     CloseSessionRequest,
     CloseSessionResponse,
     DeleteSessionRequest,
     DeleteSessionResponse,
-    DidChangeDocumentNotification,
-    DidCloseDocumentNotification,
-    DidFocusDocumentNotification,
-    DidOpenDocumentNotification,
-    DidSaveDocumentNotification,
     DisableProviderRequest,
     DisableProviderResponse,
     EmbeddedResourceContentBlock,
@@ -40,6 +36,8 @@ from ..schema import (
     Implementation,
     InitializeRequest,
     InitializeResponse,
+    InitialSessionConfigOption1,
+    InitialSessionConfigOption2,
     ListProvidersRequest,
     ListProvidersResponse,
     ListSessionsRequest,
@@ -50,20 +48,18 @@ from ..schema import (
     LogoutResponse,
     McpServerStdio,
     MessageMcpNotification,
-    MessageMcpRequest,
-    NesRepository,
-    NesSuggestContext,
     NewSessionRequest,
     NewSessionResponse,
-    Position,
     PromptRequest,
     PromptResponse,
-    Range,
-    RejectNesNotification,
     ResourceContentBlock,
     ResumeSessionRequest,
     ResumeSessionResponse,
     SessionNotification,
+    SessionOptionsRequest,
+    SessionOptionsResponse,
+    SessionStatusRequest,
+    SessionStatusResponse,
     SetProviderRequest,
     SetProviderResponse,
     SetSessionConfigOptionBooleanRequest,
@@ -71,23 +67,15 @@ from ..schema import (
     SetSessionConfigOptionSelectRequest,
     SetSessionModeRequest,
     SetSessionModeResponse,
+    SetSessionTitleRequest,
+    SetSessionTitleResponse,
     SseMcpServer,
-    StartNesRequest,
-    StartNesResponse,
-    SuggestNesRequest,
-    SuggestNesResponse,
+    SystemPrompt,
     TextContentBlock,
-    TextDocumentContentChangeEvent,
-    WorkspaceFolder,
+    UnarchiveSessionRequest,
+    UnarchiveSessionResponse,
 )
-from ..utils import (
-    compatible_class,
-    notify_model,
-    param_model,
-    request_model,
-    request_model_from_dict,
-    serialize_params,
-)
+from ..utils import compatible_class, notify_model, param_model, request_model, request_model_from_dict
 from .router import build_client_router
 
 __all__ = ["ClientSideConnection"]
@@ -112,7 +100,6 @@ class _SessionUpdateTracker:
         pending = self._pending.setdefault(session_id, set())
         pending.add(completed)
         token = self._current_update.set(completed)
-
         try:
             if self._session_update is None:
                 raise RequestError.method_not_found(CLIENT_METHODS["session_update"])
@@ -131,8 +118,6 @@ class _SessionUpdateTracker:
                 self._pending.pop(session_id, None)
 
     async def wait(self, session_id: str) -> None:
-        # Snapshot before yielding so updates received after the response are
-        # not associated with this prompt.
         current = self._current_update.get()
         notifications = tuple(
             completed for completed in self._pending.get(session_id, set()) if completed is not current
@@ -163,7 +148,6 @@ class ClientSideConnection:
         client = to_client(self) if callable(to_client) else to_client
         self._session_updates = _SessionUpdateTracker(cast(Client, client))
         handler = build_client_router(cast(Client, self._session_updates), use_unstable_protocol=use_unstable_protocol)
-
         if isinstance(input_stream, Transport):
             if output_stream is not None:
                 raise TypeError(_CLIENT_CONNECTION_ERROR)
@@ -203,6 +187,8 @@ class ClientSideConnection:
         cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> NewSessionResponse:
         resolved_mcp_servers = mcp_servers or []
@@ -213,6 +199,8 @@ class ClientSideConnection:
                 cwd=cwd,
                 additional_directories=additional_directories,
                 mcp_servers=resolved_mcp_servers,
+                system_prompt=system_prompt,
+                config_options=config_options,
                 field_meta=kwargs or None,
             ),
             NewSessionResponse,
@@ -225,6 +213,8 @@ class ClientSideConnection:
         session_id: str,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         additional_directories: list[str] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> LoadSessionResponse:
         resolved_mcp_servers = mcp_servers or []
@@ -236,6 +226,8 @@ class ClientSideConnection:
                 additional_directories=additional_directories,
                 mcp_servers=resolved_mcp_servers,
                 session_id=session_id,
+                system_prompt=system_prompt,
+                config_options=config_options,
                 field_meta=kwargs or None,
             ),
             LoadSessionResponse,
@@ -243,12 +235,16 @@ class ClientSideConnection:
 
     @param_model(ListSessionsRequest)
     async def list_sessions(
-        self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
+        self,
+        cwd: str | None = None,
+        cursor: str | None = None,
+        archived: Literal["exclude"] | Literal["include"] | Literal["only"] | str | None = None,
+        **kwargs: Any,
     ) -> ListSessionsResponse:
         return await request_model_from_dict(
             self._conn,
             AGENT_METHODS["session_list"],
-            ListSessionsRequest(cursor=cursor, cwd=cwd, field_meta=kwargs or None),
+            ListSessionsRequest(cursor=cursor, cwd=cwd, archived=archived, field_meta=kwargs or None),
             ListSessionsResponse,
         )
 
@@ -318,8 +314,11 @@ class ClientSideConnection:
         self,
         session_id: str,
         cwd: str,
+        cursor_id: str | None = None,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse:
         return await request_model(
@@ -330,6 +329,9 @@ class ClientSideConnection:
                 cwd=cwd,
                 additional_directories=additional_directories,
                 mcp_servers=mcp_servers,
+                cursor_id=cursor_id,
+                system_prompt=system_prompt,
+                config_options=config_options,
                 field_meta=kwargs or None,
             ),
             ForkSessionResponse,
@@ -342,6 +344,8 @@ class ClientSideConnection:
         cwd: str,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
+        system_prompt: SystemPrompt | None = None,
+        config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
         **kwargs: Any,
     ) -> ResumeSessionResponse:
         return await request_model(
@@ -352,6 +356,8 @@ class ClientSideConnection:
                 cwd=cwd,
                 additional_directories=additional_directories,
                 mcp_servers=mcp_servers,
+                system_prompt=system_prompt,
+                config_options=config_options,
                 field_meta=kwargs or None,
             ),
             ResumeSessionResponse,
@@ -381,6 +387,64 @@ class ClientSideConnection:
             AGENT_METHODS["session_delete"],
             DeleteSessionRequest(session_id=session_id, field_meta=kwargs or None),
             DeleteSessionResponse,
+        )
+
+    @param_model(ArchiveSessionRequest)
+    async def archive_session(self, session_id: str, **kwargs: Any) -> ArchiveSessionResponse:
+        return await request_model_from_dict(
+            self._conn,
+            AGENT_METHODS["session_archive"],
+            ArchiveSessionRequest(session_id=session_id, field_meta=kwargs or None),
+            ArchiveSessionResponse,
+        )
+
+    @param_model(UnarchiveSessionRequest)
+    async def unarchive_session(self, session_id: str, **kwargs: Any) -> UnarchiveSessionResponse:
+        return await request_model_from_dict(
+            self._conn,
+            AGENT_METHODS["session_unarchive"],
+            UnarchiveSessionRequest(session_id=session_id, field_meta=kwargs or None),
+            UnarchiveSessionResponse,
+        )
+
+    @param_model(SessionStatusRequest)
+    async def session_status(self, session_id: str, **kwargs: Any) -> SessionStatusResponse:
+        return await request_model(
+            self._conn,
+            AGENT_METHODS["session_status"],
+            SessionStatusRequest(session_id=session_id, field_meta=kwargs or None),
+            SessionStatusResponse,
+        )
+
+    @param_model(SessionOptionsRequest)
+    async def session_options(
+        self, cwd: str, additional_directories: list[str] | None = None, session_id: str | None = None, **kwargs: Any
+    ) -> SessionOptionsResponse:
+        return await request_model(
+            self._conn,
+            AGENT_METHODS["session_options"],
+            SessionOptionsRequest(
+                cwd=cwd, additional_directories=additional_directories, session_id=session_id, field_meta=kwargs or None
+            ),
+            SessionOptionsResponse,
+        )
+
+    @param_model(SetSessionTitleRequest)
+    async def set_session_title(self, session_id: str, title: str, **kwargs: Any) -> SetSessionTitleResponse:
+        return await request_model(
+            self._conn,
+            AGENT_METHODS["session_set_title"],
+            SetSessionTitleRequest(session_id=session_id, title=title, field_meta=kwargs or None),
+            SetSessionTitleResponse,
+        )
+
+    @param_model(AuthStatusRequest)
+    async def auth_status(self, **kwargs: Any) -> AuthStatusResponse:
+        return await request_model(
+            self._conn,
+            AGENT_METHODS["auth_status"],
+            AuthStatusRequest(field_meta=kwargs or None),
+            AuthStatusResponse,
         )
 
     @param_model(ListProvidersRequest)
@@ -434,176 +498,15 @@ class ClientSideConnection:
             self._conn, AGENT_METHODS["logout"], LogoutRequest(field_meta=kwargs or None), LogoutResponse
         )
 
-    @param_model(MessageMcpRequest)
-    async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> Any:
-        return await self._conn.send_request(
-            AGENT_METHODS["mcp_message"],
-            serialize_params(
-                MessageMcpRequest(connection_id=connection_id, method=method, params=params, field_meta=kwargs or None)
-            ),
-        )
-
     @param_model(MessageMcpNotification)
     async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None:
         await notify_model(
             self._conn,
             AGENT_METHODS["mcp_message"],
             MessageMcpNotification(
-                connection_id=connection_id, method=method, params=params, field_meta=kwargs or None
-            ),
-        )
-
-    @param_model(StartNesRequest)
-    async def start_nes(
-        self,
-        workspace_uri: str | None = None,
-        workspace_folders: list[WorkspaceFolder] | None = None,
-        repository: NesRepository | None = None,
-        **kwargs: Any,
-    ) -> StartNesResponse:
-        return await request_model(
-            self._conn,
-            AGENT_METHODS["nes_start"],
-            StartNesRequest(
-                workspace_uri=workspace_uri,
-                workspace_folders=workspace_folders,
-                repository=repository,
-                field_meta=kwargs or None,
-            ),
-            StartNesResponse,
-        )
-
-    @param_model(SuggestNesRequest)
-    async def suggest_nes(
-        self,
-        session_id: str,
-        uri: str,
-        version: int,
-        position: Position,
-        trigger_kind: Literal["automatic", "diagnostic", "manual"],
-        selection: Range | None = None,
-        context: NesSuggestContext | None = None,
-        **kwargs: Any,
-    ) -> SuggestNesResponse:
-        return await request_model(
-            self._conn,
-            AGENT_METHODS["nes_suggest"],
-            SuggestNesRequest(
-                session_id=session_id,
-                uri=uri,
-                version=version,
-                position=position,
-                selection=selection,
-                trigger_kind=trigger_kind,
-                context=context,
-                field_meta=kwargs or None,
-            ),
-            SuggestNesResponse,
-        )
-
-    @param_model(CloseNesRequest)
-    async def close_nes(self, session_id: str, **kwargs: Any) -> CloseNesResponse:
-        return await request_model_from_dict(
-            self._conn,
-            AGENT_METHODS["nes_close"],
-            CloseNesRequest(session_id=session_id, field_meta=kwargs or None),
-            CloseNesResponse,
-        )
-
-    @param_model(AcceptNesNotification)
-    async def accept_nes(self, session_id: str, id: str, **kwargs: Any) -> None:  # noqa: A002
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["nes_accept"],
-            AcceptNesNotification(session_id=session_id, id=id, field_meta=kwargs or None),
-        )
-
-    @param_model(RejectNesNotification)
-    async def reject_nes(
-        self,
-        session_id: str,
-        id: str,  # noqa: A002
-        reason: Literal["rejected", "ignored", "replaced", "cancelled"] | None = None,
-        **kwargs: Any,
-    ) -> None:
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["nes_reject"],
-            RejectNesNotification(session_id=session_id, id=id, reason=reason, field_meta=kwargs or None),
-        )
-
-    @param_model(DidOpenDocumentNotification)
-    async def did_open(
-        self, session_id: str, uri: str, language_id: str, version: int, text: str, **kwargs: Any
-    ) -> None:
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["document_did_open"],
-            DidOpenDocumentNotification(
-                session_id=session_id,
-                uri=uri,
-                language_id=language_id,
-                version=version,
-                text=text,
-                field_meta=kwargs or None,
-            ),
-        )
-
-    @param_model(DidChangeDocumentNotification)
-    async def did_change(
-        self,
-        session_id: str,
-        uri: str,
-        version: int,
-        content_changes: list[TextDocumentContentChangeEvent],
-        **kwargs: Any,
-    ) -> None:
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["document_did_change"],
-            DidChangeDocumentNotification(
-                session_id=session_id,
-                uri=uri,
-                version=version,
-                content_changes=content_changes,
-                field_meta=kwargs or None,
-            ),
-        )
-
-    @param_model(DidCloseDocumentNotification)
-    async def did_close(self, session_id: str, uri: str, **kwargs: Any) -> None:
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["document_did_close"],
-            DidCloseDocumentNotification(session_id=session_id, uri=uri, field_meta=kwargs or None),
-        )
-
-    @param_model(DidSaveDocumentNotification)
-    async def did_save(self, session_id: str, uri: str, **kwargs: Any) -> None:
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["document_did_save"],
-            DidSaveDocumentNotification(session_id=session_id, uri=uri, field_meta=kwargs or None),
-        )
-
-    @param_model(DidFocusDocumentNotification)
-    async def did_focus(
-        self, session_id: str, uri: str, version: int, position: Position, visible_range: Range, **kwargs: Any
-    ) -> None:
-        await notify_model(
-            self._conn,
-            AGENT_METHODS["document_did_focus"],
-            DidFocusDocumentNotification(
-                session_id=session_id,
-                uri=uri,
-                version=version,
-                position=position,
-                visible_range=visible_range,
-                field_meta=kwargs or None,
+                server_id=server_id, request_id=request_id, method=method, params=params, field_meta=kwargs or None
             ),
         )
 

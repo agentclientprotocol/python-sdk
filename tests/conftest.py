@@ -10,10 +10,8 @@ from acp import (
     AcceptElicitationResponse,
     AuthenticateResponse,
     CompleteElicitationNotification,
-    ConnectMcpResponse,
     CreateElicitationResponse,
     CreateTerminalResponse,
-    DisconnectMcpResponse,
     ElicitationMode,
     InitializeResponse,
     KillTerminalResponse,
@@ -139,6 +137,7 @@ class TestClient:
         self.notifications: list[SessionNotification] = []
         self.elicitation_requests: list[tuple[str, ElicitationMode, dict[str, Any]]] = []
         self.completed_elicitations: list[CompleteElicitationNotification] = []
+        self.auth_status_updates: list[dict[str, Any]] = []
         self.ext_calls: list[tuple[str, dict]] = []
         self.ext_notes: list[tuple[str, dict]] = []
         self._agent_conn = None
@@ -237,20 +236,12 @@ class TestClient:
             CompleteElicitationNotification(elicitation_id=elicitation_id, field_meta=kwargs or None)
         )
 
-    async def connect_mcp(self, server_id: str, **kwargs: Any) -> ConnectMcpResponse:
-        raise RequestError.method_not_found("mcp/connect")
-
-    async def disconnect_mcp(self, connection_id: str, **kwargs: Any) -> DisconnectMcpResponse:
-        raise RequestError.method_not_found("mcp/disconnect")
+    async def auth_status_update(self, state: str, accounts: list[Any] | None = None, **kwargs: Any) -> None:
+        self.auth_status_updates.append({"state": state, "accounts": accounts, **kwargs})
 
     async def mcp_message(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> Any:
-        raise RequestError.method_not_found("mcp/message")
-
-    async def notify_mcp(
-        self, connection_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
-    ) -> None:
         raise RequestError.method_not_found("mcp/message")
 
     async def ext_method(self, method: str, params: dict) -> dict:
