@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 import logging
 from collections.abc import Awaitable, Callable
 from typing import Any
@@ -10,6 +11,10 @@ _logger = logging.getLogger(__name__)
 __all__ = ["TaskSupervisor"]
 
 ErrorHandler = Callable[[asyncio.Task[Any], BaseException], None]
+
+
+async def _await_result(awaitable: Awaitable[Any]) -> Any:
+    return await awaitable
 
 
 class TaskSupervisor:
@@ -39,7 +44,7 @@ class TaskSupervisor:
         if self._closed:
             msg = f"TaskSupervisor for {self._source} already closed"
             raise RuntimeError(msg)
-        task = asyncio.create_task(coroutine, name=name)
+        task = asyncio.create_task(coroutine if inspect.iscoroutine(coroutine) else _await_result(coroutine), name=name)
         self._tasks.add(task)
         task.add_done_callback(lambda t: self._on_done(t, on_error))
         return task
