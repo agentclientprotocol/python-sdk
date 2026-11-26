@@ -35,9 +35,13 @@ Releases are automated by `on-release-main.yml` once the PR lands on `main`.
 2. Publishing the release triggers the workflow, which:
    - Syncs the tag back into `pyproject.toml`.
    - Builds and uploads to PyPI via `uv publish` using `PYPI_TOKEN`.
-   - Deploys updated docs with `mkdocs gh-deploy`.
+3. After `release-main` succeeds, **Publish release docs** starts on `main`. It builds the MkDocs site from the same commit as the release and deploys it to GitHub Pages. The repository's Pages source is **GitHub Actions**.
 
 No local build/publish steps are needed—just provide a clear release summary (highlights, compatibility notes, migration tips).
+
+## Republish docs for a release
+
+In **Actions → Publish release docs → Run workflow**, select the **`main`** branch and enter the published release tag (for example, `1.1.0`) in **release-tag**. The tag selects the docs to build; the deployment runs from `main`. This does not publish anything to PyPI. After deployment, check that the public quickstart matches the example at the release tag.
 
 ## Extra tips
 

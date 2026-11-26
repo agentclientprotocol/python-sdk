@@ -1,0 +1,83 @@
+name: Publish release docs
+
+on:
+  workflow_run:
+    workflows: [release-main]
+    types: [completed]
+  workflow_dispatch:
+    inputs:
+      release-tag:
+        description: Published release to build (for example, 1.1.0)
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  build-docs:
+    # workflow_run runs on the default branch, even when release-main ran on a tag.
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      (github.event_name == 'workflow_dispatch' ||
+       (github.event.workflow_run.event == 'release' &&
+        github.event.workflow_run.conclusion == 'success' &&
+        github.event.workflow_run.head_repository.full_name == github.repository))
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out main and release history
+        uses: actions/checkout@08eba0b27e820071cde6df949e0beb9ba4906955
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Select the release source
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.release-tag }}
+          RELEASE_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            git check-ref-format "refs/tags/$RELEASE_TAG"
+            published_tag=$(gh release view --repo "$GITHUB_REPOSITORY" \
+              --json isDraft,tagName --jq 'select(.isDraft == false) | .tagName' -- "$RELEASE_TAG")
+            if [[ "$published_tag" != "$RELEASE_TAG" ]]; then
+              echo "Select a published GitHub Release." >&2
+              exit 1
+            fi
+            RELEASE_SHA=$(git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}")
+          fi
+
+          if ! git merge-base --is-ancestor "$RELEASE_SHA" "$GITHUB_SHA"; then
+            echo "The release commit must be in the history of main." >&2
+            exit 1
+          fi
+          git checkout --detach "$RELEASE_SHA"
+
+      - name: Set up the environment
+        uses: ./.github/actions/setup-python-env
+
+      - name: Build site
+        run: uv run mkdocs build -f mkdocs.yml --clean
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@56afc609e74202658d3ffba0e8f6dda462b719fa # v3.0.1
+        with:
+          path: site
+
+  deploy-docs:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5
