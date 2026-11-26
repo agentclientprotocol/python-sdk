@@ -3,7 +3,9 @@
 > **Experimental.** Protocol v2 is a draft. Import it from `acp.experimental` and
 > expect its API and generated models to change with the upstream schema.
 
-The bindings use `schema-v2.0.0-alpha.7`.
+The bindings use [`schema-v2.0.0-beta.4`](https://github.com/agentclientprotocol/agent-client-protocol/releases/tag/schema-v2.0.0-beta.4).
+The upstream schema removes Next Edit Suggestions (`nes/*`) and the associated
+document notifications from v2.
 
 The v2 runtime is separate from the stable v1 API. Like v1, connection methods
 and agent/client handlers accept expanded, snake-case parameters. Responses and
@@ -91,8 +93,8 @@ await agent_connection.create_elicitation(
 )
 ```
 
-For elicitation, `session_id` selects session scope; otherwise `request_id`
-selects request scope (including `None`). Pass `requested_schema` for form mode,
+For elicitation, pass either `session_id` for session scope or a string or integer
+`request_id` for request scope. Pass `requested_schema` for form mode,
 or `elicitation_id` and `url` for URL mode. Handlers receive the validated
 branch's fields, including `type` for config options and `mode` for elicitation.
 
@@ -118,8 +120,8 @@ terminal updates and patch metadata. When applying received patches, use
 
 Setting `replay_from=v2.schema.ReplayFromStartVariant()` on `connection.resume_session(...)`
 requests all retained conversation history; agents need not retain every message.
-Accepted elicitation content validates scalar values and string lists; nested
-objects are not valid form values.
+Accepted elicitation content preserves scalar values, string lists, and any
+custom or extension JSON values.
 
 Agents that serve both versions use `AgentProtocolRouter`:
 

@@ -89,6 +89,8 @@ def render_schema(semantics: SchemaSemantics) -> str:
         raise FileNotFoundError(f"{schema_json.relative_to(ROOT)} is missing; fetch a pinned schema release first")
 
     schema = json.loads(schema_json.read_text(encoding="utf-8"))
+    if semantics.prepare_schema is not None:
+        semantics.prepare_schema(schema)
     generated = generate(
         schema,
         input_file_type=InputFileType.JsonSchema,
@@ -98,13 +100,16 @@ def render_schema(semantics: SchemaSemantics) -> str:
         skip_root_model=True,
         output_model_type=DataModelType.PydanticV2BaseModel,
         base_class=semantics.base_class,
+        base_class_map=semantics.base_class_map,
         use_specialized_enum=False,
         use_standard_collections=False,
         use_union_operator=False,
         additional_imports=["enum.Enum"],
         enum_field_as_literal=LiteralType.All,
         use_one_literal_as_default=True,
-        validators=_build_validators_config(schema),
+        validators=_build_validators_config(
+            schema, semantics.model_name_map if semantics.validate_renamed_models else {}
+        ),
         formatters=[Formatter.BUILTIN],
         infer_union_variant_names=True,
         naming_strategy=NamingStrategy.PrimaryFirst,
@@ -128,7 +133,7 @@ def render_schema(semantics: SchemaSemantics) -> str:
     return _format_python(f"{source}\n", semantics.schema_out)
 
 
-def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidators]:
+def _build_validators_config(schema: dict[str, Any], model_names: dict[str, str]) -> dict[str, ModelValidators]:
     validators: dict[str, list[ValidatorDefinition]] = {
         "InitializeRequest": [
             ValidatorDefinition(
@@ -142,7 +147,8 @@ def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidator
         if not isinstance(definition, dict):
             continue
         default_fields, skip_fields = _deserialize_field_specs(definition)
-        definitions = validators.setdefault(class_name, [])
+        generated_name = model_names.get(f"#/$defs/{class_name}", class_name)
+        definitions = validators.setdefault(generated_name, [])
         definitions.extend(
             ValidatorDefinition(fields=sorted(fields), function=function, mode=ValidatorMode.WRAP)
             for fields, function in (
@@ -151,6 +157,17 @@ def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidator
             )
             if fields
         )
+        null_fields = sorted(
+            to_snake(name)
+            for name, field in definition.get("properties", {}).items()
+            if field.get("x-deserialize-default-on-null") and field.get("default") == []
+        )
+        if null_fields:
+            definitions.append(
+                ValidatorDefinition(
+                    fields=null_fields, function="acp._deserialize.empty_list_on_null", mode=ValidatorMode.BEFORE
+                )
+            )
     return {
         class_name: ModelValidators(validators=definitions)
         for class_name, definitions in validators.items()

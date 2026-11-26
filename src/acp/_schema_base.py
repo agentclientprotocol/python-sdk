@@ -94,6 +94,6 @@ class BaseModel(pydantic.BaseModel):
             return value
         wire_field, reserved = rule
         tag = value.get(wire_field, value.get(to_snake(wire_field)))
-        if tag in reserved:
+        if isinstance(tag, str) and tag in reserved:
             raise ValueError(f"{wire_field} value is reserved by a known variant")
         return value

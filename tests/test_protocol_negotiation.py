@@ -102,6 +102,7 @@ class RoutedV2Agent(V2Agent):
             | v2.schema.AudioContentBlock
             | v2.schema.ResourceContentBlock
             | v2.schema.EmbeddedResourceContentBlock
+            | v2.schema.SkillContentBlock
             | v2.schema.OtherContentBlock
         ],
         **kwargs: Any,

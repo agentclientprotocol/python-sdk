@@ -11,25 +11,9 @@ from acp.utils import param_model
 from . import schema
 from .meta import AGENT_METHODS, CLIENT_METHODS
 
-SetConfigOptionRequest = (
-    schema.SetSessionConfigOptionIdRequest
-    | schema.SetSessionConfigOptionBooleanRequest
-    | schema.SetSessionConfigOptionOtherRequest
-)
-CreateElicitationRequest = (
-    schema.CreateOtherSessionElicitationRequest
-    | schema.CreateOtherRequestElicitationRequest
-    | schema.CreateFormSessionElicitationRequest
-    | schema.CreateFormRequestElicitationRequest
-    | schema.CreateUrlSessionElicitationRequest
-    | schema.CreateUrlRequestElicitationRequest
-)
-CreateElicitationResponse = (
-    schema.AcceptElicitationResponse
-    | schema.DeclineElicitationResponse
-    | schema.CancelElicitationResponse
-    | schema.OtherElicitationResponse
-)
+SetConfigOptionRequest = schema.SetSessionConfigOptionRequest
+CreateElicitationRequest = schema.CreateElicitationRequest
+CreateElicitationResponse = schema.CreateElicitationResponse
 
 
 class Agent(Protocol):
@@ -78,12 +62,21 @@ class Agent(Protocol):
         additional_directories: list[str] | None = None,
         mcp_servers: list[schema.HttpMcpServer | schema.AcpMcpServer | schema.StdioMcpServer | schema.OtherMcpServer]
         | None = None,
+        system_prompt: schema.SystemPrompt | None = None,
+        config_options: list[
+            schema.InitialIdConfigOption | schema.InitialBooleanConfigOption | schema.OtherInitialConfigOption
+        ]
+        | None = None,
         **kwargs: Any,
     ) -> schema.NewSessionResponse: ...
 
     @param_model(schema.ListSessionsRequest, method=AGENT_METHODS["session_list"])
     async def list_sessions(
-        self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
+        self,
+        cwd: str | None = None,
+        cursor: str | None = None,
+        archived: Literal["exclude"] | Literal["include"] | Literal["only"] | str | None = None,
+        **kwargs: Any,
     ) -> schema.ListSessionsResponse: ...
 
     @param_model(schema.DeleteSessionRequest, method=AGENT_METHODS["session_delete"], default_result={})
@@ -97,6 +90,12 @@ class Agent(Protocol):
         additional_directories: list[str] | None = None,
         mcp_servers: list[schema.HttpMcpServer | schema.AcpMcpServer | schema.StdioMcpServer | schema.OtherMcpServer]
         | None = None,
+        system_prompt: schema.SystemPrompt | None = None,
+        config_options: list[
+            schema.InitialIdConfigOption | schema.InitialBooleanConfigOption | schema.OtherInitialConfigOption
+        ]
+        | None = None,
+        cursor_id: str | None = None,
         **kwargs: Any,
     ) -> schema.ForkSessionResponse: ...
 
@@ -109,6 +108,11 @@ class Agent(Protocol):
         mcp_servers: list[schema.HttpMcpServer | schema.AcpMcpServer | schema.StdioMcpServer | schema.OtherMcpServer]
         | None = None,
         replay_from: schema.ReplayFromStartVariant | schema.OtherReplayFrom | None = None,
+        system_prompt: schema.SystemPrompt | None = None,
+        config_options: list[
+            schema.InitialIdConfigOption | schema.InitialBooleanConfigOption | schema.OtherInitialConfigOption
+        ]
+        | None = None,
         **kwargs: Any,
     ) -> schema.ResumeSessionResponse: ...
 
@@ -136,8 +140,10 @@ class Agent(Protocol):
             | schema.AudioContentBlock
             | schema.ResourceContentBlock
             | schema.EmbeddedResourceContentBlock
+            | schema.SkillContentBlock
             | schema.OtherContentBlock
         ],
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> schema.PromptResponse: ...
 
@@ -149,79 +155,35 @@ class Agent(Protocol):
         self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
     ) -> None: ...
 
-    @param_model(schema.StartNesRequest, method=AGENT_METHODS["nes_start"])
-    async def start_nes(
-        self,
-        workspace_uri: str | AnyUrl | None = None,
-        workspace_folders: list[schema.WorkspaceFolder] | None = None,
-        repository: schema.NesRepository | None = None,
-        **kwargs: Any,
-    ) -> schema.StartNesResponse: ...
+    @param_model(schema.AuthStatusRequest, method=AGENT_METHODS["auth_status"])
+    async def auth_status(self, **kwargs: Any) -> schema.AuthStatusResponse: ...
 
-    @param_model(schema.SuggestNesRequest, method=AGENT_METHODS["nes_suggest"])
-    async def suggest_nes(
-        self,
-        session_id: str,
-        uri: str | AnyUrl,
-        version: int,
-        position: schema.Position,
-        trigger_kind: Literal["automatic"] | Literal["diagnostic"] | Literal["manual"] | str,
-        selection: schema.Range | None = None,
-        context: schema.NesSuggestContext | None = None,
-        **kwargs: Any,
-    ) -> schema.SuggestNesResponse: ...
+    @param_model(schema.ArchiveSessionRequest, method=AGENT_METHODS["session_archive"], default_result={})
+    async def archive_session(self, session_id: str, **kwargs: Any) -> schema.ArchiveSessionResponse: ...
 
-    @param_model(schema.AcceptNesNotification, method=AGENT_METHODS["nes_accept"], kind="notification")
-    async def accept_nes(self, session_id: str, suggestion_id: str, **kwargs: Any) -> None: ...
+    @param_model(schema.UnarchiveSessionRequest, method=AGENT_METHODS["session_unarchive"], default_result={})
+    async def unarchive_session(self, session_id: str, **kwargs: Any) -> schema.UnarchiveSessionResponse: ...
 
-    @param_model(schema.RejectNesNotification, method=AGENT_METHODS["nes_reject"], kind="notification")
-    async def reject_nes(
-        self,
-        session_id: str,
-        suggestion_id: str,
-        reason: Literal["rejected"]
-        | Literal["ignored"]
-        | Literal["replaced"]
-        | Literal["cancelled"]
-        | str
-        | None = None,
-        **kwargs: Any,
-    ) -> None: ...
+    @param_model(schema.SessionStatusRequest, method=AGENT_METHODS["session_status"])
+    async def session_status(self, session_id: str, **kwargs: Any) -> schema.SessionStatusResponse: ...
 
-    @param_model(schema.CloseNesRequest, method=AGENT_METHODS["nes_close"], default_result={})
-    async def close_nes(self, session_id: str, **kwargs: Any) -> schema.CloseNesResponse: ...
+    @param_model(schema.SessionOptionsRequest, method=AGENT_METHODS["session_options"])
+    async def session_options(
+        self, cwd: str, additional_directories: list[str] | None = None, session_id: str | None = None, **kwargs: Any
+    ) -> schema.SessionOptionsResponse: ...
 
-    @param_model(schema.DidOpenDocumentNotification, method=AGENT_METHODS["document_did_open"], kind="notification")
-    async def did_open(
-        self, session_id: str, uri: str | AnyUrl, language_id: str, version: int, text: str, **kwargs: Any
-    ) -> None: ...
+    @param_model(schema.SetSessionTitleRequest, method=AGENT_METHODS["session_set_title"])
+    async def set_session_title(self, session_id: str, title: str, **kwargs: Any) -> schema.SetSessionTitleResponse: ...
 
-    @param_model(schema.DidChangeDocumentNotification, method=AGENT_METHODS["document_did_change"], kind="notification")
-    async def did_change(
-        self,
-        session_id: str,
-        uri: str | AnyUrl,
-        version: int,
-        content_changes: list[schema.TextDocumentContentChangeEvent],
-        **kwargs: Any,
-    ) -> None: ...
+    @param_model(schema.CancelToolCallRequest, method=AGENT_METHODS["tool_call_cancel"], default_result={})
+    async def cancel_tool_call(
+        self, session_id: str, tool_call_id: str, **kwargs: Any
+    ) -> schema.CancelToolCallResponse: ...
 
-    @param_model(schema.DidCloseDocumentNotification, method=AGENT_METHODS["document_did_close"], kind="notification")
-    async def did_close(self, session_id: str, uri: str | AnyUrl, **kwargs: Any) -> None: ...
-
-    @param_model(schema.DidSaveDocumentNotification, method=AGENT_METHODS["document_did_save"], kind="notification")
-    async def did_save(self, session_id: str, uri: str | AnyUrl, **kwargs: Any) -> None: ...
-
-    @param_model(schema.DidFocusDocumentNotification, method=AGENT_METHODS["document_did_focus"], kind="notification")
-    async def did_focus(
-        self,
-        session_id: str,
-        uri: str | AnyUrl,
-        version: int,
-        position: schema.Position,
-        visible_range: schema.Range,
-        **kwargs: Any,
-    ) -> None: ...
+    @param_model(schema.CancelTerminalRequest, method=AGENT_METHODS["terminal_cancel"], default_result={})
+    async def cancel_terminal(
+        self, session_id: str, terminal_id: str, **kwargs: Any
+    ) -> schema.CancelTerminalResponse: ...
 
 
 class Client(Protocol):
@@ -264,6 +226,9 @@ class Client(Protocol):
         | schema.SessionNotice
         | schema.SessionCompactionUpdate
         | schema.SessionCompactionSummaryChunk
+        | schema.SessionReplayComplete
+        | schema.SessionPromptSuggestionsUpdate
+        | schema.SessionCursorUpdate
         | schema.SessionSubagentUpdate
         | schema.SessionMessageUpdate
         | schema.SessionMessageChunkUpdate
@@ -282,7 +247,14 @@ class Client(Protocol):
         adapt_result=partial(validate_mcp_response, adapter=TypeAdapter(schema.MessageMcpResponse)),
     )
     async def mcp_message(
-        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self,
+        server_id: str,
+        request_id: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        tool_call_id: str | None = None,
+        **kwargs: Any,
     ) -> schema.MessageMcpResponse: ...
 
     @param_model(CreateElicitationRequest, method=CLIENT_METHODS["elicitation_create"])
@@ -304,3 +276,15 @@ class Client(Protocol):
         schema.CompleteElicitationNotification, method=CLIENT_METHODS["elicitation_complete"], kind="notification"
     )
     async def complete_elicitation(self, elicitation_id: str, **kwargs: Any) -> None: ...
+
+    @param_model(schema.AuthStatusUpdateNotification, method=CLIENT_METHODS["auth_status_update"], kind="notification")
+    async def auth_status_update(
+        self,
+        state: Literal["authenticated"]
+        | Literal["unauthenticated"]
+        | Literal["not_required"]
+        | Literal["unknown"]
+        | str,
+        accounts: list[schema.AuthAccount] | None = None,
+        **kwargs: Any,
+    ) -> None: ...

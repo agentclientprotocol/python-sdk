@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import AnyUrl, BaseModel
 
@@ -141,6 +141,9 @@ class AgentSideConnection:
         | schema.SessionNotice
         | schema.SessionCompactionUpdate
         | schema.SessionCompactionSummaryChunk
+        | schema.SessionReplayComplete
+        | schema.SessionPromptSuggestionsUpdate
+        | schema.SessionCursorUpdate
         | schema.SessionSubagentUpdate
         | schema.SessionMessageUpdate
         | schema.SessionMessageChunkUpdate
@@ -159,13 +162,27 @@ class AgentSideConnection:
 
     @param_model(schema.MessageMcpRequest)
     async def mcp_message(
-        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self,
+        server_id: str,
+        request_id: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        tool_call_id: str | None = None,
+        **kwargs: Any,
     ) -> schema.MessageMcpResponse:
         return await self._request(
             CLIENT_METHODS["mcp_message"],
             build_request(
                 schema.MessageMcpRequest,
-                {"server_id": server_id, "request_id": request_id, "method": method, "params": params},
+                {
+                    "server_id": server_id,
+                    "request_id": request_id,
+                    "method": method,
+                    "params": params,
+                    "session_id": session_id,
+                    "tool_call_id": tool_call_id,
+                },
                 kwargs,
             ),
         )
@@ -202,6 +219,22 @@ class AgentSideConnection:
         await self._notify(
             CLIENT_METHODS["elicitation_complete"],
             build_request(schema.CompleteElicitationNotification, {"elicitation_id": elicitation_id}, kwargs),
+        )
+
+    @param_model(schema.AuthStatusUpdateNotification)
+    async def auth_status_update(
+        self,
+        state: Literal["authenticated"]
+        | Literal["unauthenticated"]
+        | Literal["not_required"]
+        | Literal["unknown"]
+        | str,
+        accounts: list[schema.AuthAccount] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        await self._notify(
+            CLIENT_METHODS["auth_status_update"],
+            build_request(schema.AuthStatusUpdateNotification, {"state": state, "accounts": accounts}, kwargs),
         )
 
     async def send_extension_request(self, method: str, params: Any = None) -> Any:

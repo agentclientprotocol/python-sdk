@@ -145,8 +145,9 @@ async def test_request_metadata_notifications_and_error_domains(peers, schema):
         return {"error": {"code": -32000, "message": "inner", "data": None, "vendor": 1}}
 
     client.outcome = handle
+    attribution = {"session_id": "session", "tool_call_id": "call"}
     response = await a.mcp_message(
-        server_id="s", request_id="logical", method="tools/call", params=inner, trace="outer"
+        server_id="s", request_id="logical", method="tools/call", params=inner, trace="outer", **attribution
     )
     assert isinstance(response, schema.McpErrorResponse)
     assert response.error.code == -32000
@@ -156,15 +157,13 @@ async def test_request_metadata_notifications_and_error_domains(peers, schema):
         "data": None,
         "vendor": 1,
     }
-    # v1 1.35 adds the optional `sessionId` and `toolCallId` to the envelope; v2 does not have them yet.
-    added = {"session_id", "tool_call_id"} & set(schema.MessageMcpRequest.model_fields)
     assert client.calls == [
         {
             "server_id": "s",
             "request_id": "logical",
             "method": "tools/call",
             "params": inner,
-            **dict.fromkeys(added),
+            **attribution,
             "trace": "outer",
         }
     ]

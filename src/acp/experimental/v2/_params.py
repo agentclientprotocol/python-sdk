@@ -46,7 +46,7 @@ def build_elicitation_request(
     url: str | AnyUrl | None,
     meta: dict[str, Any],
 ) -> CreateElicitationRequest:
-    if session_id is not None and request_id is not None:
+    if (session_id is None) == (request_id is None):
         raise ValueError("Specify either session_id or request_id")
     if session_id is None and tool_call_id is not None:
         raise ValueError("tool_call_id requires session_id")

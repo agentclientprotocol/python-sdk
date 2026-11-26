@@ -33,6 +33,11 @@ def use_default_on_error(value: Any, handler: Callable[[Any], Any], _info: Any =
         raise PydanticUseDefault() from None
 
 
+def empty_list_on_null(value: Any, _info: Any = None) -> Any:
+    """Treat explicit null as the empty list for annotated receiver fields."""
+    return [] if value is None else value
+
+
 def salvage_on_error(value: Any, handler: Callable[[Any], Any], fallback: Callable[[], Any]) -> Any:
     """Return ``fallback()`` when ``value`` fails validation, otherwise the validated value.
 

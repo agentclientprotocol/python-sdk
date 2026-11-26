@@ -1,9 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from importlib import import_module
 from pathlib import Path
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -24,6 +25,9 @@ class SchemaSemantics:
     model_name_map: dict[str, str]
     compatibility_aliases: str = ""
     field_type_overrides: dict[str, str] = field(default_factory=dict)
+    base_class_map: dict[str, str] = field(default_factory=dict)
+    validate_renamed_models: bool = False
+    prepare_schema: Callable[[dict[str, Any]], None] | None = None
 
 
 class _SemanticsModule(Protocol):

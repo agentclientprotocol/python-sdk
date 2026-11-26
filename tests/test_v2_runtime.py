@@ -82,6 +82,7 @@ class SessionAgent(Agent):
     def __init__(self, *, echo_before_response: bool) -> None:
         super().__init__()
         self.echo_before_response = echo_before_response
+        self.idempotency_key: str | None = None
 
     def on_connect(self, connection: v2.AgentSideConnection) -> None:
         self.connection = connection
@@ -101,11 +102,13 @@ class SessionAgent(Agent):
             | v2.schema.AudioContentBlock
             | v2.schema.ResourceContentBlock
             | v2.schema.EmbeddedResourceContentBlock
+            | v2.schema.SkillContentBlock
             | v2.schema.OtherContentBlock
         ],
         **kwargs: Any,
     ) -> v2.schema.PromptResponse:
         request = v2.schema.PromptRequest(session_id=session_id, prompt=prompt, **kwargs)
+        self.idempotency_key = request.idempotency_key
         await self.connection.session_update(
             session_id=request.session_id, update=v2.schema.RunningSessionStateUpdate()
         )
@@ -178,6 +181,34 @@ async def test_v2_runtime_initializes_and_routes_generated_models() -> None:
     finally:
         await client_connection.close()
         await agent_connection.close()
+
+
+@pytest.mark.asyncio
+async def test_fork_session_preserves_positional_arguments_and_forwards_beta_fields() -> None:
+    class ForkAgent(Agent):
+        async def fork_session(self, **kwargs: Any) -> v2.schema.ForkSessionResponse:
+            request = v2.schema.ForkSessionRequest(**kwargs)
+            assert request.additional_directories == ["/extra"]
+            assert request.mcp_servers == []
+            assert request.cursor_id == "cursor-1"
+            assert request.config_options == [v2.schema.InitialIdConfigOption(config_id="model", value="small")]
+            return v2.schema.ForkSessionResponse(session_id="forked")
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with (
+        v2.AgentSideConnection(ForkAgent(), agent_transport),
+        v2.ClientSideConnection(Client(), client_transport) as connection,
+    ):
+        await connection.initialize(v2.PROTOCOL_VERSION, initialize_request().info)
+        response = await connection.fork_session(
+            "original",
+            "/workspace",
+            ["/extra"],
+            [],
+            config_options=[v2.schema.InitialIdConfigOption(config_id="model", value="small")],
+            cursor_id="cursor-1",
+        )
+        assert response.session_id == "forked"
 
 
 @pytest.mark.asyncio
@@ -270,8 +301,12 @@ async def test_session_updates_are_delivered_independently_from_prompt(echo_befo
         request = v2.schema.PromptRequest(
             session_id=session.session_id,
             prompt=[v2.schema.TextContentBlock(text="hello")],
+            idempotency_key="retry-key",
         )
-        response = await client_connection.prompt(session_id=request.session_id, prompt=request.prompt)
+        response = await client_connection.prompt(
+            session_id=request.session_id, prompt=request.prompt, idempotency_key=request.idempotency_key
+        )
+        assert agent.idempotency_key == request.idempotency_key
         if not echo_before_response:
             await agent.echo_prompt(request)
         # Completion is independent traffic, sent after prompt acceptance.
@@ -506,7 +541,7 @@ async def test_expanded_union_calls_round_trip_with_metadata() -> None:
             url="https://example.com/",
             trace="url",
         )
-        await agent_connection.create_elicitation("Input", "vendor/custom", request_id=None)
+        await agent_connection.create_elicitation("Input", "vendor/custom", request_id="rpc-7")
         assert elicitations[0]["session_id"] == "s"
         assert elicitations[0]["tool_call_id"] == "tool"
         assert elicitations[0]["trace"] == "form"
@@ -514,7 +549,9 @@ async def test_expanded_union_calls_round_trip_with_metadata() -> None:
         assert elicitations[1]["request_id"] == 7
         assert elicitations[1]["elicitation_id"] == "e"
         assert elicitations[1]["trace"] == "url"
-        assert elicitations[2]["request_id"] is None
+        assert elicitations[2]["request_id"] == "rpc-7"
+        with pytest.raises(ValueError, match="either session_id or request_id"):
+            await agent_connection.create_elicitation("Input", "vendor/custom")
         with pytest.raises(ValueError, match="either session_id or request_id"):
             await agent_connection.create_elicitation("Input", "vendor/custom", session_id="s", request_id=7)
 
@@ -584,3 +621,92 @@ async def test_cancel_request_before_the_handler_starts_still_replies() -> None:
         assert handled == []
     finally:
         await agent_connection.close()
+
+
+@pytest.mark.asyncio
+async def test_beta4_session_auth_and_cancel_methods_round_trip() -> None:
+    received: list[tuple[str, dict[str, Any]]] = []
+    auth_updates: asyncio.Queue[dict[str, Any]] = asyncio.Queue()
+
+    class Beta4Agent(Agent):
+        async def auth_status(self, **kwargs: Any) -> v2.schema.AuthStatusResponse:
+            received.append(("auth_status", kwargs))
+            return v2.schema.AuthStatusResponse(state="authenticated")
+
+        async def archive_session(self, session_id: str, **kwargs: Any) -> None:
+            received.append(("archive_session", {"session_id": session_id, **kwargs}))
+
+        async def unarchive_session(self, session_id: str, **kwargs: Any) -> None:
+            received.append(("unarchive_session", {"session_id": session_id, **kwargs}))
+
+        async def session_status(self, session_id: str, **kwargs: Any) -> v2.schema.SessionStatusResponse:
+            received.append(("session_status", {"session_id": session_id, **kwargs}))
+            return v2.schema.SessionStatusResponse(status="open")
+
+        async def session_options(
+            self,
+            cwd: str,
+            additional_directories: list[str] | None = None,
+            session_id: str | None = None,
+            **kwargs: Any,
+        ) -> v2.schema.SessionOptionsResponse:
+            received.append((
+                "session_options",
+                {"cwd": cwd, "additional_directories": additional_directories, "session_id": session_id, **kwargs},
+            ))
+            return v2.schema.SessionOptionsResponse(config_options=[])
+
+        async def set_session_title(
+            self, session_id: str, title: str, **kwargs: Any
+        ) -> v2.schema.SetSessionTitleResponse:
+            received.append(("set_session_title", {"session_id": session_id, "title": title, **kwargs}))
+            return v2.schema.SetSessionTitleResponse(title=title)
+
+        async def cancel_tool_call(self, session_id: str, tool_call_id: str, **kwargs: Any) -> None:
+            received.append(("cancel_tool_call", {"session_id": session_id, "tool_call_id": tool_call_id, **kwargs}))
+
+        async def cancel_terminal(self, session_id: str, terminal_id: str, **kwargs: Any) -> None:
+            received.append(("cancel_terminal", {"session_id": session_id, "terminal_id": terminal_id, **kwargs}))
+
+    class Beta4Client(Client):
+        async def auth_status_update(
+            self, state: str, accounts: list[v2.schema.AuthAccount] | None = None, **kwargs: Any
+        ) -> None:
+            await auth_updates.put({"state": state, "accounts": accounts, **kwargs})
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with (
+        v2.AgentSideConnection(Beta4Agent(), agent_transport) as agent_connection,
+        v2.ClientSideConnection(Beta4Client(), client_transport) as client_connection,
+    ):
+        await client_connection.initialize(v2.PROTOCOL_VERSION, initialize_request().info)
+
+        assert (await client_connection.auth_status(trace="a")).state == "authenticated"
+        assert isinstance(await client_connection.archive_session("s-1", trace="b"), v2.schema.ArchiveSessionResponse)
+        assert isinstance(
+            await client_connection.unarchive_session("s-1", trace="c"), v2.schema.UnarchiveSessionResponse
+        )
+        assert (await client_connection.session_status("s-1", trace="d")).status == "open"
+        options = await client_connection.session_options("/work", additional_directories=["/extra"], session_id="s-1")
+        assert options.config_options == []
+        assert (await client_connection.set_session_title("s-1", "Renamed")).title == "Renamed"
+        assert isinstance(await client_connection.cancel_tool_call("s-1", "call-1"), v2.schema.CancelToolCallResponse)
+        assert isinstance(await client_connection.cancel_terminal("s-1", "term-1"), v2.schema.CancelTerminalResponse)
+
+        await agent_connection.auth_status_update(state="unauthenticated", trace="u")
+        assert await asyncio.wait_for(auth_updates.get(), timeout=1) == {
+            "state": "unauthenticated",
+            "accounts": None,
+            "trace": "u",
+        }
+
+    assert [name for name, _ in received] == [
+        "auth_status",
+        "archive_session",
+        "unarchive_session",
+        "session_status",
+        "session_options",
+        "set_session_title",
+        "cancel_tool_call",
+        "cancel_terminal",
+    ]

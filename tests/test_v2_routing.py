@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import inspect
 from typing import Any
 
 import pytest
@@ -8,24 +7,7 @@ from pydantic import ValidationError
 
 from acp.exceptions import RequestError
 from acp.experimental import v2
-from acp.experimental.v2._methods import protocol_specs
 from acp.experimental.v2._router import MethodRouter
-from acp.experimental.v2.meta import AGENT_METHODS, CLIENT_METHODS
-
-
-@pytest.mark.parametrize(
-    ("protocol", "connection", "methods"),
-    [(v2.Agent, v2.ClientSideConnection, AGENT_METHODS), (v2.Client, v2.AgentSideConnection, CLIENT_METHODS)],
-)
-def test_protocols_cover_wire_methods_and_match_connection_signatures(protocol, connection, methods) -> None:
-    requests, notifications = protocol_specs(protocol)
-    assert {spec.method for spec in (*requests, *notifications)} == set(methods.values())
-    for spec in (*requests, *notifications):
-        assert inspect.signature(getattr(protocol, spec.handler)) == inspect.signature(
-            getattr(connection, spec.handler)
-        )
-    assert ("mcp/message" in {spec.method for spec in requests}) == (protocol is v2.Client)
-    assert ("mcp/message" in {spec.method for spec in notifications}) == (protocol is v2.Agent)
 
 
 @pytest.mark.asyncio
@@ -65,6 +47,9 @@ async def test_v2_route_validation_and_empty_responses_remain_strict() -> None:
     assert agent.calls == 0
     with pytest.raises(ValidationError):
         await router("session/prompt", {"sessionId": "s", "prompt": []}, False)
+    assert agent.calls == 0
+    with pytest.raises(ValidationError):
+        await router("session/prompt", {"sessionId": "s", "prompt": [{"type": "text", "text": "hi"}]}, False)
     assert agent.calls == 1
     assert isinstance(await router("auth/logout", {}, False), v2.schema.LogoutAuthResponse)
     with pytest.raises(RequestError) as error:
@@ -112,7 +97,7 @@ async def test_config_union_flattens_selected_branch_and_metadata(tag, value) ->
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("scope", [{"sessionId": "s", "toolCallId": "tool"}, {"requestId": 7}, {"requestId": None}])
+@pytest.mark.parametrize("scope", [{"sessionId": "s", "toolCallId": "tool"}, {"requestId": 7}, {"requestId": "rpc-7"}])
 @pytest.mark.parametrize("mode", ["form", "url", "vendor/custom"])
 async def test_elicitation_retains_branch_specific_fields(scope, mode) -> None:
     captured = {}

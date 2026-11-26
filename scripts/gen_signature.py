@@ -180,7 +180,9 @@ class NodeTransformer(ast.NodeTransformer):
         else:
             if field.default is PydanticUndefined:
                 default = None
-            elif isinstance(field.default, dict | BaseModel):
+            elif isinstance(field.default, dict | list | BaseModel):
+                if ann is not None and not _allows_none(ann):
+                    ann = ann | None
                 default = ast.Constant(None)
             else:
                 default = ast.Constant(value=field.default)
@@ -250,6 +252,16 @@ class NodeTransformer(ast.NodeTransformer):
             slice=values[0] if len(values) == 1 else ast.Tuple(elts=values, ctx=ast.Load()),
             ctx=ast.Load(),
         )
+
+
+def _allows_none(annotation: t.Any) -> bool:
+    while t.get_origin(annotation) is t.Annotated:
+        annotation = t.get_args(annotation)[0]
+    if annotation is None or annotation is type(None):
+        return True
+    if t.get_origin(annotation) in (t.Union, types.UnionType):
+        return any(_allows_none(arg) for arg in t.get_args(annotation))
+    return False
 
 
 def gen_signature(source_dir: Path, *, protocol_version: int = 1) -> None:

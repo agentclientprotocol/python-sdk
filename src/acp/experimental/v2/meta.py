@@ -1,5 +1,5 @@
 # Generated from schema/v2/meta.json. Do not edit by hand.
-# Schema ref: refs/tags/schema-v2.0.0-alpha.7
+# Schema ref: refs/tags/schema-v2.0.0-beta.4
 AGENT_METHODS = {
     "initialize": "initialize",
     "auth_login": "auth/login",
@@ -14,19 +14,17 @@ AGENT_METHODS = {
     "session_list": "session/list",
     "session_delete": "session/delete",
     "session_fork": "session/fork",
+    "session_archive": "session/archive",
+    "session_unarchive": "session/unarchive",
+    "session_status": "session/status",
+    "session_options": "session/options",
+    "session_set_title": "session/set_title",
     "session_resume": "session/resume",
     "session_close": "session/close",
+    "tool_call_cancel": "tool_call/cancel",
+    "terminal_cancel": "terminal/cancel",
     "auth_logout": "auth/logout",
-    "nes_start": "nes/start",
-    "nes_suggest": "nes/suggest",
-    "nes_accept": "nes/accept",
-    "nes_reject": "nes/reject",
-    "nes_close": "nes/close",
-    "document_did_open": "document/didOpen",
-    "document_did_change": "document/didChange",
-    "document_did_close": "document/didClose",
-    "document_did_save": "document/didSave",
-    "document_did_focus": "document/didFocus",
+    "auth_status": "auth/status",
 }
 CLIENT_METHODS = {
     "session_request_permission": "session/request_permission",
@@ -34,6 +32,56 @@ CLIENT_METHODS = {
     "mcp_message": "mcp/message",
     "elicitation_create": "elicitation/create",
     "elicitation_complete": "elicitation/complete",
+    "auth_status_update": "auth/status_update",
 }
 PROTOCOL_METHODS = {"cancel_request": "$/cancel_request"}
+PROXY_METHODS = {"proxy_initialize": "proxy/initialize", "proxy_successor": "proxy/successor"}
+METHOD_SCHEMAS = {
+    "agent": {
+        "auth/login": {"request": "LoginAuthRequest", "result": "LoginAuthResponse"},
+        "auth/logout": {"request": "LogoutAuthRequest", "result": "LogoutAuthResponse"},
+        "auth/status": {"request": "AuthStatusRequest", "result": "AuthStatusResponse"},
+        "initialize": {"request": "InitializeRequest", "result": "InitializeResponse"},
+        "mcp/message": {"notification": "MessageMcpNotification"},
+        "providers/disable": {"request": "DisableProviderRequest", "result": "DisableProviderResponse"},
+        "providers/list": {"request": "ListProvidersRequest", "result": "ListProvidersResponse"},
+        "providers/set": {"request": "SetProviderRequest", "result": "SetProviderResponse"},
+        "session/archive": {"request": "ArchiveSessionRequest", "result": "ArchiveSessionResponse"},
+        "session/cancel": {"notification": "CancelSessionNotification"},
+        "session/close": {"request": "CloseSessionRequest", "result": "CloseSessionResponse"},
+        "session/delete": {"request": "DeleteSessionRequest", "result": "DeleteSessionResponse"},
+        "session/fork": {"request": "ForkSessionRequest", "result": "ForkSessionResponse"},
+        "session/list": {"request": "ListSessionsRequest", "result": "ListSessionsResponse"},
+        "session/new": {"request": "NewSessionRequest", "result": "NewSessionResponse"},
+        "session/options": {"request": "SessionOptionsRequest", "result": "SessionOptionsResponse"},
+        "session/prompt": {"request": "PromptRequest", "result": "PromptResponse"},
+        "session/resume": {"request": "ResumeSessionRequest", "result": "ResumeSessionResponse"},
+        "session/set_config_option": {
+            "request": "SetSessionConfigOptionRequest",
+            "result": "SetSessionConfigOptionResponse",
+        },
+        "session/set_title": {"request": "SetSessionTitleRequest", "result": "SetSessionTitleResponse"},
+        "session/status": {"request": "SessionStatusRequest", "result": "SessionStatusResponse"},
+        "session/unarchive": {"request": "UnarchiveSessionRequest", "result": "UnarchiveSessionResponse"},
+        "terminal/cancel": {"request": "CancelTerminalRequest", "result": "CancelTerminalResponse"},
+        "tool_call/cancel": {"request": "CancelToolCallRequest", "result": "CancelToolCallResponse"},
+    },
+    "client": {
+        "auth/status_update": {"notification": "AuthStatusUpdateNotification"},
+        "elicitation/complete": {"notification": "CompleteElicitationNotification"},
+        "elicitation/create": {"request": "CreateElicitationRequest", "result": "CreateElicitationResponse"},
+        "mcp/message": {"request": "MessageMcpRequest", "result": "MessageMcpResponse"},
+        "session/request_permission": {"request": "RequestPermissionRequest", "result": "RequestPermissionResponse"},
+        "session/update": {"notification": "UpdateSessionNotification"},
+    },
+    "protocol": {"$/cancel_request": {"notification": "CancelRequestNotification"}},
+    "proxy": {
+        "proxy/initialize": {"request": "InitializeProxyRequest", "result": "InitializeProxyResponse"},
+        "proxy/successor": {
+            "notification": "ProxySuccessorNotification",
+            "request": "ProxySuccessorRequest",
+            "result": "ProxySuccessorResponse",
+        },
+    },
+}
 PROTOCOL_VERSION = 2

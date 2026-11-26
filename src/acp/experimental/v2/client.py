@@ -9,9 +9,7 @@ from acp.utils import param_model
 from . import schema
 from ._connection import open_connection
 from ._initialization import InitializationState
-from ._methods import (
-    AGENT_REQUESTS_BY_METHOD,
-)
+from ._methods import AGENT_REQUESTS_BY_METHOD
 from ._params import build_config_request, build_request
 from ._router import MethodRouter
 from .agent import _dump, _extension_method
@@ -124,24 +122,39 @@ class ClientSideConnection:
         additional_directories: list[str] | None = None,
         mcp_servers: list[schema.HttpMcpServer | schema.AcpMcpServer | schema.StdioMcpServer | schema.OtherMcpServer]
         | None = None,
+        system_prompt: schema.SystemPrompt | None = None,
+        config_options: list[
+            schema.InitialIdConfigOption | schema.InitialBooleanConfigOption | schema.OtherInitialConfigOption
+        ]
+        | None = None,
         **kwargs: Any,
     ) -> schema.NewSessionResponse:
         return await self._request(
             AGENT_METHODS["session_new"],
             build_request(
                 schema.NewSessionRequest,
-                {"cwd": cwd, "additional_directories": additional_directories, "mcp_servers": mcp_servers},
+                {
+                    "cwd": cwd,
+                    "additional_directories": additional_directories,
+                    "mcp_servers": mcp_servers,
+                    "system_prompt": system_prompt,
+                    "config_options": config_options,
+                },
                 kwargs,
             ),
         )
 
     @param_model(schema.ListSessionsRequest)
     async def list_sessions(
-        self, cwd: str | None = None, cursor: str | None = None, **kwargs: Any
+        self,
+        cwd: str | None = None,
+        cursor: str | None = None,
+        archived: Literal["exclude"] | Literal["include"] | Literal["only"] | str | None = None,
+        **kwargs: Any,
     ) -> schema.ListSessionsResponse:
         return await self._request(
             AGENT_METHODS["session_list"],
-            build_request(schema.ListSessionsRequest, {"cwd": cwd, "cursor": cursor}, kwargs),
+            build_request(schema.ListSessionsRequest, {"cwd": cwd, "cursor": cursor, "archived": archived}, kwargs),
         )
 
     @param_model(schema.DeleteSessionRequest)
@@ -159,6 +172,12 @@ class ClientSideConnection:
         additional_directories: list[str] | None = None,
         mcp_servers: list[schema.HttpMcpServer | schema.AcpMcpServer | schema.StdioMcpServer | schema.OtherMcpServer]
         | None = None,
+        system_prompt: schema.SystemPrompt | None = None,
+        config_options: list[
+            schema.InitialIdConfigOption | schema.InitialBooleanConfigOption | schema.OtherInitialConfigOption
+        ]
+        | None = None,
+        cursor_id: str | None = None,
         **kwargs: Any,
     ) -> schema.ForkSessionResponse:
         return await self._request(
@@ -170,6 +189,9 @@ class ClientSideConnection:
                     "cwd": cwd,
                     "additional_directories": additional_directories,
                     "mcp_servers": mcp_servers,
+                    "system_prompt": system_prompt,
+                    "config_options": config_options,
+                    "cursor_id": cursor_id,
                 },
                 kwargs,
             ),
@@ -184,6 +206,11 @@ class ClientSideConnection:
         mcp_servers: list[schema.HttpMcpServer | schema.AcpMcpServer | schema.StdioMcpServer | schema.OtherMcpServer]
         | None = None,
         replay_from: schema.ReplayFromStartVariant | schema.OtherReplayFrom | None = None,
+        system_prompt: schema.SystemPrompt | None = None,
+        config_options: list[
+            schema.InitialIdConfigOption | schema.InitialBooleanConfigOption | schema.OtherInitialConfigOption
+        ]
+        | None = None,
         **kwargs: Any,
     ) -> schema.ResumeSessionResponse:
         return await self._request(
@@ -196,6 +223,8 @@ class ClientSideConnection:
                     "additional_directories": additional_directories,
                     "mcp_servers": mcp_servers,
                     "replay_from": replay_from,
+                    "system_prompt": system_prompt,
+                    "config_options": config_options,
                 },
                 kwargs,
             ),
@@ -231,13 +260,19 @@ class ClientSideConnection:
             | schema.AudioContentBlock
             | schema.ResourceContentBlock
             | schema.EmbeddedResourceContentBlock
+            | schema.SkillContentBlock
             | schema.OtherContentBlock
         ],
+        idempotency_key: str | None = None,
         **kwargs: Any,
     ) -> schema.PromptResponse:
         return await self._request(
             AGENT_METHODS["session_prompt"],
-            build_request(schema.PromptRequest, {"session_id": session_id, "prompt": prompt}, kwargs),
+            build_request(
+                schema.PromptRequest,
+                {"session_id": session_id, "prompt": prompt, "idempotency_key": idempotency_key},
+                kwargs,
+            ),
         )
 
     @param_model(schema.CancelSessionNotification)
@@ -260,157 +295,67 @@ class ClientSideConnection:
             ),
         )
 
-    @param_model(schema.StartNesRequest)
-    async def start_nes(
-        self,
-        workspace_uri: str | AnyUrl | None = None,
-        workspace_folders: list[schema.WorkspaceFolder] | None = None,
-        repository: schema.NesRepository | None = None,
-        **kwargs: Any,
-    ) -> schema.StartNesResponse:
+    @param_model(schema.AuthStatusRequest)
+    async def auth_status(self, **kwargs: Any) -> schema.AuthStatusResponse:
+        return await self._request(AGENT_METHODS["auth_status"], build_request(schema.AuthStatusRequest, {}, kwargs))
+
+    @param_model(schema.ArchiveSessionRequest)
+    async def archive_session(self, session_id: str, **kwargs: Any) -> schema.ArchiveSessionResponse:
         return await self._request(
-            AGENT_METHODS["nes_start"],
-            build_request(
-                schema.StartNesRequest,
-                {"workspace_uri": workspace_uri, "workspace_folders": workspace_folders, "repository": repository},
-                kwargs,
-            ),
+            AGENT_METHODS["session_archive"],
+            build_request(schema.ArchiveSessionRequest, {"session_id": session_id}, kwargs),
         )
 
-    @param_model(schema.SuggestNesRequest)
-    async def suggest_nes(
-        self,
-        session_id: str,
-        uri: str | AnyUrl,
-        version: int,
-        position: schema.Position,
-        trigger_kind: Literal["automatic"] | Literal["diagnostic"] | Literal["manual"] | str,
-        selection: schema.Range | None = None,
-        context: schema.NesSuggestContext | None = None,
-        **kwargs: Any,
-    ) -> schema.SuggestNesResponse:
+    @param_model(schema.UnarchiveSessionRequest)
+    async def unarchive_session(self, session_id: str, **kwargs: Any) -> schema.UnarchiveSessionResponse:
         return await self._request(
-            AGENT_METHODS["nes_suggest"],
-            build_request(
-                schema.SuggestNesRequest,
-                {
-                    "session_id": session_id,
-                    "uri": uri,
-                    "version": version,
-                    "position": position,
-                    "trigger_kind": trigger_kind,
-                    "selection": selection,
-                    "context": context,
-                },
-                kwargs,
-            ),
+            AGENT_METHODS["session_unarchive"],
+            build_request(schema.UnarchiveSessionRequest, {"session_id": session_id}, kwargs),
         )
 
-    @param_model(schema.AcceptNesNotification)
-    async def accept_nes(self, session_id: str, suggestion_id: str, **kwargs: Any) -> None:
-        await self._notify(
-            AGENT_METHODS["nes_accept"],
-            build_request(
-                schema.AcceptNesNotification, {"session_id": session_id, "suggestion_id": suggestion_id}, kwargs
-            ),
-        )
-
-    @param_model(schema.RejectNesNotification)
-    async def reject_nes(
-        self,
-        session_id: str,
-        suggestion_id: str,
-        reason: Literal["rejected"]
-        | Literal["ignored"]
-        | Literal["replaced"]
-        | Literal["cancelled"]
-        | str
-        | None = None,
-        **kwargs: Any,
-    ) -> None:
-        await self._notify(
-            AGENT_METHODS["nes_reject"],
-            build_request(
-                schema.RejectNesNotification,
-                {"session_id": session_id, "suggestion_id": suggestion_id, "reason": reason},
-                kwargs,
-            ),
-        )
-
-    @param_model(schema.CloseNesRequest)
-    async def close_nes(self, session_id: str, **kwargs: Any) -> schema.CloseNesResponse:
+    @param_model(schema.SessionStatusRequest)
+    async def session_status(self, session_id: str, **kwargs: Any) -> schema.SessionStatusResponse:
         return await self._request(
-            AGENT_METHODS["nes_close"], build_request(schema.CloseNesRequest, {"session_id": session_id}, kwargs)
+            AGENT_METHODS["session_status"],
+            build_request(schema.SessionStatusRequest, {"session_id": session_id}, kwargs),
         )
 
-    @param_model(schema.DidOpenDocumentNotification)
-    async def did_open(
-        self, session_id: str, uri: str | AnyUrl, language_id: str, version: int, text: str, **kwargs: Any
-    ) -> None:
-        await self._notify(
-            AGENT_METHODS["document_did_open"],
+    @param_model(schema.SessionOptionsRequest)
+    async def session_options(
+        self, cwd: str, additional_directories: list[str] | None = None, session_id: str | None = None, **kwargs: Any
+    ) -> schema.SessionOptionsResponse:
+        return await self._request(
+            AGENT_METHODS["session_options"],
             build_request(
-                schema.DidOpenDocumentNotification,
-                {"session_id": session_id, "uri": uri, "language_id": language_id, "version": version, "text": text},
+                schema.SessionOptionsRequest,
+                {"cwd": cwd, "additional_directories": additional_directories, "session_id": session_id},
                 kwargs,
             ),
         )
 
-    @param_model(schema.DidChangeDocumentNotification)
-    async def did_change(
-        self,
-        session_id: str,
-        uri: str | AnyUrl,
-        version: int,
-        content_changes: list[schema.TextDocumentContentChangeEvent],
-        **kwargs: Any,
-    ) -> None:
-        await self._notify(
-            AGENT_METHODS["document_did_change"],
+    @param_model(schema.SetSessionTitleRequest)
+    async def set_session_title(self, session_id: str, title: str, **kwargs: Any) -> schema.SetSessionTitleResponse:
+        return await self._request(
+            AGENT_METHODS["session_set_title"],
+            build_request(schema.SetSessionTitleRequest, {"session_id": session_id, "title": title}, kwargs),
+        )
+
+    @param_model(schema.CancelToolCallRequest)
+    async def cancel_tool_call(
+        self, session_id: str, tool_call_id: str, **kwargs: Any
+    ) -> schema.CancelToolCallResponse:
+        return await self._request(
+            AGENT_METHODS["tool_call_cancel"],
             build_request(
-                schema.DidChangeDocumentNotification,
-                {"session_id": session_id, "uri": uri, "version": version, "content_changes": content_changes},
-                kwargs,
+                schema.CancelToolCallRequest, {"session_id": session_id, "tool_call_id": tool_call_id}, kwargs
             ),
         )
 
-    @param_model(schema.DidCloseDocumentNotification)
-    async def did_close(self, session_id: str, uri: str | AnyUrl, **kwargs: Any) -> None:
-        await self._notify(
-            AGENT_METHODS["document_did_close"],
-            build_request(schema.DidCloseDocumentNotification, {"session_id": session_id, "uri": uri}, kwargs),
-        )
-
-    @param_model(schema.DidSaveDocumentNotification)
-    async def did_save(self, session_id: str, uri: str | AnyUrl, **kwargs: Any) -> None:
-        await self._notify(
-            AGENT_METHODS["document_did_save"],
-            build_request(schema.DidSaveDocumentNotification, {"session_id": session_id, "uri": uri}, kwargs),
-        )
-
-    @param_model(schema.DidFocusDocumentNotification)
-    async def did_focus(
-        self,
-        session_id: str,
-        uri: str | AnyUrl,
-        version: int,
-        position: schema.Position,
-        visible_range: schema.Range,
-        **kwargs: Any,
-    ) -> None:
-        await self._notify(
-            AGENT_METHODS["document_did_focus"],
-            build_request(
-                schema.DidFocusDocumentNotification,
-                {
-                    "session_id": session_id,
-                    "uri": uri,
-                    "version": version,
-                    "position": position,
-                    "visible_range": visible_range,
-                },
-                kwargs,
-            ),
+    @param_model(schema.CancelTerminalRequest)
+    async def cancel_terminal(self, session_id: str, terminal_id: str, **kwargs: Any) -> schema.CancelTerminalResponse:
+        return await self._request(
+            AGENT_METHODS["terminal_cancel"],
+            build_request(schema.CancelTerminalRequest, {"session_id": session_id, "terminal_id": terminal_id}, kwargs),
         )
 
     async def send_extension_request(self, method: str, params: Any = None) -> Any:
