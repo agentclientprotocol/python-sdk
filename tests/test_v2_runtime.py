@@ -710,3 +710,151 @@ async def test_beta4_session_auth_and_cancel_methods_round_trip() -> None:
         "cancel_tool_call",
         "cancel_terminal",
     ]
+
+
+@pytest.mark.asyncio
+async def test_custom_validator_failure_returns_json_serializable_invalid_params_over_ndjson() -> None:
+    import json
+    import socket
+
+    server_sock, client_sock = socket.socketpair()
+    try:
+        agent_reader, agent_writer = await asyncio.open_connection(sock=server_sock)
+        client_reader, client_writer = await asyncio.open_connection(sock=client_sock)
+        agent_connection = v2.AgentSideConnection(Agent(), agent_writer, agent_reader)
+        try:
+            init_frame = {
+                "jsonrpc": "2.0",
+                "id": 1,
+                "method": "initialize",
+                "params": {"protocolVersion": 2, "info": {"name": "raw-client", "version": "1.0.0"}},
+            }
+            client_writer.write((json.dumps(init_frame) + "\n").encode())
+            await client_writer.drain()
+            init_resp = json.loads(await asyncio.wait_for(client_reader.readline(), timeout=2))
+            assert init_resp["id"] == 1
+            assert "result" in init_resp
+
+            dup_opt = {"type": "id", "configId": "model", "value": "x"}
+            bad_frame = {
+                "jsonrpc": "2.0",
+                "id": 2,
+                "method": "session/new",
+                "params": {"cwd": "/work", "configOptions": [dup_opt, dup_opt]},
+            }
+            client_writer.write((json.dumps(bad_frame) + "\n").encode())
+            await client_writer.drain()
+            bad_resp = json.loads(await asyncio.wait_for(client_reader.readline(), timeout=2))
+            assert bad_resp["id"] == 2
+            assert bad_resp["error"]["code"] == -32602
+            assert bad_resp["error"]["data"]["errors"]
+        finally:
+            await agent_connection.close()
+            client_writer.close()
+            await client_writer.wait_closed()
+    finally:
+        server_sock.close()
+        client_sock.close()
+
+
+@pytest.mark.asyncio
+async def test_v2_router_accepts_omitted_and_null_params_for_empty_requests() -> None:
+    logout_calls = 0
+
+    class AuthAgent(Agent):
+        async def logout(self, **kwargs: Any) -> None:
+            nonlocal logout_calls
+            logout_calls += 1
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with v2.AgentSideConnection(AuthAgent(), agent_transport):
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"protocolVersion": 2, "info": {"name": "raw", "version": "1.0.0"}},
+        })
+        assert (await asyncio.wait_for(client_transport.receive(), timeout=2))["id"] == 1
+
+        await client_transport.send({"jsonrpc": "2.0", "id": 2, "method": "auth/logout"})
+        resp_omitted = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp_omitted == {"jsonrpc": "2.0", "id": 2, "result": {}}
+
+        await client_transport.send({"jsonrpc": "2.0", "id": 3, "method": "auth/logout", "params": None})
+        resp_null = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp_null == {"jsonrpc": "2.0", "id": 3, "result": {}}
+
+    assert logout_calls == 2
+
+
+@pytest.mark.asyncio
+async def test_v2_invalid_handler_result_returns_internal_error() -> None:
+    class BrokenAgent(Agent):
+        async def new_session(self, cwd: str, **kwargs: Any) -> Any:
+            return {"unexpected": True}
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with (
+        v2.AgentSideConnection(BrokenAgent(), agent_transport),
+        v2.ClientSideConnection(Client(), client_transport) as client_connection,
+    ):
+        await client_connection.initialize(v2.PROTOCOL_VERSION, initialize_request().info)
+        with pytest.raises(RequestError) as error:
+            await client_connection.new_session(cwd="/workspace")
+        assert isinstance(error.value, RequestError)
+        assert error.value.code == -32603
+
+
+@pytest.mark.asyncio
+async def test_meta_cannot_overwrite_validated_protocol_arguments() -> None:
+    captured: dict[str, Any] = {}
+
+    class PromptAgent(Agent):
+        async def prompt(
+            self,
+            session_id: str,
+            prompt: list[v2.schema.ContentBlock],
+            idempotency_key: str | None = None,
+            **kwargs: Any,
+        ) -> v2.schema.PromptResponse:
+            captured.update({
+                "session_id": session_id,
+                "prompt": prompt,
+                "idempotency_key": idempotency_key,
+                "extra": kwargs,
+            })
+            return v2.schema.PromptResponse(message_id="msg-1")
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with v2.AgentSideConnection(PromptAgent(), agent_transport):
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"protocolVersion": 2, "info": {"name": "raw", "version": "1.0.0"}},
+        })
+        await asyncio.wait_for(client_transport.receive(), timeout=2)
+
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 2,
+            "method": "session/prompt",
+            "params": {
+                "sessionId": "real-session",
+                "prompt": [{"type": "text", "text": "hello"}],
+                "idempotencyKey": "real-key",
+                "_meta": {
+                    "session_id": "hijacked",
+                    "prompt": [],
+                    "idempotency_key": "evil",
+                    "trace": "kept",
+                },
+            },
+        })
+        resp = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp == {"jsonrpc": "2.0", "id": 2, "result": {"messageId": "msg-1"}}
+
+    assert captured["session_id"] == "real-session"
+    assert len(captured["prompt"]) == 1
+    assert captured["idempotency_key"] == "real-key"
+    assert captured["extra"] == {"trace": "kept"}

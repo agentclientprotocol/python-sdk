@@ -299,6 +299,51 @@ CreateElicitationResponse = (
     AcceptElicitationResponse | DeclineElicitationResponse | CancelElicitationResponse | OtherElicitationResponse
 )
 ProxySuccessorResponse = Any
+ContentBlock = (
+    TextContentBlock
+    | ImageContentBlock
+    | AudioContentBlock
+    | ResourceContentBlock
+    | EmbeddedResourceContentBlock
+    | SkillContentBlock
+    | OtherContentBlock
+)
+AvailableCommand = SlashCommand | SkillCommand | OtherAvailableCommand
+BackgroundWork = TerminalBackgroundWork | ToolCallBackgroundWork | SubagentBackgroundWork | OtherBackgroundWork
+StateUpdate = RunningState | IdleState | RequiresActionState | UnknownState | OtherState
+SessionUpdate = (
+    UserMessageChunk
+    | UserMessageUpdate
+    | AgentMessageChunk
+    | AgentMessageUpdate
+    | AgentThoughtChunk
+    | AgentThoughtUpdate
+    | ToolCallContentChunkUpdate
+    | SessionToolCallUpdate
+    | SessionTerminalUpdate
+    | SessionTerminalOutputChunk
+    | SessionPlanUpdate
+    | SessionPlanRemovedUpdate
+    | AvailableCommandsUpdate
+    | ConfigOptionUpdate
+    | SessionInfoUpdate
+    | UsageUpdate
+    | SessionNotice
+    | SessionCompactionUpdate
+    | SessionCompactionSummaryChunk
+    | SessionReplayComplete
+    | SessionPromptSuggestionsUpdate
+    | SessionCursorUpdate
+    | SessionSubagentUpdate
+    | SessionMessageUpdate
+    | SessionMessageChunkUpdate
+    | OtherSessionUpdate
+    | RunningSessionStateUpdate
+    | IdleSessionStateUpdate
+    | RequiresActionSessionStateUpdate
+    | UnknownSessionStateUpdate
+    | OtherSessionStateUpdate
+)
 """,
     model_name_map=MODEL_NAME_MAP,
     validate_renamed_models=True,

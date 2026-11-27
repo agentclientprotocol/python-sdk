@@ -1212,15 +1212,15 @@ class SessionInfo(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("archived", "title", "updated_at", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("additional_directories", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("additional_directories", "archived", "title", "updated_at", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class DeleteSessionResponse(BaseModel):
@@ -2031,6 +2031,11 @@ class AuthStatusUpdateNotification(BaseModel):
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("accounts", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class FileSystemCapabilities(BaseModel):
@@ -3023,15 +3028,15 @@ class Annotations(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("last_modified", "priority", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("audience", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("audience", "last_modified", "priority", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class TextContent(BaseModel):
@@ -3431,15 +3436,15 @@ class MultiSelectPropertySchema(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("description", "title", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("default", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("default", "description", "title", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class MessageMcpRequest(BaseModel):
@@ -3625,6 +3630,11 @@ class AuthStatusResponse(BaseModel):
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
 
+    @field_validator("accounts", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
+
 
 class SessionModeState(BaseModel):
     current_mode_id: Annotated[str, Field(alias="currentModeId")]
@@ -3729,15 +3739,15 @@ class ListSessionsResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("next_cursor", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("sessions", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("next_cursor", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionStatusResponse(BaseModel):
@@ -4597,15 +4607,15 @@ class CompactionUpdate(BaseModel):
     Extensible metadata patch for this compaction.
     """
 
-    @field_validator("error", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("summary", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("error", "summary", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class CompactionSummaryChunk(BaseModel):
@@ -4863,17 +4873,17 @@ class SessionMessage(BaseModel):
     Implementations MUST NOT make assumptions about values in `_meta`.
     """
 
-    @field_validator(
-        "recipient_message_id", "recipient_session_id", "sender_message_id", "sender_session_id", mode="wrap"
-    )
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("content", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator(
+        "content", "recipient_message_id", "recipient_session_id", "sender_message_id", "sender_session_id", mode="wrap"
+    )
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionMessageChunk(BaseModel):
@@ -5542,15 +5552,15 @@ class LoadSessionResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("modes", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("config_options", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("config_options", "modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ForkSessionResponse(BaseModel):
@@ -5582,15 +5592,15 @@ class ForkSessionResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("modes", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("config_options", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("config_options", "modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionOptionsResponse(BaseModel):
@@ -5621,15 +5631,15 @@ class SessionOptionsResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("modes", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("config_options", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("config_options", "modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ResumeSessionResponse(BaseModel):
@@ -5657,15 +5667,15 @@ class ResumeSessionResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("modes", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("config_options", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("config_options", "modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SetSessionConfigOptionResponse(BaseModel):
@@ -5806,15 +5816,15 @@ class ToolCall(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("kind", "name", "raw_input", "raw_output", "status", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("content", "locations", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("content", "kind", "locations", "name", "raw_input", "raw_output", "status", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ConfigOptionUpdateBase(BaseModel):
@@ -6053,15 +6063,15 @@ class ToolCallUpdate(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("kind", "name", "raw_input", "raw_output", "status", "title", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("content", "locations", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("content", "kind", "locations", "name", "raw_input", "raw_output", "status", "title", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class CreateFormSessionElicitationRequestBase(ElicitationSessionScope):
@@ -6208,15 +6218,15 @@ class NewSessionResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("modes", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("config_options", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("config_options", "modes", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class ToolCallStart(ToolCall):
@@ -6341,15 +6351,15 @@ class InitializeResponse(BaseModel):
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v1/draft/extensibility)
     """
 
-    @field_validator("agent_capabilities", "agent_info", mode="wrap")
-    @classmethod
-    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        return use_default_on_error(v, handler, info)
-
     @field_validator("auth_methods", mode="wrap")
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("agent_capabilities", "agent_info", "auth_methods", mode="wrap")
+    @classmethod
+    def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
+        return use_default_on_error(v, handler, info)
 
 
 class SessionNotification(BaseModel):

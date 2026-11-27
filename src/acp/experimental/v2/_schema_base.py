@@ -122,11 +122,15 @@ class ErrorModel(BaseModel):
 
 
 class IdleStateUpdateModel(BaseModel):
-    @model_validator(mode="after")
-    def _validate_error_stop_reason(self) -> IdleStateUpdateModel:
-        if self.__dict__.get("error") is not None and self.__dict__.get("stop_reason") in _NON_ERROR_STOP_REASONS:
-            raise ValueError("error is only valid when stopReason is 'error'")
-        return self
+    @model_validator(mode="before")
+    @classmethod
+    def _ignore_error_for_non_error_stop_reason(cls, value: Any) -> Any:
+        if not isinstance(value, dict) or "error" not in value:
+            return value
+        stop_reason = value.get("stopReason", value.get("stop_reason"))
+        if stop_reason in _NON_ERROR_STOP_REASONS:
+            return {key: item for key, item in value.items() if key != "error"}
+        return value
 
 
 class SessionConfigSelectModel(BaseModel):

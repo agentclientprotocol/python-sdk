@@ -152,8 +152,8 @@ def _build_validators_config(schema: dict[str, Any], model_names: dict[str, str]
         definitions.extend(
             ValidatorDefinition(fields=sorted(fields), function=function, mode=ValidatorMode.WRAP)
             for fields, function in (
-                (default_fields, "acp._deserialize.use_default_on_error"),
                 (skip_fields, "acp._deserialize.skip_invalid_items"),
+                (default_fields, "acp._deserialize.use_default_on_error"),
             )
             if fields
         )
@@ -183,12 +183,15 @@ def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[list[str], lis
         if not isinstance(property_schema, dict) or property_name == "_meta":
             continue
         field_name = to_snake(property_name)
-        if property_schema.get("x-deserialize-skip-invalid-items"):
+        has_skip = bool(property_schema.get("x-deserialize-skip-invalid-items"))
+        if has_skip:
             skip.append(field_name)
-        elif property_schema.get("x-deserialize-default-on-error"):
+        if property_schema.get("x-deserialize-default-on-error"):
             if property_name in required:
-                raise ValueError(f"{property_name!r} requests default-on-error but is required")
-            use_default.append(field_name)
+                if not has_skip:
+                    raise ValueError(f"{property_name!r} requests default-on-error but is required")
+            else:
+                use_default.append(field_name)
     return use_default, skip
 
 

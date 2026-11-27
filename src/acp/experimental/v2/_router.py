@@ -3,6 +3,8 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from pydantic import ValidationError
+
 from acp.exceptions import RequestError
 from acp.utils import model_to_kwargs
 
@@ -37,19 +39,24 @@ class MethodRouter:
         handler = self._handler(spec.handler)
         if handler is None:
             raise RequestError.method_not_found(spec.method)
-        request = spec.request.validate_python(params)
+        request = spec.request.validate_python({} if params is None else params)
         response = await handler(**model_to_kwargs(request, type(request)))
         if response is None and spec.empty_response:
             response = {}
         if spec.adapt_result is not None:
             response = spec.adapt_result(response)
-        return spec.response.validate_python(response)
+        try:
+            return spec.response.validate_python(response)
+        except ValidationError as exc:
+            raise RequestError.internal_error({
+                "errors": exc.errors(include_context=False, include_input=False)
+            }) from exc
 
     async def handle_notification(self, spec: NotificationSpec, params: Any) -> None:
         handler = self._handler(spec.handler)
         if handler is None:
             return
-        request = spec.params.validate_python(params)
+        request = spec.params.validate_python({} if params is None else params)
         await handler(**model_to_kwargs(request, type(request)))
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:

@@ -48,8 +48,11 @@ async def test_v2_route_validation_and_empty_responses_remain_strict() -> None:
     with pytest.raises(ValidationError):
         await router("session/prompt", {"sessionId": "s", "prompt": []}, False)
     assert agent.calls == 0
-    with pytest.raises(ValidationError):
+    with pytest.raises(RequestError) as bad_response:
         await router("session/prompt", {"sessionId": "s", "prompt": [{"type": "text", "text": "hi"}]}, False)
+    assert isinstance(bad_response.value, RequestError)
+    assert bad_response.value.code == -32603
+    assert isinstance(bad_response.value.__cause__, ValidationError)
     assert agent.calls == 1
     assert isinstance(await router("auth/logout", {}, False), v2.schema.LogoutAuthResponse)
     with pytest.raises(RequestError) as error:

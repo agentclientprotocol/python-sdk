@@ -67,16 +67,27 @@ def test_idle_state_preserves_failure_details_and_background_snapshot() -> None:
     notification = UpdateSessionNotification.model_validate(wire)
     assert isinstance(notification.update, IdleSessionStateUpdate)
     assert notification.model_dump(by_alias=True, exclude_unset=True) == wire
-    with pytest.raises(ValidationError):
-        UpdateSessionNotification.model_validate({
-            "sessionId": "session-1",
-            "update": {
-                "sessionUpdate": "state_update",
-                "state": "idle",
-                "stopReason": "end_turn",
-                "error": {"code": -32603, "message": "unexpected"},
-            },
-        })
+
+    ignored_error = UpdateSessionNotification.model_validate({
+        "sessionId": "session-1",
+        "update": {
+            "sessionUpdate": "state_update",
+            "state": "idle",
+            "stopReason": "end_turn",
+            "error": {"code": -32603, "message": "unexpected"},
+        },
+    })
+    assert isinstance(ignored_error.update, IdleSessionStateUpdate)
+    assert ignored_error.update.stop_reason == "end_turn"
+    assert ignored_error.update.error is None
+    assert ignored_error.model_dump(by_alias=True, exclude_unset=True) == {
+        "sessionId": "session-1",
+        "update": {
+            "sessionUpdate": "state_update",
+            "state": "idle",
+            "stopReason": "end_turn",
+        },
+    }
 
 
 @pytest.mark.parametrize("mode", ["form", "url", "vendor/custom"])
@@ -253,3 +264,70 @@ def test_prompt_idempotency_key_accepts_bounded_strings() -> None:
     for invalid in ("", "k" * 256):
         with pytest.raises(ValidationError):
             schema.PromptRequest(session_id="s", prompt=[TextContentBlock(text="hi")], idempotency_key=invalid)
+
+
+def test_malformed_patch_fields_are_omitted_while_explicit_null_clears_stay() -> None:
+    notification = UpdateSessionNotification.model_validate({
+        "sessionId": "session-1",
+        "update": {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "tool-1",
+            "name": 42,
+            "title": None,
+            "_meta": [],
+        },
+    })
+    assert notification.model_dump(by_alias=True, exclude_unset=True) == {
+        "sessionId": "session-1",
+        "update": {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "tool-1",
+            "title": None,
+        },
+    }
+
+
+def test_dual_deserialize_list_fields_fallback_and_filter() -> None:
+    fallback = schema.NewSessionResponse.model_validate({"sessionId": "s", "availableCommands": 123})
+    assert fallback.available_commands is None
+    assert fallback.model_dump(by_alias=True, exclude_unset=True) == {"sessionId": "s"}
+
+    filtered = schema.NewSessionResponse.model_validate({
+        "sessionId": "s",
+        "availableCommands": [
+            {"type": "command", "name": "plan", "description": "Plan"},
+            {"type": "command", "name": "missing-description"},
+        ],
+    })
+    assert [cmd.name for cmd in filtered.available_commands or []] == ["plan"]
+
+
+def test_reusable_v2_union_aliases_validate_known_variants() -> None:
+    assert isinstance(
+        TypeAdapter(schema.SessionUpdate).validate_python({
+            "sessionUpdate": "state_update",
+            "state": "idle",
+            "stopReason": "end_turn",
+        }),
+        IdleSessionStateUpdate,
+    )
+    assert isinstance(
+        TypeAdapter(schema.ContentBlock).validate_python({"type": "text", "text": "hi"}),
+        TextContentBlock,
+    )
+    assert isinstance(
+        TypeAdapter(schema.StateUpdate).validate_python({"state": "running"}),
+        schema.RunningState,
+    )
+    assert isinstance(
+        TypeAdapter(schema.BackgroundWork).validate_python({"type": "terminal", "terminalId": "t1"}),
+        schema.TerminalBackgroundWork,
+    )
+    assert isinstance(
+        TypeAdapter(schema.AvailableCommand).validate_python({
+            "type": "command",
+            "name": "plan",
+            "description": "Make a plan",
+        }),
+        schema.SlashCommand,
+    )
