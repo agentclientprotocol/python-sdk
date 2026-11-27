@@ -33,13 +33,12 @@ class _AgentRouter:
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
         initialize = self._router.request_spec("initialize")
         if not is_notification and initialize is not None and method == initialize.method:
-            request: schema.InitializeRequest = initialize.request.validate_python(params)
-            self._state.begin(request)
+            normalized, previous_phase = self._state.begin_agent(params)
             try:
-                response: schema.InitializeResponse = await self._router.handle_request(initialize, params)
+                response: schema.InitializeResponse = await self._router.handle_request(initialize, normalized)
                 self._state.complete(response)
             except BaseException as error:
-                self._state.fail(error)
+                self._state.fail(error, restore_phase=previous_phase)
                 raise
             return response
 

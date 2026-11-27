@@ -347,6 +347,7 @@ SessionUpdate = (
 """,
     model_name_map=MODEL_NAME_MAP,
     validate_renamed_models=True,
+    coerce_legacy_protocol_version=False,
     prepare_schema=_prepare_schema,
     base_class_map={
         "Error": "acp.experimental.v2._schema_base.ErrorModel",

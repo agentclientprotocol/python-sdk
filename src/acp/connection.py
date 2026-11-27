@@ -60,6 +60,7 @@ class Connection:
         observers: list[StreamObserver] | None = None,
         listening: bool = True,
         receive_timeout: float | None = None,
+        reject_batches: bool = False,
     ) -> None:
         self._handler = handler
         self._next_request_id = 0
@@ -79,7 +80,9 @@ class Connection:
             self._transport: Transport = cast("Transport", writer)
         else:
             sender = MessageSender(cast("asyncio.StreamWriter", writer))
-            self._transport = NdjsonTransport(reader, sender, receive_timeout=receive_timeout)
+            self._transport = NdjsonTransport(
+                reader, sender, receive_timeout=receive_timeout, reject_batches=reject_batches
+            )
         self._observers: list[StreamObserver] = list(observers or [])
         if listening:
             self._recv_task = self._tasks.create(

@@ -331,3 +331,20 @@ def test_reusable_v2_union_aliases_validate_known_variants() -> None:
         }),
         schema.SlashCommand,
     )
+
+
+def test_resume_session_replay_from_requires_explicit_type_on_wire() -> None:
+    valid_ctor = schema.ResumeSessionRequest(session_id="s", cwd="/work", replay_from=schema.ReplayFromStartVariant())
+    assert isinstance(valid_ctor.replay_from, schema.ReplayFromStartVariant)
+    valid_wire = schema.ResumeSessionRequest.model_validate({
+        "sessionId": "s",
+        "cwd": "/work",
+        "replayFrom": {"type": "start"},
+    })
+    assert isinstance(valid_wire.replay_from, schema.ReplayFromStartVariant)
+    valid_null = schema.ResumeSessionRequest.model_validate({"sessionId": "s", "cwd": "/work", "replayFrom": None})
+    assert valid_null.replay_from is None
+
+    for malformed in ("start", {}, {"type": 5}):
+        with pytest.raises(ValidationError):
+            schema.ResumeSessionRequest.model_validate({"sessionId": "s", "cwd": "/work", "replayFrom": malformed})

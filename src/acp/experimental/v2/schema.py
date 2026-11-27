@@ -6,7 +6,7 @@ from __future__ import annotations
 from enum import Enum
 from typing import Annotated, Any, Dict, List, Literal, Optional, Union
 
-from acp._deserialize import coerce_protocol_version, empty_list_on_null, skip_invalid_items, use_default_on_error
+from acp._deserialize import empty_list_on_null, skip_invalid_items, use_default_on_error
 from acp.experimental.v2._schema_base import (
     BaseModel,
     ElicitationContent,
@@ -6909,11 +6909,6 @@ class InitializeRequest(BaseModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v2/draft/extensibility)
     """
-
-    @field_validator("protocol_version", mode="before")
-    @classmethod
-    def coerce_protocol_version_validator(cls, v: Any, info: ValidationInfo) -> Any:
-        return coerce_protocol_version(v, info)
 
     @field_validator("capabilities", mode="wrap")
     @classmethod

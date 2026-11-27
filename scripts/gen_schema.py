@@ -108,7 +108,9 @@ def render_schema(semantics: SchemaSemantics) -> str:
         enum_field_as_literal=LiteralType.All,
         use_one_literal_as_default=True,
         validators=_build_validators_config(
-            schema, semantics.model_name_map if semantics.validate_renamed_models else {}
+            schema,
+            semantics.model_name_map if semantics.validate_renamed_models else {},
+            coerce_legacy_protocol_version=semantics.coerce_legacy_protocol_version,
         ),
         formatters=[Formatter.BUILTIN],
         infer_union_variant_names=True,
@@ -133,16 +135,21 @@ def render_schema(semantics: SchemaSemantics) -> str:
     return _format_python(f"{source}\n", semantics.schema_out)
 
 
-def _build_validators_config(schema: dict[str, Any], model_names: dict[str, str]) -> dict[str, ModelValidators]:
-    validators: dict[str, list[ValidatorDefinition]] = {
-        "InitializeRequest": [
+def _build_validators_config(
+    schema: dict[str, Any],
+    model_names: dict[str, str],
+    *,
+    coerce_legacy_protocol_version: bool = True,
+) -> dict[str, ModelValidators]:
+    validators: dict[str, list[ValidatorDefinition]] = {}
+    if coerce_legacy_protocol_version:
+        validators["InitializeRequest"] = [
             ValidatorDefinition(
                 field="protocol_version",
                 function="acp._deserialize.coerce_protocol_version",
                 mode=ValidatorMode.BEFORE,
             )
         ]
-    }
     for class_name, definition in schema.get("$defs", {}).items():
         if not isinstance(definition, dict):
             continue

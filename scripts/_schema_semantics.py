@@ -27,6 +27,7 @@ class SchemaSemantics:
     field_type_overrides: dict[str, str] = field(default_factory=dict)
     base_class_map: dict[str, str] = field(default_factory=dict)
     validate_renamed_models: bool = False
+    coerce_legacy_protocol_version: bool = True
     prepare_schema: Callable[[dict[str, Any]], None] | None = None
 
 

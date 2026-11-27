@@ -5,7 +5,6 @@ from typing import Any, ClassVar, Literal, get_args, get_origin
 import pydantic
 from pydantic import (
     ConfigDict,
-    ModelWrapValidatorHandler,
     SerializationInfo,
     SerializerFunctionWrapHandler,
     ValidationInfo,
@@ -15,7 +14,7 @@ from pydantic import (
 )
 from pydantic.alias_generators import to_snake
 
-from ._deserialize import pop_defaulted_fields, push_defaulted_fields, use_default_on_error
+from ._deserialize import use_default_on_error
 
 ElicitationContent = dict[str, str | int | float | bool | list[str]]
 
@@ -87,19 +86,6 @@ class BaseModel(pydantic.BaseModel):
     @classmethod
     def _use_meta_default_on_error(cls, value: Any, handler: Any, info: ValidationInfo) -> Any:
         return use_default_on_error(value, handler, info)
-
-    @model_validator(mode="wrap")
-    @classmethod
-    def _discard_defaulted_fields(cls, value: Any, handler: ModelWrapValidatorHandler[Any]) -> Any:
-        discarded: set[str] = set()
-        token = push_defaulted_fields(discarded)
-        try:
-            model = handler(value)
-        finally:
-            pop_defaulted_fields(token)
-        if discarded and isinstance(model, pydantic.BaseModel):
-            model.model_fields_set.difference_update(discarded)
-        return model
 
     @model_validator(mode="before")
     @classmethod

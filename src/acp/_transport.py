@@ -52,10 +52,12 @@ class NdjsonTransport:
         sender: MessageSender,
         *,
         receive_timeout: float | None = None,
+        reject_batches: bool = False,
     ) -> None:
         self._reader = reader
         self._sender = sender
         self._receive_timeout = receive_timeout
+        self._reject_batches = reject_batches
         self._error_send_failed = False
 
     async def send(self, message: dict[str, Any]) -> None:
@@ -79,6 +81,11 @@ class NdjsonTransport:
                         self._error_send_failed = True
                 continue
             if message is None:
+                if self._reject_batches and not self._error_send_failed:
+                    try:
+                        await self.send(error_response(RequestError.invalid_request()))
+                    except ConnectionError:
+                        self._error_send_failed = True
                 continue
             return message
 

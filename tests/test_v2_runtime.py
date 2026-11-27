@@ -858,3 +858,108 @@ async def test_meta_cannot_overwrite_validated_protocol_arguments() -> None:
     assert len(captured["prompt"]) == 1
     assert captured["idempotency_key"] == "real-key"
     assert captured["extra"] == {"trace": "kept"}
+
+
+@pytest.mark.asyncio
+async def test_ndjson_non_empty_batch_returns_invalid_request() -> None:
+    import json
+    import socket
+
+    server_sock, client_sock = socket.socketpair()
+    try:
+        agent_reader, agent_writer = await asyncio.open_connection(sock=server_sock)
+        client_reader, client_writer = await asyncio.open_connection(sock=client_sock)
+        agent = Agent()
+        agent_connection = v2.AgentSideConnection(agent, agent_writer, agent_reader)
+        try:
+            for batch in ([17, True, None], [{"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}]):
+                client_writer.write((json.dumps(batch) + "\n").encode())
+                await client_writer.drain()
+                resp = json.loads(await asyncio.wait_for(client_reader.readline(), timeout=2))
+                assert resp["id"] is None
+                assert resp["error"]["code"] == -32600
+            assert agent.initialize_calls == 0
+        finally:
+            await agent_connection.close()
+            client_writer.close()
+            await client_writer.wait_closed()
+    finally:
+        server_sock.close()
+        client_sock.close()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("via_router", [False, True])
+async def test_v2_initialize_negotiation_and_repeat_semantics(via_router: bool) -> None:
+    from acp.experimental import AgentProtocolRouter
+
+    client_transport, agent_transport = memory_transport_pair()
+    agent = Agent()
+    agent_connection: Any = (
+        AgentProtocolRouter(v2=lambda _: agent).connect(agent_transport)
+        if via_router
+        else v2.AgentSideConnection(agent, agent_transport)
+    )
+    async with agent_connection:
+        # Unsupported older versions return -32022 with {requested, supported} before validating info.
+        for req_id, version in ((1, 1), (2, 0)):
+            await client_transport.send({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "method": "initialize",
+                "params": {"protocolVersion": version},
+            })
+            resp = await asyncio.wait_for(client_transport.receive(), timeout=2)
+            assert resp["error"]["code"] == -32022
+            assert resp["error"]["data"] == {"requested": version, "supported": [2]}
+
+        # Malformed protocolVersion returns -32602 (never coerced from string).
+        for req_id, bad_version in ((3, "2"), (4, None), (5, -1), (6, 65536)):
+            await client_transport.send({
+                "jsonrpc": "2.0",
+                "id": req_id,
+                "method": "initialize",
+                "params": {"protocolVersion": bad_version, "info": {"name": "c", "version": "1"}},
+            })
+            resp = await asyncio.wait_for(client_transport.receive(), timeout=2)
+            assert resp["error"]["code"] == -32602
+
+        # Higher version with unparseable capabilities succeeds and selects 2.
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 7,
+            "method": "initialize",
+            "params": {"protocolVersion": 65535, "info": {"name": "c", "version": "1"}, "capabilities": 42},
+        })
+        resp7 = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp7["result"]["protocolVersion"] == 2
+
+        # Sequential repeat initialize before other requests succeeds.
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 8,
+            "method": "initialize",
+            "params": {"protocolVersion": 2, "info": {"name": "c", "version": "1"}},
+        })
+        resp8 = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp8["result"]["protocolVersion"] == 2
+
+        # A failing repeat leaves the previous successful initialization in effect.
+        await client_transport.send({"jsonrpc": "2.0", "id": 9, "method": "initialize", "params": {}})
+        resp9 = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp9["error"]["code"] == -32602
+
+        # Subsequent non-initialize request still works (and locks initialization).
+        await client_transport.send({"jsonrpc": "2.0", "id": 10, "method": "session/new", "params": {"cwd": "/w"}})
+        resp10 = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp10["result"]["sessionId"] == "session:/w"
+
+        # Initialize after a non-initialize request is rejected with -32600.
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 11,
+            "method": "initialize",
+            "params": {"protocolVersion": 2, "info": {"name": "c", "version": "1"}},
+        })
+        resp11 = await asyncio.wait_for(client_transport.receive(), timeout=2)
+        assert resp11["error"]["code"] == -32600

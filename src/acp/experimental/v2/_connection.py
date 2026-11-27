@@ -21,4 +21,5 @@ def open_connection(
         return Connection(handler, input_stream, listening=listening, **connection_kwargs)
     if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(output_stream, asyncio.StreamReader):
         raise TypeError("Expected an asyncio StreamWriter/StreamReader pair or a message transport")
+    connection_kwargs.setdefault("reject_batches", True)
     return Connection(handler, input_stream, output_stream, listening=listening, **connection_kwargs)

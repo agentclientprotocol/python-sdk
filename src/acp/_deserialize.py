@@ -44,7 +44,7 @@ def use_default_on_error(value: Any, handler: Callable[[Any], Any], info: Any = 
         return handler(value)
     except ValidationError:
         if isinstance(value, BaseModel) or (
-            isinstance(value, list) and any(isinstance(item, BaseModel) for item in value)
+            isinstance(value, list | tuple) and any(isinstance(item, BaseModel) for item in value)
         ):
             raise
         if (

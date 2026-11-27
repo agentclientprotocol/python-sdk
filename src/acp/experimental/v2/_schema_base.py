@@ -3,9 +3,18 @@ from __future__ import annotations
 from functools import cache
 from typing import Any, ClassVar
 
-from pydantic import TypeAdapter, ValidationInfo, ValidatorFunctionWrapHandler, field_validator, model_validator
+import pydantic
+from pydantic import (
+    ModelWrapValidatorHandler,
+    TypeAdapter,
+    ValidationInfo,
+    ValidatorFunctionWrapHandler,
+    field_validator,
+    model_validator,
+)
 from pydantic.alias_generators import to_snake
 
+from acp._deserialize import pop_defaulted_fields, push_defaulted_fields
 from acp._schema_base import BaseModel as _BaseModel
 
 from .meta import METHOD_SCHEMAS
@@ -81,6 +90,31 @@ class BaseModel(_BaseModel):
         ),
         "OtherMultiSelectItems": ("type", frozenset({"string"})),
     }
+
+    @model_validator(mode="wrap")
+    @classmethod
+    def _discard_defaulted_fields(cls, value: Any, handler: ModelWrapValidatorHandler[Any]) -> Any:
+        discarded: set[str] = set()
+        token = push_defaulted_fields(discarded)
+        try:
+            model = handler(value)
+        finally:
+            pop_defaulted_fields(token)
+        if discarded and isinstance(model, pydantic.BaseModel):
+            model.model_fields_set.difference_update(discarded)
+        return model
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_replay_from_tag(cls, value: Any) -> Any:
+        if (
+            cls.__name__ == "ResumeSessionRequest"
+            and isinstance(value, dict)
+            and isinstance((replay_from := value.get("replayFrom", value.get("replay_from"))), dict)
+            and "type" not in replay_from
+        ):
+            raise ValueError("replayFrom requires an explicit 'type' field")
+        return value
 
     @model_validator(mode="before")
     @classmethod

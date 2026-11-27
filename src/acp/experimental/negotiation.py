@@ -41,11 +41,14 @@ def _read_protocol_version(params: Any) -> int:
 
 
 def _v2_initialize_to_v1(request: v2.schema.InitializeRequest) -> v1_schema.InitializeRequest:
-    capabilities = (
-        v1_schema.ClientCapabilities.model_validate(_dump(request.capabilities))
-        if request.capabilities is not None
-        else None
-    )
+    capabilities = None
+    if request.capabilities is not None:
+        raw_caps = _dump(request.capabilities)
+        auth = raw_caps.get("auth")
+        if isinstance(auth, dict) and isinstance(auth.get("terminal"), dict):
+            auth = {**auth, "terminal": True}
+            raw_caps["auth"] = auth
+        capabilities = v1_schema.ClientCapabilities.model_validate(raw_caps)
     return v1_schema.InitializeRequest(
         protocol_version=v1_meta.PROTOCOL_VERSION,
         client_capabilities=capabilities,
@@ -78,6 +81,8 @@ class _AgentNegotiationHandler:
         self._v2_agent = v2_agent
         self._connection: Connection | None = None
         self._selected: MethodHandler | None = None
+        self._selected_version: int | None = None
+        self._locked = False
         self._lock = asyncio.Lock()
 
     def bind_connection(self, connection: Connection) -> None:
@@ -85,10 +90,14 @@ class _AgentNegotiationHandler:
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
         async with self._lock:
+            is_initialize = not is_notification and method == V2_AGENT_METHODS["initialize"]
             if self._selected is None:
                 return await self._initialize(method, params, is_notification)
-            if not is_notification and method == V2_AGENT_METHODS["initialize"]:
-                raise RequestError.invalid_request({"details": "ACP connections may only be initialized once"})
+            if is_initialize:
+                if self._locked:
+                    raise RequestError.invalid_request({"details": "ACP connections may only be initialized once"})
+                return await self._initialize(method, params, is_notification)
+            self._locked = True
             handler = self._selected
         return await handler(method, params, is_notification)
 
@@ -102,10 +111,18 @@ class _AgentNegotiationHandler:
 
         if self._v2_agent is not None and requested >= v2.PROTOCOL_VERSION:
             selected = v2.PROTOCOL_VERSION
-            _, handler = V2AgentSideConnection.attach(self._v2_agent, connection)
+            handler = (
+                self._selected
+                if self._selected is not None and self._selected_version == selected
+                else V2AgentSideConnection.attach(self._v2_agent, connection)[1]
+            )
         elif self._v1_agent is not None and requested >= v1_meta.PROTOCOL_VERSION:
             selected = v1_meta.PROTOCOL_VERSION
-            _, handler = V1AgentSideConnection.attach(self._v1_agent, connection)
+            handler = (
+                self._selected
+                if self._selected is not None and self._selected_version == selected
+                else V1AgentSideConnection.attach(self._v1_agent, connection)[1]
+            )
         else:
             supported = [
                 version
@@ -115,10 +132,7 @@ class _AgentNegotiationHandler:
                 )
                 if implementation is not None
             ]
-            raise RequestError.invalid_request({
-                "details": f"Unsupported ACP protocol {requested}; configured versions are {supported}"
-            })
-        self._selected = handler
+            raise RequestError.unsupported_protocol_version(requested, supported)
         normalized = _normalize_initialize(params, selected)
         response = await handler(method, normalized, False)
         parsed_version = _read_protocol_version(_dump(response) if isinstance(response, BaseModel) else response)
@@ -126,6 +140,8 @@ class _AgentNegotiationHandler:
             raise RequestError.invalid_request({
                 "details": f"initialize response selected protocol {parsed_version}, expected {selected}"
             })
+        self._selected = handler
+        self._selected_version = selected
         return response
 
 
