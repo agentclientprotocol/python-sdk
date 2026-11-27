@@ -31,7 +31,7 @@ When reporting a bug or requesting a feature, include:
    make test    # pytest + doctests
    ```
    Optional: `ACP_ENABLE_GEMINI_TESTS=1 make test` when you have the Gemini CLI available.
-6. **(Optional) Cross-Python smoke:** `tox` if you want the same matrix CI runs.
+6. **(Optional) Cross-Python smoke:** Run `uv run --python 3.11 tox` to test across Python versions, including 3.10.
 7. **Commit + push:** `git commit -m "feat: add better tool call helper"` followed by `git push origin <branch>`.
 
 ## Pull request checklist

@@ -37,7 +37,7 @@ dev = [
     "datamodel-code-generator==0.92.0",
     "pytest>=7.2.0",
     "pytest-asyncio>=0.21.0",
-    "tox-uv>=1.11.3",
+    "tox-uv>=1.11.3; python_version >= '3.11'",
     "deptry>=0.23.0",
     "ty>=0.0.1a16",
     "ruff>=0.11.5",
