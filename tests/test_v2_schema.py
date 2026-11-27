@@ -224,6 +224,18 @@ def test_config_options_reject_duplicate_ids_and_malformed_boolean_values() -> N
         schema.NewSessionRequest.model_validate({"cwd": "/work", "configOptions": [option, option]})
     with pytest.raises(ValidationError):
         schema.NewSessionRequest.model_validate({"cwd": "/work", "configOptions": [{**option, "value": "true"}]})
+    for request_model, base in (
+        (schema.NewSessionRequest, {"cwd": "/work"}),
+        (schema.ForkSessionRequest, {"sessionId": "s", "cwd": "/work"}),
+        (schema.ResumeSessionRequest, {"sessionId": "s", "cwd": "/work"}),
+    ):
+        with pytest.raises(ValidationError, match="explicit 'type'"):
+            request_model.model_validate({**base, "configOptions": [{"configId": "x", "value": "x"}]})
+    constructed = schema.NewSessionRequest(
+        cwd="/work",
+        config_options=[schema.InitialIdConfigOption(config_id="model", value="fast")],
+    )
+    assert constructed.config_options == [schema.InitialIdConfigOption(config_id="model", value="fast")]
 
 
 def test_version_error_requires_typed_data_and_other_errors_preserve_opaque_data() -> None:

@@ -230,6 +230,18 @@ class MethodParamsModel(BaseModel):
 
 
 class InitialConfigRequestModel(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_config_option_tags(cls, value: Any) -> Any:
+        if not isinstance(value, dict):
+            return value
+        options = value.get("configOptions", value.get("config_options"))
+        if isinstance(options, list | tuple):
+            for option in options:
+                if isinstance(option, dict) and "type" not in option:
+                    raise ValueError("configOptions entries require an explicit 'type' field")
+        return value
+
     @model_validator(mode="after")
     def _validate_config_ids(self) -> InitialConfigRequestModel:
         options = self.__dict__.get("config_options", ())
