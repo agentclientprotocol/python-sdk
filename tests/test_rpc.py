@@ -692,7 +692,7 @@ async def test_session_additional_directories_roundtrip(server):
     await client_side.new_session(cwd="/workspace", additional_directories=directories)
     await client_side.load_session(cwd="/workspace", session_id="sess", additional_directories=directories)
     await client_side.list_sessions(cwd="/workspace")
-    await client_side.fork_session(cwd="/workspace", session_id="sess", additional_directories=directories)
+    await client_side.fork_session("sess", "/workspace", directories)
     await client_side.resume_session(cwd="/workspace", session_id="sess", additional_directories=directories)
 
     assert agent.calls == {
