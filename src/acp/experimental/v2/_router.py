@@ -76,7 +76,7 @@ class MethodRouter:
 
     async def _handle_extension(self, method: str, params: Any, is_notification: bool) -> Any:
         handler_name = "handle_extension_notification" if is_notification else "handle_extension_request"
-        handler = getattr(self._target, handler_name, None)
+        handler = self._handler(handler_name)
         if handler is None:
             if is_notification:
                 return None

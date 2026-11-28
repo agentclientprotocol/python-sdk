@@ -4,6 +4,7 @@ import asyncio
 import json
 import socket
 from typing import Any
+from unittest.mock import patch
 
 import pytest
 from pydantic import ValidationError
@@ -126,14 +127,26 @@ class SessionAgent(Agent):
         )
 
 
-class ExtensionClient:
+class ExtensionClient(v2.Client):
+    def __init__(self) -> None:
+        self.notifications: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+    def on_connect(self, conn: v2.ClientSideConnection) -> None:
+        self.connection = conn
+
     async def handle_extension_request(self, method: str, params: Any) -> Any:
         return {"method": method, "params": params}
 
+    async def handle_extension_notification(self, method: str, params: Any) -> None:
+        await self.notifications.put((method, params))
 
-class ExtensionAgent:
+
+class ExtensionAgent(v2.Agent):
     def __init__(self) -> None:
         self.notifications: asyncio.Queue[tuple[str, Any]] = asyncio.Queue()
+
+    def on_connect(self, conn: v2.AgentSideConnection) -> None:
+        self.connection = conn
 
     async def initialize(
         self, protocol_version: int, info: v2.schema.Implementation, **kwargs: Any
@@ -145,6 +158,9 @@ class ExtensionAgent:
 
     async def handle_extension_request(self, method: str, params: Any) -> Any:
         return {"method": method, "params": params}
+
+    async def handle_extension_notification(self, method: str, params: Any) -> None:
+        await self.notifications.put((method, params))
 
     async def cancel_session(self, session_id: str, **kwargs: Any) -> None:
         notification = v2.schema.CancelSessionNotification(session_id=session_id, **kwargs)
@@ -417,10 +433,13 @@ def test_v2_public_entry_point_is_explicit() -> None:
 async def test_extension_and_notification_names_are_explicit() -> None:
     client_transport, agent_transport = memory_transport_pair()
     agent = ExtensionAgent()
+    client = ExtensionClient()
     agent_connection = v2.AgentSideConnection(agent, agent_transport)
-    client_connection = v2.ClientSideConnection(ExtensionClient(), client_transport)
+    client_connection = v2.ClientSideConnection(client, client_transport)
 
     try:
+        assert agent.connection is agent_connection
+        assert client.connection is client_connection
         await client_connection.initialize(
             protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="test-client", version="1.0.0")
         )
@@ -436,6 +455,11 @@ async def test_extension_and_notification_names_are_explicit() -> None:
         with pytest.raises(ValueError, match="must start with '_'"):
             await client_connection.send_extension_request("vendor/do")
 
+        await client_connection.send_extension_notification("_vendor/event", {"value": 1})
+        await agent_connection.send_extension_notification("_vendor/event", {"value": 2})
+        assert await asyncio.wait_for(agent.notifications.get(), timeout=1) == ("_vendor/event", {"value": 1})
+        assert await asyncio.wait_for(client.notifications.get(), timeout=1) == ("_vendor/event", {"value": 2})
+
         await client_connection.cancel_session(session_id="session-1")
         await client_connection.notify_mcp(server_id="mcp-1", request_id="r", method="notifications/progress")
 
@@ -446,6 +470,29 @@ async def test_extension_and_notification_names_are_explicit() -> None:
     finally:
         await client_connection.close()
         await agent_connection.close()
+
+
+@pytest.mark.asyncio
+async def test_inherited_extension_hooks_are_unimplemented() -> None:
+    class StubAgent(v2.Agent):
+        async def initialize(
+            self, protocol_version: int, info: v2.schema.Implementation, **kwargs: Any
+        ) -> v2.schema.InitializeResponse:
+            return v2.schema.InitializeResponse(protocol_version=protocol_version, info=info)
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with (
+        v2.AgentSideConnection(StubAgent(), agent_transport),
+        v2.ClientSideConnection(Client(), client_transport) as client_connection,
+    ):
+        request = initialize_request()
+        await client_connection.initialize(protocol_version=request.protocol_version, info=request.info)
+
+        with patch.object(v2.Agent, "handle_extension_notification", autospec=True) as notification:
+            await client_connection.send_extension_notification("_vendor/event")
+            with pytest.raises(RequestError, check=lambda error: error.code == -32601):
+                await client_connection.send_extension_request("_vendor/ping")
+            notification.assert_not_called()
 
 
 @pytest.mark.asyncio
