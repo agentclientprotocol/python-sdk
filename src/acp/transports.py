@@ -104,9 +104,11 @@ async def spawn_stdio_transport(
         try:
             await asyncio.wait_for(process.wait(), timeout=shutdown_timeout)
         except asyncio.TimeoutError:
-            process.terminate()
+            with contextlib.suppress(ProcessLookupError):
+                process.terminate()
             try:
                 await asyncio.wait_for(process.wait(), timeout=shutdown_timeout)
             except asyncio.TimeoutError:
-                process.kill()
+                with contextlib.suppress(ProcessLookupError):
+                    process.kill()
                 await process.wait()

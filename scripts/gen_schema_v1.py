@@ -20,7 +20,7 @@ MODEL_NAME_MAP = {
 for variant_names in (
     variant_model_map("AgentResponse", "anyOf", "object", ("AgentResponseMessage", "AgentErrorMessage")),
     variant_model_map("ClientResponse", "anyOf", "object", ("ClientResponseMessage", "ClientErrorMessage")),
-    variant_model_map("AuthMethod", "anyOf", "allOf", ("TerminalAuthMethod", "AgentAuthMethod")),
+    variant_model_map("AuthMethod", "anyOf", "allOf", ("TerminalAuthMethod",)),
     variant_model_map("McpServer", "anyOf", "allOf", ("HttpMcpServer", "SseMcpServer", "AcpMcpServer")),
     variant_model_map(
         "SetSessionConfigOptionRequest",
