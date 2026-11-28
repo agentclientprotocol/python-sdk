@@ -253,19 +253,7 @@ class ClientSideConnection:
 
     @param_model(schema.PromptRequest)
     async def prompt(
-        self,
-        session_id: str,
-        prompt: list[
-            schema.TextContentBlock
-            | schema.ImageContentBlock
-            | schema.AudioContentBlock
-            | schema.ResourceContentBlock
-            | schema.EmbeddedResourceContentBlock
-            | schema.SkillContentBlock
-            | schema.OtherContentBlock
-        ],
-        idempotency_key: str | None = None,
-        **kwargs: Any,
+        self, session_id: str, prompt: list[schema.ContentBlock], idempotency_key: str | None = None, **kwargs: Any
     ) -> schema.PromptResponse:
         return await self._request(
             AGENT_METHODS["session_prompt"],

@@ -112,42 +112,7 @@ class AgentSideConnection:
         )
 
     @param_model(schema.UpdateSessionNotification)
-    async def session_update(
-        self,
-        session_id: str,
-        update: schema.UserMessageChunk
-        | schema.UserMessageUpdate
-        | schema.AgentMessageChunk
-        | schema.AgentMessageUpdate
-        | schema.AgentThoughtChunk
-        | schema.AgentThoughtUpdate
-        | schema.ToolCallContentChunkUpdate
-        | schema.SessionToolCallUpdate
-        | schema.SessionTerminalUpdate
-        | schema.SessionTerminalOutputChunk
-        | schema.SessionPlanUpdate
-        | schema.SessionPlanRemovedUpdate
-        | schema.AvailableCommandsUpdate
-        | schema.ConfigOptionUpdate
-        | schema.SessionInfoUpdate
-        | schema.UsageUpdate
-        | schema.SessionNotice
-        | schema.SessionCompactionUpdate
-        | schema.SessionCompactionSummaryChunk
-        | schema.SessionReplayComplete
-        | schema.SessionPromptSuggestionsUpdate
-        | schema.SessionCursorUpdate
-        | schema.SessionSubagentUpdate
-        | schema.SessionMessageUpdate
-        | schema.SessionMessageChunkUpdate
-        | schema.OtherSessionUpdate
-        | schema.RunningSessionStateUpdate
-        | schema.IdleSessionStateUpdate
-        | schema.RequiresActionSessionStateUpdate
-        | schema.UnknownSessionStateUpdate
-        | schema.OtherSessionStateUpdate,
-        **kwargs: Any,
-    ) -> None:
+    async def session_update(self, session_id: str, update: schema.SessionUpdate, **kwargs: Any) -> None:
         await self._notify(
             CLIENT_METHODS["session_update"],
             build_request(schema.UpdateSessionNotification, {"session_id": session_id, "update": update}, kwargs),

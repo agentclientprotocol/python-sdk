@@ -132,19 +132,7 @@ class Agent(Protocol):
 
     @param_model(schema.PromptRequest, method=AGENT_METHODS["session_prompt"])
     async def prompt(
-        self,
-        session_id: str,
-        prompt: list[
-            schema.TextContentBlock
-            | schema.ImageContentBlock
-            | schema.AudioContentBlock
-            | schema.ResourceContentBlock
-            | schema.EmbeddedResourceContentBlock
-            | schema.SkillContentBlock
-            | schema.OtherContentBlock
-        ],
-        idempotency_key: str | None = None,
-        **kwargs: Any,
+        self, session_id: str, prompt: list[schema.ContentBlock], idempotency_key: str | None = None, **kwargs: Any
     ) -> schema.PromptResponse: ...
 
     @param_model(schema.CancelSessionNotification, method=AGENT_METHODS["session_cancel"], kind="notification")
@@ -204,42 +192,7 @@ class Client(Protocol):
     ) -> schema.RequestPermissionResponse: ...
 
     @param_model(schema.UpdateSessionNotification, method=CLIENT_METHODS["session_update"], kind="notification")
-    async def session_update(
-        self,
-        session_id: str,
-        update: schema.UserMessageChunk
-        | schema.UserMessageUpdate
-        | schema.AgentMessageChunk
-        | schema.AgentMessageUpdate
-        | schema.AgentThoughtChunk
-        | schema.AgentThoughtUpdate
-        | schema.ToolCallContentChunkUpdate
-        | schema.SessionToolCallUpdate
-        | schema.SessionTerminalUpdate
-        | schema.SessionTerminalOutputChunk
-        | schema.SessionPlanUpdate
-        | schema.SessionPlanRemovedUpdate
-        | schema.AvailableCommandsUpdate
-        | schema.ConfigOptionUpdate
-        | schema.SessionInfoUpdate
-        | schema.UsageUpdate
-        | schema.SessionNotice
-        | schema.SessionCompactionUpdate
-        | schema.SessionCompactionSummaryChunk
-        | schema.SessionReplayComplete
-        | schema.SessionPromptSuggestionsUpdate
-        | schema.SessionCursorUpdate
-        | schema.SessionSubagentUpdate
-        | schema.SessionMessageUpdate
-        | schema.SessionMessageChunkUpdate
-        | schema.OtherSessionUpdate
-        | schema.RunningSessionStateUpdate
-        | schema.IdleSessionStateUpdate
-        | schema.RequiresActionSessionStateUpdate
-        | schema.UnknownSessionStateUpdate
-        | schema.OtherSessionStateUpdate,
-        **kwargs: Any,
-    ) -> None: ...
+    async def session_update(self, session_id: str, update: schema.SessionUpdate, **kwargs: Any) -> None: ...
 
     @param_model(
         schema.MessageMcpRequest,
