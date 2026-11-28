@@ -5,17 +5,23 @@ values must resolve to the catch-all variant while preserving the raw payload, a
 known values must still resolve to their specific typed variant.
 """
 
+from typing import get_type_hints
+
 import pytest
 from pydantic import TypeAdapter, ValidationError
 
+from acp import Client
 from acp._protocol_adapters import _mode_from_create_elicitation_request
+from acp.agent.connection import AgentSideConnection
 from acp.exceptions import RequestError
 from acp.schema import (
     AcceptElicitationResponse,
     CreateElicitationRequest,
     CreateElicitationResponse,
     CreateOtherElicitationRequest,
+    ElicitationFormSessionMode,
     ElicitationOtherPropertySchema,
+    ElicitationSchema,
     ElicitationStringPropertySchema,
     OtherElicitationResponse,
     OtherMultiSelectItems,
@@ -36,6 +42,31 @@ def test_custom_elicitation_response_falls_back_to_catchall() -> None:
     assert isinstance(parsed, OtherElicitationResponse)
     assert parsed.action == "x-snooze"
     assert parsed.model_dump(by_alias=True)["until"] == "later"
+
+
+def test_elicitation_return_annotation_matches_client() -> None:
+    client_return = get_type_hints(Client.create_elicitation)["return"]
+    assert client_return == CreateElicitationResponse
+    assert get_type_hints(AgentSideConnection.create_elicitation)["return"] == client_return
+
+
+@pytest.mark.asyncio
+async def test_custom_elicitation_response_roundtrip(connect, client, monkeypatch: pytest.MonkeyPatch) -> None:
+    expected = OtherElicitationResponse.model_validate({"action": "x-snooze", "until": "later"})
+
+    async def create_elicitation(**kwargs) -> OtherElicitationResponse:
+        return expected
+
+    monkeypatch.setattr(client, "create_elicitation", create_elicitation)
+    agent_conn, client_conn = connect(use_unstable_protocol=True)
+    async with agent_conn, client_conn:
+        response = await agent_conn.create_elicitation(
+            "Need input",
+            ElicitationFormSessionMode(session_id="sess", requested_schema=ElicitationSchema(properties={})),
+        )
+
+    assert isinstance(response, OtherElicitationResponse)
+    assert response == expected
 
 
 def test_malformed_known_variant_is_rejected_not_catchall() -> None:
