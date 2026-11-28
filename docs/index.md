@@ -4,9 +4,9 @@
 
 # Agent Client Protocol SDK (Python)
 
-Ship ACP-compatible agents and clients in Python without rebuilding JSON-RPC transports or schema models. This SDK mirrors each ACP release so your integrations stay interoperable with editors, CLIs, and hosted clients.
+Build ACP-compliant agents and clients in Python using generated Pydantic v2 models, asyncio JSON-RPC transports, and typed protocol interfaces.
 
-## Install & verify
+## Installation
 
 ```bash
 pip install agent-client-protocol
@@ -14,51 +14,36 @@ pip install agent-client-protocol
 uv add agent-client-protocol
 ```
 
-Next steps live in the [Quickstart](quickstart.md): launch the echo agent, wire it to Zed (or another ACP client), and exercise the programmatic spawn helpers.
+Install optional extras when you need remote transports or telemetry:
 
-## ACP at a glance
+```bash
+pip install "agent-client-protocol[http]"     # Streamable HTTP + WebSocket
+pip install "agent-client-protocol[logfire]"  # Logfire / OpenTelemetry
+```
 
-- ACP is the stdio protocol that lets “clients” (editors, shells, CLIs) orchestrate AI “agents.”
-- Sessions exchange structured payloads (`session/update`, permission prompts, tool calls) defined in the upstream schema.
-- Matching the schema version keeps your Python integrations compatible with tools such as Zed, Gemini CLI, or kimi-cli.
+## SDK overview
 
-## SDK building blocks
-
-- `acp.schema`: generated Pydantic models with defaults for protocol discriminator fields.
-- `acp.agent` / `acp.client`: async base classes, JSON-RPC supervision, and lifecycle orchestration.
-- `acp.contrib`: experimental utilities (session accumulators, permission brokers, tool call trackers) harvested from production deployments.
-- `examples/`: runnable agents, clients, duet demos, and the Gemini CLI bridge.
-
-## Quick links
-
-| Need | Link |
+| Module | Purpose |
 | --- | --- |
-| Quickstart walkthrough | [quickstart.md](quickstart.md) |
-| Real-world adopters | [use-cases.md](use-cases.md) |
-| Contrib helpers | [contrib.md](contrib.md) |
-| Releasing workflow | [releasing.md](releasing.md) |
-| Upgrade to 0.11 | [migration-guide-0.11.md](migration-guide-0.11.md) |
-| Example scripts | [github.com/agentclientprotocol/python-sdk/tree/main/examples](https://github.com/agentclientprotocol/python-sdk/tree/main/examples) |
+| `acp` & `acp.schema` | Stable ACP v1 runtime (`run_agent`, `connect_to_agent`, `spawn_agent_process`, `Agent`, `Client`) and generated Pydantic models (`schema-v1.35.0`) |
+| `acp.experimental.v2` | Preview ACP v2 runtime and generated models (`schema-v2.0.0-beta.4`), plus `AgentProtocolRouter` for dual-stack negotiation |
+| `acp.http` & `acp.ws` | Experimental Streamable HTTP (SSE + HTTP/2) and WebSocket client/server transports (`[http]` extra) |
+| `acp.contrib` | Experimental stateful helpers: `SessionAccumulator`, `ToolCallTracker`, and `PermissionBroker` |
 
-## Choose a path
+## Documentation guide
 
-- **Just exploring?** Skim [use-cases.md](use-cases.md) to see how kimi-cli, agent-client-kernel, and others use the SDK.
-- **Building agents?** Copy `examples/echo_agent.py` or `examples/agent.py`, then use the generated models directly. Use `acp.contrib` for permission workflows and other stateful patterns.
-- **Embedding clients?** Start with `examples/client.py` or the `spawn_agent_process` / `spawn_client_process` helpers in the [Quickstart](quickstart.md#programmatic-launch).
+- **[Quickstart](quickstart.md)** — Install the SDK, run the echo agent, connect from an ACP client, and launch processes programmatically.
+- **[Protocol Features (v1)](protocol-features.md)** — Session management, authentication, providers, notices, elicitation, stateless MCP-over-ACP, request cancellation, and extension methods.
+- **[Web Transport (HTTP & WebSocket)](web-transport.md)** — Serve and consume ACP over Streamable HTTP and WebSocket with Starlette and HTTP/2.
+- **[Experimental Protocol v2](experimental-v2.md)** — Preview v2 API, expanded handlers, patch updates, replay cursors, and dual-stack routing.
+- **[Contrib Utilities](contrib.md)** — Higher-level session state accumulators, tool call trackers, and permission brokers.
+- **[Use Cases](use-cases.md)** — Production agents and clients built with the SDK.
+- **[Testing & Conformance](testing.md)** — Local test suites, ACP TCK conformance profiles, cross-SDK interop, and real-world client/agent verification.
+- **[Releasing](releasing.md)** — Schema upgrades, verification gates, and PyPI/docs release workflow.
 
-## Reference material
+## Community
 
-- [Quickstart](quickstart.md) — installation, editor wiring, and programmatic launch walkthroughs.
-- [Use Cases](use-cases.md) — real adopters with succinct descriptions of what they build.
-- [Experimental Contrib](contrib.md) — deep dives on the `acp.contrib` utilities.
-- [Releasing](releasing.md) — schema upgrade process, versioning policy, and publishing checklist.
-- [0.11 Migration Guide](migration-guide-0.11.md) — interface signature updates, elicitation, and schema notes for 0.10 users.
-
-Need API-level details? Browse the source in `src/acp/` or generate docs with `mkdocstrings`.
-
-## Feedback & support
-
-- Open issues or discussions on GitHub for bugs, feature requests, or integration help.
-- Join [GitHub Discussions](https://github.com/agentclientprotocol/python-sdk/discussions) to swap ideas.
-- Chat with the community on [agentclientprotocol.zulipchat.com](https://agentclientprotocol.zulipchat.com/).
-- Follow ACP roadmap updates at [agentclientprotocol.com](https://agentclientprotocol.com/).
+- Issues and pull requests: [agentclientprotocol/python-sdk](https://github.com/agentclientprotocol/python-sdk)
+- Discussions: [GitHub Discussions](https://github.com/agentclientprotocol/python-sdk/discussions)
+- Community chat: [agentclientprotocol.zulipchat.com](https://agentclientprotocol.zulipchat.com/)
+- Protocol specification: [agentclientprotocol.com](https://agentclientprotocol.com/)

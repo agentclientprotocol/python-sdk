@@ -1,23 +1,28 @@
 site_name: Agent Client Protocol - Python SDK
 repo_url: https://github.com/agentclientprotocol/python-sdk
 site_url: https://agentclientprotocol.github.io/python-sdk
-site_description: A Python implement of Agent Client Protocol (ACP, by Zed Industries)
+site_description: A Python implementation of the Agent Client Protocol (ACP)
 site_author: Chojan Shang
 edit_uri: edit/main/docs/
 repo_name: agentclientprotocol/python-sdk
 copyright: Maintained by <a href="https://github.com/psiace">psiace</a>.
 
 nav:
-  - Home: index.md
-  - Quick Start: quickstart.md
-  - Use Cases: use-cases.md
-  - Web Transport (HTTP/WS): web-transport.md
-  - Experimental Protocol v2: experimental-v2.md
-  - Experimental Contrib: contrib.md
-  - Releasing: releasing.md
-  - 0.11 Migration Guide: migration-guide-0.11.md
-  - 0.7 Migration Guide: migration-guide-0.7.md
-  - 0.8 Migration Guide: migration-guide-0.8.md
+  - Overview: index.md
+  - Quickstart: quickstart.md
+  - Guides:
+      - Protocol Features (v1): protocol-features.md
+      - Web Transport (HTTP & WebSocket): web-transport.md
+      - Experimental Protocol v2: experimental-v2.md
+      - Contrib Utilities: contrib.md
+  - Ecosystem & Quality:
+      - Use Cases: use-cases.md
+      - Testing & Conformance: testing.md
+      - Releasing: releasing.md
+  - Migration Guides:
+      - 0.11 Migration Guide: migration-guide-0.11.md
+      - 0.8 Migration Guide: migration-guide-0.8.md
+      - 0.7 Migration Guide: migration-guide-0.7.md
 plugins:
   - search
   - mkdocstrings:

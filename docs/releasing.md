@@ -1,50 +1,43 @@
 # Releasing
 
-Every package release tracks an upstream ACP schema tag from [`agentclientprotocol/agent-client-protocol`](https://github.com/agentclientprotocol/agent-client-protocol). Follow this checklist to stay in lockstep.
+Package releases track pinned upstream ACP schema tags from [`agentclientprotocol/agent-client-protocol`](https://github.com/agentclientprotocol/agent-client-protocol) (`schema/VERSION` for v1 and `schema/v2/VERSION` for experimental v2).
 
-## Prep checklist
+## Preparation checklist
 
-1. **Choose the schema tag** (e.g. `schema-v1.16.0`) and regenerate artifacts:
+1. **Refresh schema bindings** when targeting a new upstream schema tag:
    ```bash
-   ACP_SCHEMA_VERSION=schema-v1.16.0 make gen-all
+   # v1 bindings
+   ACP_SCHEMA_VERSION=schema-v1.35.0 make gen-all
+
+   # Experimental v2 bindings
+   ACP_SCHEMA_VERSION=schema-v2.0.0-beta.4 make gen-v2
    ```
-   This refreshes `schema/` and the generated `src/acp/schema.py`.
-2. **Bump the SDK version** in `pyproject.toml` using a PEP 440 version string (for example `0.9.0a1` for an alpha release), and sync `uv.lock` if the lockfile is tracked.
-3. **Run the standard gates:**
+2. **Bump the SDK version** in `pyproject.toml` using a PEP 440 version string (for example `1.0.0rc3` or `1.0.0`) and update `uv.lock` if dependencies changed.
+3. **Run local verification gates:**
    ```bash
-   make check   # Ruff format/lint, type analysis, dep hygiene
-   make test    # pytest + doctests
+   make gen-check
+   make check
+   make test
+   make docs-test
    ```
-4. **Refresh docs + examples** so user-facing flows (e.g. Gemini bridge) reflect behaviour in the new schema.
+4. **Run conformance and ecosystem checks** for schema, transport, or router changes:
+   - Run the [ACP TCK](testing.md#acp-tck-conformance) profiles (v1 baseline, v2 minimal/full capability, dual-stack router).
+   - Run the [S1–S6 real-world smoke playbook](testing.md#real-world-client-and-agent-verification) against available ACP clients and agents, and include the summary in the release PR.
+5. **Update docs and examples** whenever public APIs, schema models, or transports change.
 
-## Commit & review
+## Commit and PR
 
-- Keep the diff tight: regenerated schema files, version bumps, doc updates, and any required fixture refresh (goldens, RPC tests, etc.).
-- Use a Conventional Commit such as `release: 0.9.0a1`.
-- In the PR description, capture:
-  - The ACP schema tag you targeted.
-  - Output from `make check` / `make test` (and optional Gemini tests if you ran them).
-  - Behavioural or API highlights that reviewers should focus on.
+- Use Conventional Commits (`release: 1.0.0`, `feat(schema)!: ...`, `docs: ...`).
+- Record the targeted v1/v2 schema tags, verification outputs (`make check`, `make test`, TCK verdict), and user-visible highlights in the PR description.
 
 ## Publish via GitHub Release
 
-Releases are automated by `on-release-main.yml` once the PR lands on `main`.
+Publishing is automated by `.github/workflows/on-release-main.yml`:
 
-1. Draft a GitHub Release for the new tag (the UI creates the tag if missing).
-   Use the exact package version as the tag, for example `0.9.0a1` or `0.9.0`.
-2. Publishing the release triggers the workflow, which:
-   - Syncs the tag back into `pyproject.toml`.
-   - Builds and uploads to PyPI via `uv publish` using `PYPI_TOKEN`.
-3. After `release-main` succeeds, **Publish release docs** starts on `main`. It builds the MkDocs site from the same commit as the release and deploys it to GitHub Pages. The repository's Pages source is **GitHub Actions**.
+1. Create and publish a GitHub Release on `main` whose tag matches the package version (for example `1.0.0`).
+2. The workflow syncs the version into `pyproject.toml`, builds the wheel/sdist, and publishes to PyPI via `uv publish`.
+3. Once publishing succeeds, **Publish release docs** builds the MkDocs site from the release commit and deploys it to GitHub Pages.
 
-No local build/publish steps are needed—just provide a clear release summary (highlights, compatibility notes, migration tips).
+## Republishing docs for an existing release
 
-## Republish docs for a release
-
-In **Actions → Publish release docs → Run workflow**, select the **`main`** branch and enter the published release tag (for example, `1.1.0`) in **release-tag**. The tag selects the docs to build; the deployment runs from `main`. This does not publish anything to PyPI. After deployment, check that the public quickstart matches the example at the release tag.
-
-## Extra tips
-
-- Breaking schema bumps often mean updating `tests/test_golden.py`, `tests/test_rpc.py`, and any examples touched by new fields.
-- Use `make clean` if you need a fresh slate before re-running `make gen-all`.
-- When available, run the Gemini smoke test (`ACP_ENABLE_GEMINI_TESTS=1`, set `ACP_GEMINI_BIN`) to catch regressions early.
+Open **Actions → Publish release docs → Run workflow**, select the `main` branch, and enter the published release tag in `release-tag`. The workflow rebuilds and deploys documentation for that tag to GitHub Pages.

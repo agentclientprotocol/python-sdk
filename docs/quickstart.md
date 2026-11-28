@@ -1,26 +1,13 @@
 # Quickstart
 
-Spin up a working ACP agent/client loop in minutes. Keep this page beside the terminal and check off each section as you go. Want inspiration? Hop to the [Use Cases](use-cases.md) list to see how teams like kimi-cli or Zed apply the SDK in production.
+Launch a working ACP agent and client in minutes.
 
-## Quick checklist
+## Prerequisites
 
-| Goal                                | Command / Link                                                        |
-| ----------------------------------- | --------------------------------------------------------------------- |
-| Install the SDK                     | `pip install agent-client-protocol` or `uv add agent-client-protocol` |
-| Run the echo agent                  | `python examples/echo_agent.py`                                       |
-| Point Zed (or another client) at it | Update `settings.json` as shown below                                 |
-| Programmatically drive an agent     | Copy the `spawn_agent_process` example                                |
-| Run tests before hacking further    | `make check && make test`                                             |
+- Python 3.10–3.15 with `pip` or `uv`
+- An ACP client (such as Zed, Toad, Lody, or T3 Code) or the SDK's programmatic client helpers
 
-## Before you begin
-
-- Python 3.10–3.14 with `pip` or `uv`
-- An ACP-capable client such as Zed (recommended for validation)
-- Optional: the Gemini CLI (`gemini --acp`; use `--experimental-acp` for older versions) for the bridge example
-
-## Step 1 — Install the SDK
-
-_Install the library from PyPI or add it to your uv workspace._
+## 1. Install the SDK
 
 ```bash
 pip install agent-client-protocol
@@ -28,39 +15,21 @@ pip install agent-client-protocol
 uv add agent-client-protocol
 ```
 
-## Step 2 — Launch the Echo agent
+## 2. Run the echo agent
 
-_Run the provided streaming agent so clients have something to talk to._
-
-Start the ready-made echo example; it streams text blocks back to any ACP client. Leave it running in a terminal:
+`examples/echo_agent.py` implements a minimal streaming agent over stdio:
 
 ```bash
 python examples/echo_agent.py
 ```
 
-## Step 3 — Connect from an ACP-aware client
+The process reads newline-delimited JSON-RPC frames from `stdin` and writes responses and `session/update` notifications to `stdout`.
 
-_Point a client at the script and confirm you can exchange streamed updates._
+## 3. Connect from an ACP client
 
 ### Zed
 
-Add an Agent Server entry in `settings.json` (Zed → Settings → Agents panel):
-
-```json
-{
-  "agent_servers": {
-    "Echo Agent (Python)": {
-      "type": "custom",
-      "command": "/abs/path/to/python",
-      "args": [
-        "/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py"
-      ]
-    }
-  }
-}
-```
-
-Or, if using `uv`:
+Add an entry to Zed's `settings.json`:
 
 ```json
 {
@@ -70,22 +39,22 @@ Or, if using `uv`:
       "command": "uv",
       "args": [
         "run",
-        "/abs/path/to/agentclientprotocol/python-sdk/examples/echo_agent.py"
+        "/abs/path/to/python-sdk/examples/echo_agent.py"
       ]
     }
   }
 }
 ```
 
-Open the Agents panel and start the session. Each message you send should be echoed back via streamed `session/update` notifications.
+Open the Agents panel, select **Echo Agent (Python)**, and send a message to observe streamed `session/update` responses.
 
-### Other clients
+### Other stdio clients
 
-Any ACP client that communicates over stdio can spawn the same script; no additional transport configuration is required.
+Any ACP-compatible stdio client (including Toad, Lody, and T3 Code) can launch the same command and arguments directly.
 
 ### Programmatic launch
 
-Prefer to drive agents directly from Python? The `spawn_agent_process` helper wires stdio and lifecycle management for you:
+Use `spawn_agent_process` to start an agent subprocess, attach stdio framing, and close both the connection and subprocess on exit:
 
 ```python
 import asyncio
@@ -93,18 +62,15 @@ import sys
 from pathlib import Path
 from typing import Any
 
-from acp import PROTOCOL_VERSION, spawn_agent_process
-from acp.interfaces import Client
+from acp import PROTOCOL_VERSION, Client, spawn_agent_process
 from acp.schema import TextContentBlock
 
 
 class SimpleClient(Client):
-    async def request_permission(
-        self, session_id, tool_call, options, **kwargs: Any
-    ):
+    async def request_permission(self, session_id: str, tool_call: Any, options: list[Any], **kwargs: Any) -> Any:
         return {"outcome": {"outcome": "cancelled"}}
 
-    async def session_update(self, session_id, update, **kwargs):
+    async def session_update(self, session_id: str, update: Any, **kwargs: Any) -> None:
         print("update:", session_id, update)
 
 
@@ -118,248 +84,72 @@ async def main() -> None:
             prompt=[TextContentBlock(text="Hello from spawn!")],
         )
 
+
 asyncio.run(main())
 ```
 
-`spawn_agent_process` manages the child process, wires its stdio into ACP framing, and closes everything when the block exits. The mirror helper `spawn_client_process` lets you drive an ACP client from Python as well.
+`spawn_client_process` provides the corresponding helper for spawning an ACP client subprocess from an agent.
 
-## Step 4 — Extend the agent
+## 4. Build a custom agent
 
-_Swap the echo demo for your own `Agent` subclass._
-
-Create your own agent by subclassing `acp.Agent`. The pattern mirrors the echo example:
+Subclass `acp.Agent`, implement the methods your agent supports, and start the stdio loop with `acp.run_agent()`:
 
 ```python
-from acp import Agent, PromptResponse
+import asyncio
+from typing import Any
+from uuid import uuid4
+
+from acp import PROTOCOL_VERSION, Agent, InitializeResponse, NewSessionResponse, PromptResponse, run_agent
+from acp.interfaces import Client
+from acp.schema import AgentMessageChunk, TextContentBlock
 
 
 class MyAgent(Agent):
-    async def prompt(self, session_id, prompt, **kwargs) -> PromptResponse:
-        # inspect prompt, stream updates, then finish the turn
+    def on_connect(self, conn: Client) -> None:
+        self._conn = conn
+
+    async def initialize(self, protocol_version: int, **kwargs: Any) -> InitializeResponse:
+        return InitializeResponse(protocol_version=PROTOCOL_VERSION)
+
+    async def new_session(self, cwd: str, **kwargs: Any) -> NewSessionResponse:
+        return NewSessionResponse(session_id=uuid4().hex)
+
+    async def prompt(self, session_id: str, prompt: list[Any], **kwargs: Any) -> PromptResponse:
+        await self._conn.session_update(
+            session_id=session_id,
+            update=AgentMessageChunk(content=TextContentBlock(text="Hello!")),
+        )
         return PromptResponse(stop_reason="end_turn")
+
+
+if __name__ == "__main__":
+    asyncio.run(run_agent(MyAgent()))
 ```
 
-Run it with `run_agent()` inside an async entrypoint and wire it to your client. Refer to:
-
-- [`examples/echo_agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/echo_agent.py) for the smallest streaming agent
-- [`examples/agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/agent.py) for an implementation that negotiates capabilities and streams richer updates
-- [`examples/duet.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py) to see `spawn_agent_process` in action alongside the interactive client
-- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) to drive the Gemini CLI (`--acp`; use `--experimental-acp` for older versions) directly from Python
-
-Generated models provide defaults for discriminator fields such as `type` and
-`sessionUpdate`, so they can be constructed directly:
+Generated schema models provide defaults for discriminator fields such as `type` and `sessionUpdate`, enabling direct construction:
 
 ```python
 from acp.schema import AgentMessageChunk, TextContentBlock
 
-update = AgentMessageChunk(
-    content=TextContentBlock(text="File opened."),
-)
+update = AgentMessageChunk(content=TextContentBlock(text="File opened."))
 ```
 
-## Session notices (unstable)
+Handlers and connection methods accept expanded snake_case parameters, with additional keyword arguments serialized as request `_meta`.
 
-The v1 bindings use `schema-v1.24.1`. Clients that can display live advisory
-notices advertise `ClientCapabilities(session=ClientSessionCapabilities(notices=NoticeCapabilities()))`
-in `initialize`; these models are available from `acp.schema`.
+## Runnable examples
 
-After checking that capability, agents can send a notice:
-
-```python
-from acp.schema import SessionUpdateNotice
-
-await client.session_update(
-    session_id=session_id,
-    update=SessionUpdateNotice(
-        severity="warning",
-        title="Context is nearly full",
-        description="Start a new session soon.",
-    ),
-)
-```
-
-Notices are live events, outside session history. The title must be non-empty;
-severity accepts `info`, `warning`, `error`, and custom or future strings.
-Agents must only send notices to clients that advertise support.
-
-Tool calls now expose the stable `name` field. Terminal authentication methods
-are available as `TerminalAuthMethod`, replacing the incorrect `EnvVarAuthMethod`
-name. Accepted elicitation content validates scalar values and string lists;
-nested objects are not valid form values.
-
-## Additional v1 protocol methods
-
-The SDK exposes all agent and client methods in the bundled `schema-v1.24.1`
-method tables. `session/delete` and `logout` are stable and do not require
-`use_unstable_protocol=True`. The other methods in the table below are unstable;
-enable that flag on the receiving connection (or `run_agent`) to route them.
-Check the peer's advertised capabilities before calling these methods.
-
-| Wire method | Python method | Receiver |
-| --- | --- | --- |
-| `session/delete` | `delete_session(session_id=...)` | Agent |
-| `providers/list`, `providers/set`, `providers/disable` | `list_providers`, `set_provider`, `disable_provider` | Agent |
-| `logout` | `logout()` | Agent |
-| `session/archive`, `session/unarchive` | `archive_session`, `unarchive_session` | Agent |
-| `session/status`, `session/options`, `session/set_title` | `session_status`, `session_options`, `set_session_title` | Agent |
-| `auth/status` | `auth_status()` | Agent |
-| `auth/status_update` (notification) | `auth_status_update` | Client |
-| `mcp/message` (request) | `mcp_message` | Client/provider |
-| `mcp/message` (notification) | `notify_mcp` | Agent |
-
-For example, an agent that advertises session deletion implements:
-
-```python
-from acp import DeleteSessionResponse
-
-async def delete_session(self, session_id: str, **kwargs) -> DeleteSessionResponse:
-    await self.session_store.delete(session_id)
-    return DeleteSessionResponse()
-```
-
-A client then calls `await connection.delete_session(session_id=session_id)`.
-Deletion removes stored session data; `close_session` only closes the active
-session. The SDK dispatches these calls to your implementation; it does not
-provide session storage or provider management itself. Missing request handlers
-return the JSON-RPC method-not-found error.
-
-## Stateless MCP-over-ACP
-
-The unstable native binding targets **MCP 2026-07-28**. A provider advertises an
-`AcpMcpServer(name=..., server_id=...)` in session setup after checking the
-agent's `mcpCapabilities.acp` capability. Register the provider's handler before
-publishing the declaration: the agent may call it before session setup returns.
-There is no MCP initialization or connect/disconnect exchange.
-
-An agent calls its connection's `mcp_message`; the client/provider implements
-that handler. Supply a fresh string `request_id` for every operation, including
-an interactive-tool retry. This logical MCP ID is separate from the outer ACP
-JSON-RPC request ID. Include the required MCP metadata in the inner parameters:
-
-```python
-from uuid import uuid4
-from acp import McpErrorResponse
-
-response = await connection.mcp_message(
-    server_id="project-tools",
-    request_id=uuid4().hex,
-    method="tools/list",
-    params={
-        "_meta": {
-            "io.modelcontextprotocol/protocolVersion": "2026-07-28",
-            "io.modelcontextprotocol/clientCapabilities": {},
-        },
-    },
-    trace="outer ACP metadata",
-)
-if isinstance(response, McpErrorResponse):
-    handle_mcp_error(response.error)
-else:
-    use_mcp_result(response.result)
-```
-
-Providers return `McpResultResponse(result=...)` or
-`McpErrorResponse(error=McpError(code=..., message=...))`. Results are opaque JSON,
-including explicit `null`, tool errors with `isError`, and interactive
-`input_required` results. Error data preserves omission versus explicit null,
-and unknown inner error fields survive. Outer ACP failures raise `RequestError`;
-an inner MCP error, even code `-32000`, remains inside the response carrier.
-Send exactly one outcome; receivers prefer `result` if both keys are received.
-
-The provider sends `notify_mcp(server_id=..., request_id=..., method=..., params=...)`
-for an active request; the agent implements `notify_mcp` to receive it. Keep the
-same server and logical request IDs and stop notifications before sending the
-final outcome. Consumers must correlate notifications with active operations
-and ignore unknown or completed ones. There are no provider-originated MCP requests.
-
-The SDK provides typed envelopes and routing. Applications own server registrations,
-MCP metadata/version validation, duplicate-active-ID rejection, operation admission,
-and notification lifetimes. They also decide how to handle interactive input;
-retry with fresh IDs and preserve opaque request state. Cancelling the task awaiting
-`mcp_message` uses the existing ACP cancellation mechanism described below.
-These methods work over stdio, HTTP, and WebSocket ACP connections.
-
-**Migration:** `connect_mcp`, `disconnect_mcp`, and `connection_id` are removed.
-Replace them with server-addressed requests carrying `server_id` and `request_id`,
-add per-request MCP metadata, and wrap handler outcomes in the typed carrier.
-Older MCP revisions and the connection-oriented prototype are not supported.
-
-Run `uv run python examples/mcp_over_acp.py` for a local request/progress example.
-See the [upstream binding specification](https://agentclientprotocol.com/rfds/mcp-over-acp)
-for registration, subscription, and error-code requirements.
-
-## Request cancellation
-
-Connections handle the protocol's `$/cancel_request` notification. When the
-peer cancels one of its requests, the SDK cancels the task running your handler.
-The handler may catch `asyncio.CancelledError` and return a (partial) result;
-otherwise the peer receives a `-32800` "Request cancelled" error. Cancellations
-for unknown or already finished requests are ignored; a cancelled request still
-gets exactly one response unless the connection is closed first.
-
-Cancelling the task that awaits an outgoing request (for example through
-`asyncio.wait_for`) still raises `CancelledError` locally without waiting for the
-peer, and additionally sends a best-effort `$/cancel_request` for that request.
-Cancellation support is optional for peers. Use `session/cancel` to stop a
-prompt turn.
-
-## Maintaining protocol routes
-
-The `Agent` and `Client` protocols in `src/acp/interfaces.py` are the source of
-truth for incoming routes. Declare routing metadata alongside each method's
-parameter model:
-
-```python
-@param_model(
-    DeleteSessionRequest,
-    method=AGENT_METHODS["session_delete"],
-    adapt_result=normalize_result,
-)
-async def delete_session(self, session_id: str, **kwargs: Any) -> DeleteSessionResponse: ...
-```
-
-`build_agent_router` and `build_client_router` read these declarations through
-`MessageRouter.from_protocol`. New protocol declarations automatically become
-routes; implementation-only methods are not exposed. Use `kind="notification"`
-for notifications and `unstable=True` for methods requiring explicit opt-in.
-Optional handlers can declare `optional=True` and `default_result`.
-
-`param_model` takes exactly one type expression: a model, a union such as
-`ModelA | ModelB`, or `Annotated[ModelA | ModelB, Field(discriminator="type")]`.
-The router validates the original type with Pydantic's `TypeAdapter`, preserving
-`Annotated` validation metadata. Union handlers receive the fields common to all
-branches by default. The former `param_models(A, B, ...)` form is replaced by
-`param_model(A | B, ...)`.
-
-`validate_params` and `adapt_params` provide custom validation and conversion
-when the wire representation differs from the Python signature, as with config
-options and elicitation. Legacy handlers still receive the validated request
-model. Signature generation expands single-model fields and preserves handwritten
-union signatures. Connection methods retain model-only decorators for signature generation
-and legacy calls; they do not repeat the routing options.
-
-## Optional — Talk to the Gemini CLI
-
-_Have the Gemini CLI installed? Run the bridge to exercise permission flows._
-
-If you have the Gemini CLI installed and authenticated:
-
-```bash
-python examples/gemini.py --skip-trust --yolo   # auto-approve permission prompts
-python examples/gemini.py --skip-trust --sandbox --model gemini-1.5-pro
-```
-
-Environment helpers:
-
-- `ACP_GEMINI_BIN` — override the CLI path (defaults to `PATH` lookup)
-- `ACP_GEMINI_TEST_ARGS` — extra flags forwarded during the smoke test
-- `ACP_ENABLE_GEMINI_TESTS=1` — opt-in toggle for `tests/test_gemini_example.py`
-
-Authentication hiccups (e.g. missing `GOOGLE_CLOUD_PROJECT`) are surfaced but treated as skips during testing so the suite stays green on machines without credentials.
+- [`examples/echo_agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/echo_agent.py) — minimal streaming agent
+- [`examples/agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/agent.py) — agent with capability negotiation and richer updates
+- [`examples/client.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/client.py) — interactive stdio client
+- [`examples/duet.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py) — in-process client/agent pairing with `spawn_agent_process`
+- [`examples/mcp_over_acp.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/mcp_over_acp.py) — stateless MCP-over-ACP exchange
+- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) — bridge to the Gemini CLI (`gemini --acp`)
+- [`examples/http_server.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/http_server.py), [`examples/http_client.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/http_client.py), [`examples/ws_client.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/ws_client.py) — Streamable HTTP and WebSocket demos
 
 ## Next steps
 
-- Compare what you built with the real integrations listed on the [Use Cases](use-cases.md) page.
-- Explore `docs/contrib.md` for higher-level utilities like session accumulators and permission brokers.
-- Run `make check` / `make test` before committing changes, and regenerate schema artifacts with `make gen-all` when ACP versions advance.
-- Need help? Start a thread in [GitHub Discussions](https://github.com/agentclientprotocol/python-sdk/discussions) or chat with other ACP developers at [agentclientprotocol.zulipchat.com](https://agentclientprotocol.zulipchat.com/).
+- Explore v1 capabilities in [Protocol Features (v1)](protocol-features.md).
+- Serve agents remotely with [Web Transport (HTTP & WebSocket)](web-transport.md).
+- Try the preview protocol in [Experimental Protocol v2](experimental-v2.md).
+- Reuse stateful UI/agent helpers from [Contrib Utilities](contrib.md).
+- Validate integrations with [Testing & Conformance](testing.md).

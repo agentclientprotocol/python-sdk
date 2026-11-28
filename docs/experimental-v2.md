@@ -1,27 +1,24 @@
 # Experimental Protocol v2
 
-> **Experimental.** Protocol v2 is in preview. Import it from `acp.experimental`
-> and expect its API and generated models to change with the upstream schema.
+> **Preview.** Protocol v2 lives under `acp.experimental` and tracks upstream beta releases. Its API and generated models evolve alongside the v2 specification.
 
-The bindings use [`schema-v2.0.0-beta.4`](https://github.com/agentclientprotocol/agent-client-protocol/releases/tag/schema-v2.0.0-beta.4).
-The upstream schema removes Next Edit Suggestions (`nes/*`) and the associated
-document notifications from v2.
+The v2 bindings target [`schema-v2.0.0-beta.4`](https://github.com/agentclientprotocol/agent-client-protocol/releases/tag/schema-v2.0.0-beta.4). Connection methods and agent/client handlers accept expanded snake_case parameters, responses and nested payloads use `acp.experimental.v2.schema` models, and extra keyword arguments serialize into `_meta`.
 
-The v2 runtime is separate from the stable v1 API. Like v1, connection methods
-and agent/client handlers accept expanded, snake-case parameters. Responses and
-nested values (content blocks, updates, capabilities) use `v2.schema` models.
-Extra keyword arguments carry request `_meta`.
+## Client usage
 
-Install update handlers before opening a session because updates are independent
-connection traffic:
+Register your `session_update` handler before opening a session so incoming updates are captured as soon as session traffic starts:
 
 ```python
 from typing import Any
 from acp.experimental import v2
 
+
 class MyClient(v2.Client):
     async def session_update(
-        self, session_id: str, update: v2.schema.SessionUpdate, **kwargs: Any,
+        self,
+        session_id: str,
+        update: v2.schema.SessionUpdate,
+        **kwargs: Any,
     ) -> None:
         handle_update(session_id, update)
 
@@ -38,9 +35,15 @@ accepted = await connection.prompt(
 )
 ```
 
-Implement an agent with the same expanded handler style:
+## Agent usage
+
+Implement the methods your agent supports (subclassing `v2.Agent` is optional) and start serving with `v2.run_agent()`:
 
 ```python
+from typing import Any
+from acp.experimental import v2
+
+
 class MyAgent(v2.Agent):
     async def initialize(
         self,
@@ -68,65 +71,44 @@ class MyAgent(v2.Agent):
 await v2.run_agent(MyAgent())
 ```
 
-`v2.Agent` and `v2.Client` describe the v2 handler signatures; subclassing is
-optional. Implement only the methods you support. Unimplemented requests return
-method-not-found, and unimplemented notifications are ignored. The v2 protocols
-are separate from v1 because initialization, prompt responses, permissions, and
-session updates have different contracts. Both versions use `param_model`
-metadata to derive their routes. V2 retains strict request/response validation
-and requires successful initialization before other traffic.
+Unimplemented request handlers return JSON-RPC method-not-found (`-32601`), and unimplemented notifications are ignored. V2 connections require a successful `initialize` handshake before processing other methods and enforce strict request/response validation.
 
-Previously, v2 methods accepted a whole request model. Replace
-`connection.new_session(v2.schema.NewSessionRequest(cwd="/workspace"))` with
-`connection.new_session(cwd="/workspace")`, and expand handler parameters likewise.
+## Union requests
 
-Union requests also use expanded parameters:
+Config options and elicitation requests use expanded parameters:
 
 ```python
+# `type` defaults to "boolean" for bool values and "id" otherwise.
 await connection.set_config_option(config_id="thinking", session_id=session.session_id, value=True)
-# type defaults to "boolean" for bool values and "id" otherwise.
 await connection.set_config_option(
-    config_id="vendor/limit", session_id=session.session_id, value=10, type="vendor/number",
+    config_id="vendor/limit",
+    session_id=session.session_id,
+    value=10,
+    type="vendor/number",
 )
+
 await agent_connection.create_elicitation(
-    message="Sign in", mode="url", session_id=session.session_id,
-    elicitation_id="sign-in-1", url="https://example.com/login",
+    message="Sign in",
+    mode="url",
+    session_id=session.session_id,
+    elicitation_id="sign-in-1",
+    url="https://example.com/login",
 )
 ```
 
-For elicitation, pass either `session_id` for session scope or a string or integer
-`request_id` for request scope. Pass `requested_schema` for form mode,
-or `elicitation_id` and `url` for URL mode. Handlers receive the validated
-branch's fields, including `type` for config options and `mode` for elicitation.
+For `create_elicitation`, pass `session_id` for session scope or a string/integer `request_id` for request scope. Pass `requested_schema` for form mode, or `elicitation_id` and `url` for URL mode. Accepted elicitation content preserves scalars, string lists, and custom JSON values.
 
-`session/prompt` returns after the agent inserts the user message into the ACP
-conversation, without waiting for processing to finish. Callers can pass a
-bounded `idempotency_key` (1–255 characters) so retries of the same submission
-return the original `message_id` instead of inserting a duplicate. The response
-requires a non-null `message_id`. Agents return `v2.schema.PromptResponse(message_id=...)`
-and echo the user message in a `UserMessageUpdate` or `UserMessageChunk` carrying
-the same ID. That update may arrive before or after the response; use
-`accepted.message_id` to match it. Other session updates are independent traffic
-and do not carry a prompt identifier.
+## Prompts, updates, notices, and replay
 
-Agents can send `v2.schema.SessionNotice(severity="warning", title="Context is nearly full")`
-with `await agent_connection.session_update(session_id=session_id, update=notice)`. V2 notices require no client capability and
-are live advisory events, outside retained session history. Clients may ignore
-them. Titles must be non-empty, and severity also accepts custom or future strings.
+- **Prompt submission**: `session/prompt` returns `PromptResponse(message_id=...)` once the user message is accepted into the conversation, allowing independent streaming updates. Pass `idempotency_key` (1–255 characters) so retried submissions return the original `message_id`. Agents echo the user message in a `UserMessageUpdate` or `UserMessageChunk` carrying `accepted.message_id`.
+- **Session notices**: Agents can emit live advisory events via `v2.schema.SessionNotice(severity="warning", title="Context is nearly full")` with `agent_connection.session_update(...)`. Titles must be non-empty; severity accepts standard and custom string values.
+- **Patch semantics**: In patch updates such as `SessionToolCallUpdate` and `SessionTerminalUpdate`, omit a field to leave its current value unchanged, or pass `None` to clear it. Call `update.model_dump(by_alias=True, exclude_unset=True)` to preserve that distinction when applying patches.
+- **Replay on resume**: Pass `replay_from=v2.schema.ReplayFromStartVariant()` to `connection.resume_session(...)` to request retained conversation history.
+- **Reusable union aliases**: `v2.schema` exports `SessionUpdate`, `ContentBlock`, `StateUpdate`, `BackgroundWork`, and `AvailableCommand` for type annotations and validation.
 
-For patch fields in session updates, omit a field to leave its current
-value unchanged, or explicitly pass `None` to clear it. For example,
-`v2.schema.SessionToolCallUpdate(tool_call_id="tool-1", name=None)` clears the
-tool name, while omitting `name` leaves it unchanged. This also applies to
-terminal updates and patch metadata. When applying received patches, use
-`update.model_dump(by_alias=True, exclude_unset=True)` to retain that distinction.
+## Dual-stack v1/v2 negotiation
 
-Setting `replay_from=v2.schema.ReplayFromStartVariant()` on `connection.resume_session(...)`
-requests all retained conversation history; agents need not retain every message.
-Accepted elicitation content preserves scalar values, string lists, and any
-custom or extension JSON values.
-
-Agents that serve both versions use `AgentProtocolRouter`:
+Use `AgentProtocolRouter` to serve both protocol versions on the same endpoint (stdio, HTTP, or WebSocket):
 
 ```python
 from acp.experimental import AgentProtocolRouter
@@ -138,35 +120,19 @@ router = AgentProtocolRouter(
 await router.run()
 ```
 
-The selected factory is called once per connection. Return a fresh agent from
-each call to avoid sharing connection state.
+The selected factory runs once per connection and should return a fresh agent instance. When an agent configured with v1 receives a v2 `initialize` request, the router translates the common initialization fields and negotiates down to v1; once negotiated, the connection enforces the selected protocol version strictly.
 
-Extension method names are explicit and must include the protocol-required `_`
-prefix:
+## Extension methods and cancellation
+
+Extension method names carry the protocol-required `_` prefix:
 
 ```python
 result = await connection.send_extension_request("_vendor/method", {"value": 1})
 await connection.send_extension_notification("_vendor/event", {"value": 1})
 ```
 
-The selected runtime remains strict after initialization: v1 messages are not
-accepted by a v2 connection, and v2 messages are not translated into v1 calls.
-Only the initial v2 request is reduced to the common v1 initialization fields
-when an agent selects v1.
-
-Client-side fallback is application controlled and may require opening a new
-transport. Protocol-level request cancellation (`$/cancel_request`) is handled
-by the shared connection layer, as in v1: cancelling the task awaiting a request
-sends a best-effort cancellation to the peer, and an incoming cancellation
-cancels the handler task, which answers with its result or `-32800`.
-`session/cancel` remains available for cancelling active session work.
+Protocol-level request cancellation (`$/cancel_request`) cancels the running handler task (answering with its return value if caught, or `-32800` otherwise), and cancelling a task awaiting an outgoing request sends a best-effort `$/cancel_request`. Use `connection.cancel_session(session_id=...)` to stop active session work.
 
 ## Stateless MCP-over-ACP
 
-V2 uses the same [stateless MCP binding](quickstart.md#stateless-mcp-over-acp)
-as v1. Use the independent `v2.schema.McpResultResponse`, `McpErrorResponse`,
-`McpError`, and `MessageMcpResponse` types. The agent advertises support with
-`capabilities.session.mcp.acp = {}`; omission or null does not advertise support.
-After ACP initialization, agents send `mcp_message` requests and providers send
-`notify_mcp` notifications with explicit `server_id` and `request_id` strings.
-The old MCP connect/disconnect methods and reverse requests are removed.
+V2 uses the same [stateless MCP binding](protocol-features.md#stateless-mcp-over-acp) with `v2.schema.McpResultResponse`, `McpErrorResponse`, `McpError`, and `MessageMcpResponse`. Agents advertise support via `capabilities.session.mcp.acp = {}`, send `mcp_message` requests with explicit `server_id` and `request_id` strings, and receive provider notifications through `notify_mcp`.
