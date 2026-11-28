@@ -10,9 +10,13 @@ from acp._deserialize import empty_list_on_null, skip_invalid_items, use_default
 from acp.experimental.v2._schema_base import (
     BaseModel,
     ElicitationContent,
+    ElicitationRequestScopeModel,
+    ElicitationSessionScopeModel,
     IdleStateUpdateModel,
-    InitialConfigRequestModel,
-    SessionConfigSelectModel,
+    TitledMultiSelectItemsModel,
+    validate_initial_config_options,
+    validate_mcp_tool_call_id,
+    validate_select_options,
 )
 from pydantic import (
     AnyUrl,
@@ -296,7 +300,7 @@ class CreateUrlElicitationRequestBase(BaseModel):
     mode: Literal["url"] = "url"
 
 
-class ElicitationSessionScope(BaseModel):
+class ElicitationSessionScope(ElicitationSessionScopeModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The session this elicitation is tied to.
@@ -315,7 +319,7 @@ class ElicitationSessionScope(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class ElicitationRequestScope(BaseModel):
+class ElicitationRequestScope(ElicitationRequestScopeModel):
     request_id: Annotated[Union[int, str], Field(alias="requestId")]
     """
     The pending Client-to-Agent request this elicitation is tied to.
@@ -587,7 +591,7 @@ class StringMultiSelectItemsBase(BaseModel):
     """
 
 
-class TitledMultiSelectItems(BaseModel):
+class TitledMultiSelectItems(TitledMultiSelectItemsModel):
     any_of: Annotated[List[EnumOption], Field(alias="anyOf", min_length=1)]
     """
     Titled enum options. Must contain at least one option.
@@ -3641,6 +3645,11 @@ class MessageMcpRequest(BaseModel):
     def use_default_on_error_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return use_default_on_error(v, handler, info)
 
+    @field_validator("tool_call_id", mode="after")
+    @classmethod
+    def validate_mcp_tool_call_id_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return validate_mcp_tool_call_id(v, info)
+
 
 class PromptSkillCapabilities(BaseModel):
     inline: Optional[PromptSkillInlineCapabilities] = None
@@ -3970,6 +3979,11 @@ class SessionConfigSelectGroup(BaseModel):
     @classmethod
     def skip_invalid_items_validator(cls, v: Any, handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
         return skip_invalid_items(v, handler, info)
+
+    @field_validator("options", mode="after")
+    @classmethod
+    def validate_select_options_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return validate_select_options(v, info)
 
 
 class SkillCommand(Skill):
@@ -4848,7 +4862,7 @@ class ListProvidersResponse(BaseModel):
     """
 
 
-class SessionConfigSelect(SessionConfigSelectModel):
+class SessionConfigSelect(BaseModel):
     current_value: Annotated[str, Field(alias="currentValue")]
     """
     The currently selected value. MUST be one of the `value`s in `options`.
@@ -4858,6 +4872,11 @@ class SessionConfigSelect(SessionConfigSelectModel):
     The set of selectable options. MUST contain at least one value, and each `value` MUST be
     unique within the option, including across groups.
     """
+
+    @field_validator("options", mode="after")
+    @classmethod
+    def validate_select_options_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return validate_select_options(v, info)
 
 
 class SlashCommand(Command):
@@ -5517,10 +5536,25 @@ class SystemPrompt(BaseModel):
     """
 
 
-class ForkSessionRequest(InitialConfigRequestModel):
+class ForkSessionRequest(BaseModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to fork.
+    """
+    cursor_id: Annotated[Optional[str], Field(alias="cursorId")] = None
+    """
+    **UNSTABLE**
+
+    This capability is not part of the spec yet, and may be removed or changed at any point.
+
+    The session cursor to fork at. The new session's history is the source
+    session's history before the cursor.
+
+    Optional. Omitted and `null` are equivalent and fork the whole session.
+    Clients MUST only send the ID of a cursor that the Agent announced on the
+    source session and that currently advertises `capabilities.fork`. The Agent
+    rejects any other ID with `-32602`. It does not fall back to forking the
+    whole session.
     """
     cwd: str
     """
@@ -5583,29 +5617,19 @@ class ForkSessionRequest(InitialConfigRequestModel):
 
     See protocol docs: [Extensibility](https://agentclientprotocol.com/protocol/v2/draft/extensibility)
     """
-    cursor_id: Annotated[Optional[str], Field(alias="cursorId")] = None
-    """
-    **UNSTABLE**
-
-    This capability is not part of the spec yet, and may be removed or changed at any point.
-
-    The session cursor to fork at. The new session's history is the source
-    session's history before the cursor.
-
-    Optional. Omitted and `null` are equivalent and fork the whole session.
-    Clients MUST only send the ID of a cursor that the Agent announced on the
-    source session and that currently advertises `capabilities.fork`. The Agent
-    rejects any other ID with `-32602`. It does not fall back to forking the
-    whole session.
-    """
 
     @field_validator("additional_directories", "config_options", "mcp_servers", mode="before")
     @classmethod
     def empty_list_on_null_validator(cls, v: Any, info: ValidationInfo) -> Any:
         return empty_list_on_null(v, info)
 
+    @field_validator("config_options", mode="after")
+    @classmethod
+    def validate_initial_config_options_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return validate_initial_config_options(v, info)
 
-class ResumeSessionRequest(InitialConfigRequestModel):
+
+class ResumeSessionRequest(BaseModel):
     session_id: Annotated[str, Field(alias="sessionId")]
     """
     The ID of the session to resume.
@@ -5699,6 +5723,11 @@ class ResumeSessionRequest(InitialConfigRequestModel):
     @classmethod
     def empty_list_on_null_validator(cls, v: Any, info: ValidationInfo) -> Any:
         return empty_list_on_null(v, info)
+
+    @field_validator("config_options", mode="after")
+    @classmethod
+    def validate_initial_config_options_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return validate_initial_config_options(v, info)
 
 
 class PromptRequest(BaseModel):
@@ -6455,7 +6484,7 @@ class ClientCapabilities(BaseModel):
         return use_default_on_error(v, handler, info)
 
 
-class NewSessionRequest(InitialConfigRequestModel):
+class NewSessionRequest(BaseModel):
     cwd: str
     """
     The working directory for this session. Must be an absolute path.
@@ -6519,6 +6548,11 @@ class NewSessionRequest(InitialConfigRequestModel):
     @classmethod
     def empty_list_on_null_validator(cls, v: Any, info: ValidationInfo) -> Any:
         return empty_list_on_null(v, info)
+
+    @field_validator("config_options", mode="after")
+    @classmethod
+    def validate_initial_config_options_validator(cls, v: Any, info: ValidationInfo) -> Any:
+        return validate_initial_config_options(v, info)
 
 
 class ClientResponseMessage(BaseModel):
@@ -6887,7 +6921,7 @@ class SessionSubagentUpdate(SubagentUpdate):
 
 
 class InitializeRequest(BaseModel):
-    protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
+    protocol_version: Annotated[StrictInt, Field(alias="protocolVersion", ge=0, le=65535)]
     """
     The latest protocol version supported by the Client.
     """
@@ -6923,7 +6957,7 @@ class ToolCallPermissionSubjectVariant(ToolCallPermissionSubject):
 
 
 class InitializeResponse(BaseModel):
-    protocol_version: Annotated[int, Field(alias="protocolVersion", ge=0, le=65535)]
+    protocol_version: Annotated[StrictInt, Field(alias="protocolVersion", ge=0, le=65535)]
     """
     The highest protocol version supported by the Agent that is at or below
     the version requested by the Client. If no such version exists,
@@ -7232,8 +7266,10 @@ class AgentRequest(BaseModel):
     """
 
 
-MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
 IdempotencyKey = Annotated[str, Field(min_length=1, max_length=255)]
+
+
+MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
 SetSessionConfigOptionRequest = (
     SetSessionConfigOptionIdRequest | SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionOtherRequest
 )

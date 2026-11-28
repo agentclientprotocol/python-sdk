@@ -73,6 +73,8 @@ class NdjsonTransport:
                 continue
             try:
                 message = decode_message(line)
+                if message is None and self._reject_batches:
+                    raise RequestError.invalid_request()
             except RequestError as error:
                 if not self._error_send_failed:
                     try:
@@ -80,14 +82,8 @@ class NdjsonTransport:
                     except ConnectionError:
                         self._error_send_failed = True
                 continue
-            if message is None:
-                if self._reject_batches and not self._error_send_failed:
-                    try:
-                        await self.send(error_response(RequestError.invalid_request()))
-                    except ConnectionError:
-                        self._error_send_failed = True
-                continue
-            return message
+            if message is not None:
+                return message
 
     async def close(self) -> None:
         await self._sender.close()

@@ -33,9 +33,6 @@ class MethodRouter:
             return None
         return handler
 
-    def request_spec(self, method: str) -> RequestSpec | None:
-        return self._requests.get(method)
-
     async def handle_request(self, spec: RequestSpec, params: Any) -> Any:
         handler = self._handler(spec.handler)
         if handler is None:

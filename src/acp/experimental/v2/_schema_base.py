@@ -1,7 +1,8 @@
 from __future__ import annotations
 
+from collections.abc import Sequence
 from functools import cache
-from typing import Any, ClassVar, Literal, get_args, get_origin
+from typing import TYPE_CHECKING, Any, ClassVar, Literal, TypeVar, get_args, get_origin
 
 import pydantic
 from pydantic import (
@@ -9,14 +10,22 @@ from pydantic import (
     ValidationInfo,
     model_validator,
 )
-from pydantic.alias_generators import to_snake
 
 from acp._deserialize import pop_defaulted_fields, push_defaulted_fields
 from acp._schema_base import BaseModel as _BaseModel
 
+if TYPE_CHECKING:
+    from .schema import InitialBooleanConfigOption, InitialIdConfigOption, OtherInitialConfigOption
+
 ElicitationContent = dict[str, Any]
 WIRE_VALIDATION_CONTEXT: dict[str, bool] = {"require_tags": True}
-_NON_ERROR_STOP_REASONS = frozenset({None, "end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"})
+_NON_ERROR_STOP_REASONS: frozenset[str] = frozenset({
+    "end_turn",
+    "max_tokens",
+    "max_turn_requests",
+    "refusal",
+    "cancelled",
+})
 
 
 @cache
@@ -105,7 +114,7 @@ class BaseModel(_BaseModel):
             model = handler(value)
         finally:
             pop_defaulted_fields(token)
-        if discarded and isinstance(model, pydantic.BaseModel):
+        if discarded:
             model.model_fields_set.difference_update(discarded)
         return model
 
@@ -118,33 +127,32 @@ class BaseModel(_BaseModel):
                     raise ValueError(f"Field required: {alias!r}")
         return value
 
+
+class ElicitationRequestScopeModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
-    def _validate_elicitation_fields(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
-            return value
-        if cls.__name__ == "TitledMultiSelectItems" and "type" in value:
-            raise ValueError("Titled multi-select items must omit type")
-        scopes = {base.__name__ for base in cls.__mro__}
-        if "ElicitationRequestScope" in scopes:
-            forbidden = ("sessionId", "toolCallId")
-        elif "ElicitationSessionScope" in scopes:
-            forbidden = ("requestId",)
-        else:
-            return value
-        if any(key in value or to_snake(key) in value for key in forbidden):
-            raise ValueError("Elicitation must select one scope")
+    def _validate_scope(cls, value: Any) -> Any:
+        if isinstance(value, dict) and value.keys() & {"sessionId", "session_id", "toolCallId", "tool_call_id"}:
+            raise ValueError("Request-scoped elicitation forbids sessionId and toolCallId")
         return value
 
-    @model_validator(mode="after")
-    def _validate_mcp_attribution(self) -> BaseModel:
-        if (
-            type(self).__name__ == "MessageMcpRequest"
-            and self.__dict__.get("tool_call_id") is not None
-            and self.__dict__.get("session_id") is None
-        ):
-            raise ValueError("tool_call_id requires session_id")
-        return self
+
+class ElicitationSessionScopeModel(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_scope(cls, value: Any) -> Any:
+        if isinstance(value, dict) and value.keys() & {"requestId", "request_id"}:
+            raise ValueError("Session-scoped elicitation forbids requestId")
+        return value
+
+
+class TitledMultiSelectItemsModel(BaseModel):
+    @model_validator(mode="before")
+    @classmethod
+    def _validate_omitted_type(cls, value: Any) -> Any:
+        if isinstance(value, dict) and "type" in value:
+            raise ValueError("Titled multi-select items must omit type")
+        return value
 
 
 class IdleStateUpdateModel(BaseModel):
@@ -154,23 +162,30 @@ class IdleStateUpdateModel(BaseModel):
         if not isinstance(value, dict) or "error" not in value:
             return value
         stop_reason = value.get("stopReason", value.get("stop_reason"))
-        if stop_reason in _NON_ERROR_STOP_REASONS:
+        if stop_reason is None or (isinstance(stop_reason, str) and stop_reason in _NON_ERROR_STOP_REASONS):
             return {key: item for key, item in value.items() if key != "error"}
         return value
 
 
-class SessionConfigSelectModel(BaseModel):
-    @model_validator(mode="after")
-    def _validate_non_empty_options(self) -> SessionConfigSelectModel:
-        if not self.__dict__.get("options"):
-            raise ValueError("options must contain at least one item")
-        return self
+def validate_mcp_tool_call_id(value: str | None, info: ValidationInfo) -> str | None:
+    if value is not None and info.data.get("session_id") is None:
+        raise ValueError("tool_call_id requires session_id")
+    return value
 
 
-class InitialConfigRequestModel(BaseModel):
-    @model_validator(mode="after")
-    def _validate_config_ids(self) -> InitialConfigRequestModel:
-        options = self.__dict__.get("config_options", ())
-        if len({option.config_id for option in options}) != len(options):
-            raise ValueError("configOptions contains duplicate configId values")
-        return self
+_Options = TypeVar("_Options", bound=Sequence[object])
+
+
+def validate_select_options(options: _Options, _info: ValidationInfo) -> _Options:
+    if not options:
+        raise ValueError("options must contain at least one item")
+    return options
+
+
+def validate_initial_config_options(
+    options: list[InitialBooleanConfigOption | InitialIdConfigOption | OtherInitialConfigOption],
+    _info: ValidationInfo,
+) -> list[InitialBooleanConfigOption | InitialIdConfigOption | OtherInitialConfigOption]:
+    if len({option.config_id for option in options}) != len(options):
+        raise ValueError("configOptions contains duplicate configId values")
+    return options

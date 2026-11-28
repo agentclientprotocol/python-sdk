@@ -7,17 +7,18 @@ from typing import Any, Literal
 from pydantic import AnyUrl, BaseModel
 
 from acp.connection import Connection, MethodHandler
+from acp.exceptions import RequestError
 from acp.utils import param_model
 
 from . import schema
 from ._connection import open_connection
-from ._initialization import InitializationState
-from ._methods import CLIENT_REQUESTS_BY_METHOD
+from ._initialization import InitializationState, read_protocol_version
+from ._methods import AGENT_REQUESTS_BY_METHOD, CLIENT_REQUESTS_BY_METHOD
 from ._params import build_elicitation_request, build_request
 from ._router import MethodRouter
 from ._schema_base import WIRE_VALIDATION_CONTEXT
 from .interfaces import Agent, CreateElicitationRequest, CreateElicitationResponse
-from .meta import CLIENT_METHODS
+from .meta import AGENT_METHODS, CLIENT_METHODS, PROTOCOL_VERSION
 
 __all__ = ["AgentSideConnection", "run_agent"]
 
@@ -30,20 +31,28 @@ class _AgentRouter:
     def __init__(self, agent: object, state: InitializationState) -> None:
         self._router = MethodRouter(agent, Agent)
         self._state = state
+        self._initialize = AGENT_REQUESTS_BY_METHOD[AGENT_METHODS["initialize"]]
+        self._lock = asyncio.Lock()
+        self._locked = False
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
-        initialize = self._router.request_spec("initialize")
-        if not is_notification and initialize is not None and method == initialize.method:
-            normalized, previous_phase = self._state.begin_agent(params)
-            try:
-                response: schema.InitializeResponse = await self._router.handle_request(initialize, normalized)
-                self._state.complete(response)
-            except BaseException as error:
-                self._state.fail(error, restore_phase=previous_phase)
-                raise
-            return response
-
-        await self._state.require(method)
+        async with self._lock:
+            if not is_notification and method == self._initialize.method:
+                if self._locked:
+                    raise RequestError.invalid_request({"details": "ACP v2 connections may only be initialized once"})
+                requested = read_protocol_version(params)
+                if requested < PROTOCOL_VERSION:
+                    raise RequestError.unsupported_protocol_version(requested, [PROTOCOL_VERSION])
+                normalized = {**params, "protocolVersion": PROTOCOL_VERSION}
+                with self._state.attempt():
+                    response: schema.InitializeResponse = await self._router.handle_request(
+                        self._initialize, normalized
+                    )
+                    self._state.check_response(response)
+                return response
+            await self._state.require(method)
+            if not is_notification:
+                self._locked = True
         return await self._router(method, params, is_notification)
 
 

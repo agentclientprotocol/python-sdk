@@ -77,11 +77,11 @@ class NodeTransformer(ast.NodeTransformer):
         with source_file.open("r", encoding="utf-8") as f:
             source_code = f.read()
         tree = ast.parse(source_code)
-        before = ast.dump(tree, include_attributes=False)
+        before = ast.unparse(tree)
         self.visit(tree)
-        if ast.dump(tree, include_attributes=False) != before:
+        new_code = ast.unparse(tree)
+        if new_code != before:
             print("Rewriting signatures in", source_file)
-            new_code = ast.unparse(tree)
             with source_file.open("w", encoding="utf-8") as f:
                 f.write(new_code)
 
@@ -162,7 +162,13 @@ class NodeTransformer(ast.NodeTransformer):
             ]
         finally:
             self._current_model_name = None
-        param_defaults.sort(key=lambda x: x[1] is not None)
+        # Keep existing positional fork arguments ahead of the cursor.
+        param_defaults.sort(
+            key=lambda parameter: (
+                parameter[1] is not None,
+                model.__name__ == "ForkSessionRequest" and parameter[0].arg == "cursor_id",
+            )
+        )
         node.args.args[1:] = [param for param, _ in param_defaults]
         node.args.defaults = [default for _, default in param_defaults if default is not None]
         if "field_meta" in model.model_fields:

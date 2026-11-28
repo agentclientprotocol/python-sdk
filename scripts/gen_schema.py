@@ -89,8 +89,7 @@ def render_schema(semantics: SchemaSemantics) -> str:
         raise FileNotFoundError(f"{schema_json.relative_to(ROOT)} is missing; fetch a pinned schema release first")
 
     schema = json.loads(schema_json.read_text(encoding="utf-8"))
-    if semantics.prepare_schema is not None:
-        semantics.prepare_schema(schema)
+    prepared_aliases = semantics.prepare_schema(schema) if semantics.prepare_schema is not None else ""
     generated = generate(
         schema,
         input_file_type=InputFileType.JsonSchema,
@@ -110,6 +109,7 @@ def render_schema(semantics: SchemaSemantics) -> str:
         validators=_build_validators_config(
             schema,
             semantics.model_name_map if semantics.validate_renamed_models else {},
+            extra_validators=semantics.extra_validators,
             coerce_legacy_protocol_version=semantics.coerce_legacy_protocol_version,
         ),
         formatters=[Formatter.BUILTIN],
@@ -130,8 +130,9 @@ def render_schema(semantics: SchemaSemantics) -> str:
     if not isinstance(generated, str):
         raise TypeError("Schema generation did not produce a single Python module")
     source = generated.rstrip()
-    if semantics.compatibility_aliases:
-        source = f"{source}\n\n\n{semantics.compatibility_aliases}"
+    for aliases in (prepared_aliases, semantics.compatibility_aliases):
+        if aliases:
+            source = f"{source}\n\n\n{aliases}"
     return _format_python(f"{source}\n", semantics.schema_out)
 
 
@@ -139,7 +140,8 @@ def _build_validators_config(
     schema: dict[str, Any],
     model_names: dict[str, str],
     *,
-    coerce_legacy_protocol_version: bool = True,
+    extra_validators: dict[str, list[ValidatorDefinition]],
+    coerce_legacy_protocol_version: bool,
 ) -> dict[str, ModelValidators]:
     validators: dict[str, list[ValidatorDefinition]] = {}
     if coerce_legacy_protocol_version:
@@ -175,6 +177,8 @@ def _build_validators_config(
                     fields=null_fields, function="acp._deserialize.empty_list_on_null", mode=ValidatorMode.BEFORE
                 )
             )
+    for class_name, definitions in extra_validators.items():
+        validators.setdefault(class_name, []).extend(definitions)
     return {
         class_name: ModelValidators(validators=definitions)
         for class_name, definitions in validators.items()

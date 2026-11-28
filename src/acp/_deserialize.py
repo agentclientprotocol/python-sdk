@@ -12,19 +12,19 @@ from collections.abc import Callable
 from contextvars import ContextVar, Token
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, ValidationInfo
 from pydantic_core import PydanticUseDefault
 
-_DEFAULTED_FIELDS: ContextVar[tuple[set[str], ...]] = ContextVar("_acp_defaulted_fields")
+_DEFAULTED_FIELDS = ContextVar[set[str] | None]("_acp_defaulted_fields", default=None)
 
 
-def push_defaulted_fields(fields: set[str]) -> Token[tuple[set[str], ...]]:
-    """Push a per-model bucket recording fields salvaged to their defaults."""
-    return _DEFAULTED_FIELDS.set((*_DEFAULTED_FIELDS.get(()), fields))
+def push_defaulted_fields(fields: set[str]) -> Token[set[str] | None]:
+    """Record which fields on this model were salvaged to their defaults."""
+    return _DEFAULTED_FIELDS.set(fields)
 
 
-def pop_defaulted_fields(token: Token[tuple[set[str], ...]]) -> None:
-    """Restore the outer defaulted-fields stack."""
+def pop_defaulted_fields(token: Token[set[str] | None]) -> None:
+    """Restore the enclosing model's defaulted fields."""
     _DEFAULTED_FIELDS.reset(token)
 
 
@@ -38,7 +38,7 @@ def coerce_protocol_version(value: Any, _info: Any = None) -> int:
         return 1
 
 
-def use_default_on_error(value: Any, handler: Callable[[Any], Any], info: Any = None) -> Any:
+def use_default_on_error(value: Any, handler: Callable[[Any], Any], info: ValidationInfo | None = None) -> Any:
     """Ask Pydantic to use the declared field default after validation fails."""
     try:
         return handler(value)
@@ -49,10 +49,10 @@ def use_default_on_error(value: Any, handler: Callable[[Any], Any], info: Any = 
             raise
         if (
             info is not None
-            and (field_name := getattr(info, "field_name", None)) is not None
-            and (stack := _DEFAULTED_FIELDS.get(()))
+            and (field_name := info.field_name) is not None
+            and (fields := _DEFAULTED_FIELDS.get()) is not None
         ):
-            stack[-1].add(field_name)
+            fields.add(field_name)
         raise PydanticUseDefault() from None
 
 

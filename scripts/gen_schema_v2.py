@@ -2,6 +2,8 @@ from __future__ import annotations
 
 from typing import Any
 
+from datamodel_code_generator.validators import ValidatorDefinition, ValidatorMode
+
 from ._schema_semantics import (
     ROOT,
     SchemaSemantics,
@@ -246,11 +248,11 @@ MODEL_NAME_MAP.update({
 })
 
 
-def _prepare_schema(schema: dict[str, Any]) -> None:
+def _prepare_schema(schema: dict[str, Any]) -> str:
     definitions = schema["$defs"]
     for definition in definitions.values():
         for field in definition.get("properties", {}).values():
-            if field.get("x-deserialize-default-on-null"):
+            if field.get("type") == "array" and field.get("x-deserialize-default-on-null"):
                 field["default"] = []
     # A nested stop-reason union loses its fields when datamodel-code-generator
     # composes it into SessionUpdate. Use the common nullable string discriminator
@@ -260,23 +262,23 @@ def _prepare_schema(schema: dict[str, Any]) -> None:
     idle["properties"]["error"] = definitions["ErrorStopReason"]["properties"]["error"]
 
     # Keep select options as a direct list union instead of numbered RootModel
-    # wrappers; SessionConfigSelectModel enforces minItems: 1 at runtime.
+    # wrappers; a field validator enforces minItems: 1 at runtime.
     for branch in definitions["SessionConfigSelectOptions"]["anyOf"]:
         branch.pop("minItems", None)
 
     # Inline IdempotencyKey bounds onto PromptRequest so callers pass plain str.
     idempotency_key = definitions.pop("IdempotencyKey")
+    min_length = idempotency_key["minLength"]
+    max_length = idempotency_key["maxLength"]
     prompt_key = definitions["PromptRequest"]["properties"]["idempotencyKey"]
     prompt_key.pop("anyOf", None)
     prompt_key.update(
         type=["string", "null"],
-        minLength=idempotency_key["minLength"],
-        maxLength=idempotency_key["maxLength"],
+        minLength=min_length,
+        maxLength=max_length,
     )
 
-    # Keep the SDK's existing positional fork arguments ahead of the new cursor.
-    fork_fields = definitions["ForkSessionRequest"]["properties"]
-    fork_fields["cursorId"] = fork_fields.pop("cursorId")
+    return f"IdempotencyKey = Annotated[str, Field(min_length={min_length}, max_length={max_length})]"
 
 
 SEMANTICS = SchemaSemantics(
@@ -286,7 +288,6 @@ SEMANTICS = SchemaSemantics(
     base_class="acp.experimental.v2._schema_base.BaseModel",
     compatibility_aliases="""\
 MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
-IdempotencyKey = Annotated[str, Field(min_length=1, max_length=255)]
 SetSessionConfigOptionRequest = (
     SetSessionConfigOptionIdRequest | SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionOtherRequest
 )
@@ -351,15 +352,44 @@ SessionUpdate = (
     prepare_schema=_prepare_schema,
     base_class_map={
         "IdleStateUpdate": "acp.experimental.v2._schema_base.IdleStateUpdateModel",
-        "SessionConfigSelect": "acp.experimental.v2._schema_base.SessionConfigSelectModel",
-        **dict.fromkeys(
-            ("ForkSessionRequest", "NewSessionRequest", "ResumeSessionRequest"),
-            "acp.experimental.v2._schema_base.InitialConfigRequestModel",
-        ),
+        "ElicitationRequestScope": "acp.experimental.v2._schema_base.ElicitationRequestScopeModel",
+        "ElicitationSessionScope": "acp.experimental.v2._schema_base.ElicitationSessionScopeModel",
+        "TitledMultiSelectItems": "acp.experimental.v2._schema_base.TitledMultiSelectItemsModel",
+    },
+    extra_validators={
+        "MessageMcpRequest": [
+            ValidatorDefinition(
+                field="tool_call_id",
+                function="acp.experimental.v2._schema_base.validate_mcp_tool_call_id",
+                mode=ValidatorMode.AFTER,
+            )
+        ],
+        **{
+            model: [
+                ValidatorDefinition(
+                    field="options",
+                    function="acp.experimental.v2._schema_base.validate_select_options",
+                    mode=ValidatorMode.AFTER,
+                )
+            ]
+            for model in ("SessionConfigSelect", "SessionConfigSelectGroup")
+        },
+        **{
+            model: [
+                ValidatorDefinition(
+                    field="config_options",
+                    function="acp.experimental.v2._schema_base.validate_initial_config_options",
+                    mode=ValidatorMode.AFTER,
+                )
+            ]
+            for model in ("NewSessionRequest", "ForkSessionRequest", "ResumeSessionRequest")
+        },
     },
     field_type_overrides={
         "ElicitationAcceptAction.content": "acp.experimental.v2._schema_base.ElicitationContent",
         "Error.code": "pydantic.StrictInt",
+        "InitializeRequest.protocol_version": "pydantic.StrictInt",
+        "InitializeResponse.protocol_version": "pydantic.StrictInt",
         "Error.data": "typing.Any",
         "McpError.code": "pydantic.StrictInt",
         # A successor's result stays opaque until the originating method is known.

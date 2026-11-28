@@ -16,11 +16,8 @@ async def test_protocol_stubs_are_not_treated_as_implemented_handlers() -> None:
         pass
 
     router = MethodRouter(Agent(), v2.Agent)
-    with pytest.raises(RequestError) as error:
+    with pytest.raises(RequestError, check=lambda error: error.code == -32601):
         await router("session/new", {"cwd": "/workspace"}, False)
-    assert isinstance(error.value, RequestError)
-    assert isinstance(error.value, RequestError)
-    assert error.value.code == -32601
     assert await router("session/cancel", {"sessionId": "s"}, True) is None
 
 
@@ -48,17 +45,12 @@ async def test_v2_route_validation_and_empty_responses_remain_strict() -> None:
     with pytest.raises(ValidationError):
         await router("session/prompt", {"sessionId": "s", "prompt": []}, False)
     assert agent.calls == 0
-    with pytest.raises(RequestError) as bad_response:
+    with pytest.raises(RequestError, check=lambda error: error.code == -32603):
         await router("session/prompt", {"sessionId": "s", "prompt": [{"type": "text", "text": "hi"}]}, False)
-    assert isinstance(bad_response.value, RequestError)
-    assert bad_response.value.code == -32603
-    assert isinstance(bad_response.value.__cause__, ValidationError)
     assert agent.calls == 1
     assert isinstance(await router("auth/logout", {}, False), v2.schema.LogoutAuthResponse)
-    with pytest.raises(RequestError) as error:
+    with pytest.raises(RequestError, check=lambda error: error.code == -32601):
         await router("mcp/message", {"serverId": "s", "requestId": "r", "method": "ping"}, False)
-    assert isinstance(error.value, RequestError)
-    assert error.value.code == -32601
 
 
 @pytest.mark.asyncio

@@ -1,15 +1,14 @@
 from __future__ import annotations
 
 import asyncio
-from typing import Any, Literal
+from collections.abc import Iterator
+from contextlib import contextmanager
+from typing import Any
 
 from acp.exceptions import RequestError
 
 from . import schema
-from ._schema_base import WIRE_VALIDATION_CONTEXT
 from .meta import PROTOCOL_VERSION
-
-InitializationPhase = Literal["uninitialized", "initializing", "initialized", "failed"]
 
 
 def read_protocol_version(params: Any) -> int:
@@ -23,75 +22,48 @@ def read_protocol_version(params: Any) -> int:
 
 class InitializationState:
     def __init__(self) -> None:
-        self._phase: InitializationPhase = "uninitialized"
-        self._failure: BaseException | None = None
-        self._ready = asyncio.Event()
-        self._locked = False
+        self._initialized = False
+        self._client_started = False
+        self._attempt: asyncio.Future[BaseException | None] | None = None
 
-    @property
-    def phase(self) -> InitializationPhase:
-        return self._phase
-
-    def begin(self, request: schema.InitializeRequest) -> None:
-        if self._phase != "uninitialized":
+    def begin_client(self, request: schema.InitializeRequest) -> None:
+        if self._client_started:
             raise RequestError.invalid_request({"details": "ACP v2 connections may only be initialized once"})
         if request.protocol_version != PROTOCOL_VERSION:
             raise RequestError.invalid_params({
                 "expectedProtocolVersion": PROTOCOL_VERSION,
                 "receivedProtocolVersion": request.protocol_version,
             })
-        self._phase = "initializing"
 
-    def begin_agent(self, params: Any) -> tuple[dict[str, Any], InitializationPhase]:
-        if self._locked or self._phase == "initializing":
-            raise RequestError.invalid_request({"details": "ACP v2 connections may only be initialized once"})
-        requested = read_protocol_version(params)
-        if requested < PROTOCOL_VERSION:
-            raise RequestError.unsupported_protocol_version(requested, [PROTOCOL_VERSION])
-        normalized = dict(params)
-        normalized["protocolVersion"] = PROTOCOL_VERSION
-        schema.InitializeRequest.model_validate(normalized, context=WIRE_VALIDATION_CONTEXT)
-        previous_phase = self._phase
-        self._phase = "initializing"
-        return normalized, previous_phase
+        self._client_started = True
 
-    def complete(self, response: schema.InitializeResponse) -> None:
-        if self._phase != "initializing":
-            raise RequestError.invalid_request({"details": "ACP v2 initialization is not in progress"})
+    @contextmanager
+    def attempt(self) -> Iterator[None]:
+        attempt = self._attempt = asyncio.get_running_loop().create_future()
+        try:
+            yield
+        except BaseException as error:
+            attempt.set_result(error)
+            raise
+        else:
+            self._initialized = True
+            attempt.set_result(None)
+        finally:
+            self._attempt = None
+
+    @staticmethod
+    def check_response(response: schema.InitializeResponse) -> None:
         if response.protocol_version != PROTOCOL_VERSION:
             raise RequestError.invalid_request({
                 "expectedProtocolVersion": PROTOCOL_VERSION,
                 "receivedProtocolVersion": response.protocol_version,
             })
-        self._phase = "initialized"
-        self._failure = None
-        self._ready.set()
-
-    def fail(self, error: BaseException, *, restore_phase: InitializationPhase | None = None) -> None:
-        if restore_phase == "initialized":
-            self._phase = "initialized"
-            return
-        if self._phase == "initialized":
-            return
-        self._phase = "failed"
-        self._failure = error
-        self._ready.set()
-
-    async def initialized(self) -> None:
-        if self._phase in {"uninitialized", "initializing"}:
-            await self._ready.wait()
-        if self._phase == "initialized":
-            return
-        if self._failure is not None:
-            raise self._failure
-        raise RequestError.invalid_request({"details": "ACP v2 connection has not been initialized"})
 
     async def require(self, method: str) -> None:
-        if self._phase == "initialized":
-            self._locked = True
+        if self._initialized:
             return
-        if self._phase == "initializing":
-            await self.initialized()
-            self._locked = True
-            return
-        raise RequestError.invalid_request({"details": f"ACP v2 connection must be initialized before {method!r}"})
+        attempt = self._attempt
+        if attempt is None:
+            raise RequestError.invalid_request({"details": f"ACP v2 connection must be initialized before {method!r}"})
+        if (error := await asyncio.shield(attempt)) is not None:
+            raise error

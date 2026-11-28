@@ -6,6 +6,8 @@ from importlib import import_module
 from pathlib import Path
 from typing import Any, Protocol, cast
 
+from datamodel_code_generator.validators import ValidatorDefinition
+
 ROOT = Path(__file__).resolve().parents[1]
 
 DEFAULT_PROTOCOL_VERSION = 1
@@ -26,9 +28,10 @@ class SchemaSemantics:
     compatibility_aliases: str = ""
     field_type_overrides: dict[str, str] = field(default_factory=dict)
     base_class_map: dict[str, str] = field(default_factory=dict)
+    extra_validators: dict[str, list[ValidatorDefinition]] = field(default_factory=dict)
     validate_renamed_models: bool = False
     coerce_legacy_protocol_version: bool = True
-    prepare_schema: Callable[[dict[str, Any]], None] | None = None
+    prepare_schema: Callable[[dict[str, Any]], str] | None = None
 
 
 class _SemanticsModule(Protocol):

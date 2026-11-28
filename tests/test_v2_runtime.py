@@ -1,13 +1,16 @@
 from __future__ import annotations
 
 import asyncio
+import json
+import socket
 from typing import Any
 
 import pytest
+from pydantic import ValidationError
 
 from acp._transport import memory_transport_pair
 from acp.exceptions import RequestError
-from acp.experimental import v2
+from acp.experimental import AgentProtocolRouter, v2
 
 
 class Client:
@@ -252,13 +255,10 @@ async def test_v2_runtime_rejects_a_different_protocol_version() -> None:
     client_connection = v2.ClientSideConnection(Client(), client_transport)
 
     try:
-        with pytest.raises(RequestError) as error:
+        with pytest.raises(RequestError, check=lambda error: error.code == -32602):
             await client_connection.initialize(
                 protocol_version=1, info=v2.schema.Implementation(name="test-client", version="1.0.0")
             )
-
-        assert isinstance(error.value, RequestError)
-        assert error.value.code == -32602
         assert agent.initialize_calls == 0
     finally:
         await client_connection.close()
@@ -272,13 +272,10 @@ async def test_v2_runtime_rejects_a_mismatched_initialize_response() -> None:
     client_connection = v2.ClientSideConnection(Client(), client_transport)
 
     try:
-        with pytest.raises(RequestError) as error:
+        with pytest.raises(RequestError, check=lambda error: error.code == -32600):
             await client_connection.initialize(
                 protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="test-client", version="1.0.0")
             )
-
-        assert isinstance(error.value, RequestError)
-        assert error.value.code == -32600
     finally:
         await client_connection.close()
         await agent_connection.close()
@@ -482,11 +479,8 @@ async def test_missing_request_handler_returns_method_not_found() -> None:
         await client_connection.initialize(
             protocol_version=v2.PROTOCOL_VERSION, info=v2.schema.Implementation(name="test-client", version="1.0.0")
         )
-        with pytest.raises(RequestError) as error:
+        with pytest.raises(RequestError, check=lambda error: error.code == -32601):
             await client_connection.new_session(cwd="/workspace")
-
-        assert isinstance(error.value, RequestError)
-        assert error.value.code == -32601
     finally:
         await client_connection.close()
         await agent_connection.close()
@@ -714,9 +708,6 @@ async def test_beta4_session_auth_and_cancel_methods_round_trip() -> None:
 
 @pytest.mark.asyncio
 async def test_custom_validator_failure_returns_json_serializable_invalid_params_over_ndjson() -> None:
-    import json
-    import socket
-
     server_sock, client_sock = socket.socketpair()
     try:
         agent_reader, agent_writer = await asyncio.open_connection(sock=server_sock)
@@ -799,10 +790,8 @@ async def test_v2_invalid_handler_result_returns_internal_error() -> None:
         v2.ClientSideConnection(Client(), client_transport) as client_connection,
     ):
         await client_connection.initialize(v2.PROTOCOL_VERSION, initialize_request().info)
-        with pytest.raises(RequestError) as error:
+        with pytest.raises(RequestError, check=lambda error: error.code == -32603):
             await client_connection.new_session(cwd="/workspace")
-        assert isinstance(error.value, RequestError)
-        assert error.value.code == -32603
 
 
 @pytest.mark.asyncio
@@ -862,9 +851,6 @@ async def test_meta_cannot_overwrite_validated_protocol_arguments() -> None:
 
 @pytest.mark.asyncio
 async def test_ndjson_non_empty_batch_returns_invalid_request() -> None:
-    import json
-    import socket
-
     server_sock, client_sock = socket.socketpair()
     try:
         agent_reader, agent_writer = await asyncio.open_connection(sock=server_sock)
@@ -891,8 +877,6 @@ async def test_ndjson_non_empty_batch_returns_invalid_request() -> None:
 @pytest.mark.asyncio
 @pytest.mark.parametrize("via_router", [False, True])
 async def test_v2_initialize_negotiation_and_repeat_semantics(via_router: bool) -> None:
-    from acp.experimental import AgentProtocolRouter
-
     client_transport, agent_transport = memory_transport_pair()
     agent = Agent()
     agent_connection: Any = (
@@ -968,6 +952,9 @@ async def test_v2_initialize_negotiation_and_repeat_semantics(via_router: bool) 
 @pytest.mark.asyncio
 async def test_v2_live_wire_dispatch_rejects_missing_discriminator_tags() -> None:
     class TagCheckAgent(Agent):
+        async def fork_session(self, session_id: str, cwd: str, **kwargs: Any) -> v2.schema.ForkSessionResponse:
+            return v2.schema.ForkSessionResponse(session_id="forked")
+
         async def resume_session(self, session_id: str, cwd: str, **kwargs: Any) -> v2.schema.ResumeSessionResponse:
             return v2.schema.ResumeSessionResponse()
 
@@ -988,10 +975,129 @@ async def test_v2_live_wire_dispatch_rejects_missing_discriminator_tags() -> Non
 
         for req_id, method, params in (
             (2, "session/new", {"cwd": "/w", "configOptions": [{"configId": "x", "value": "x"}]}),
-            (3, "session/resume", {"sessionId": "s", "cwd": "/w", "replayFrom": {}}),
-            (4, "session/prompt", {"sessionId": "s", "prompt": [{"text": "hi"}]}),
+            (3, "session/fork", {"sessionId": "s", "cwd": "/w", "configOptions": [{"configId": "x", "value": "x"}]}),
+            (4, "session/resume", {"sessionId": "s", "cwd": "/w", "configOptions": [{"configId": "x", "value": "x"}]}),
+            (5, "session/resume", {"sessionId": "s", "cwd": "/w", "replayFrom": {}}),
+            (6, "session/prompt", {"sessionId": "s", "prompt": [{"text": "hi"}]}),
         ):
             await client_transport.send({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params})
             resp = await asyncio.wait_for(client_transport.receive(), timeout=2)
             assert resp["id"] == req_id
             assert resp["error"]["code"] == -32602
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("via_router", [False, True])
+@pytest.mark.parametrize("repeat_version", [1, 2])
+async def test_repeat_initialize_serializes_with_requests_and_ignores_notifications_for_locking(
+    via_router: bool, repeat_version: int
+) -> None:
+    repeat_started = asyncio.Event()
+    finish_repeat = asyncio.Event()
+
+    class RepeatAgent(ExtensionAgent):
+        async def initialize(
+            self, protocol_version: int, info: v2.schema.Implementation, **kwargs: Any
+        ) -> v2.schema.InitializeResponse:
+            response = await super().initialize(protocol_version, info, **kwargs)
+            if info.name == "repeat":
+                repeat_started.set()
+                await finish_repeat.wait()
+                response.protocol_version = repeat_version
+            return response
+
+    peer, agent_transport = memory_transport_pair()
+    agent = RepeatAgent()
+    connection = (
+        AgentProtocolRouter(v2=lambda _: agent).connect(agent_transport)
+        if via_router
+        else v2.AgentSideConnection(agent, agent_transport)
+    )
+    async with connection:
+        initialize = {
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"protocolVersion": 2, "info": {"name": "initial", "version": "1"}},
+        }
+        await peer.send(initialize)
+        assert (await asyncio.wait_for(peer.receive(), timeout=2))["result"]["protocolVersion"] == 2
+
+        await peer.send({"jsonrpc": "2.0", "method": "session/cancel", "params": {"sessionId": "s"}})
+        assert await asyncio.wait_for(agent.notifications.get(), timeout=2) == (
+            "cancel",
+            v2.schema.CancelSessionNotification(session_id="s"),
+        )
+
+        await peer.send({
+            **initialize,
+            "id": 2,
+            "params": {"protocolVersion": 2, "info": {"name": "repeat", "version": "1"}},
+        })
+        await asyncio.wait_for(repeat_started.wait(), timeout=2)
+        await peer.send({"jsonrpc": "2.0", "id": 3, "method": "_vendor/ping", "params": {}})
+        await asyncio.sleep(0)
+        finish_repeat.set()
+
+        replies = {}
+        for _ in range(2):
+            reply = await asyncio.wait_for(peer.receive(), timeout=2)
+            replies[reply["id"]] = reply
+        if repeat_version == 2:
+            assert replies[2]["result"]["protocolVersion"] == 2
+        else:
+            assert replies[2]["error"]["code"] == -32600
+        assert replies[3]["result"] == {"method": "_vendor/ping", "params": {}}
+
+        await peer.send({**initialize, "id": 4})
+        assert (await asyncio.wait_for(peer.receive(), timeout=2))["error"]["code"] == -32600
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("protocol_version", ["2", 2.0])
+async def test_client_rejects_non_integer_initialize_response(protocol_version: str | float) -> None:
+    peer, client_transport = memory_transport_pair()
+    async with v2.ClientSideConnection(Client(), client_transport) as client:
+        initialize = asyncio.create_task(client.initialize(v2.PROTOCOL_VERSION, initialize_request().info))
+        request = await asyncio.wait_for(peer.receive(), timeout=2)
+        await peer.send({
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"protocolVersion": protocol_version, "info": {"name": "raw", "version": "1"}},
+        })
+
+        with pytest.raises(ValidationError):
+            await asyncio.wait_for(initialize, timeout=2)
+
+
+@pytest.mark.asyncio
+async def test_client_requires_explicit_tags_in_wire_notifications_and_responses() -> None:
+    peer, client_transport = memory_transport_pair()
+    handler = SessionClient()
+    async with v2.ClientSideConnection(handler, client_transport) as client:
+        initialize = asyncio.create_task(client.initialize(v2.PROTOCOL_VERSION, initialize_request().info))
+        request = await asyncio.wait_for(peer.receive(), timeout=2)
+        await peer.send({
+            "jsonrpc": "2.0",
+            "id": request["id"],
+            "result": {"protocolVersion": 2, "info": {"name": "raw", "version": "1"}},
+        })
+        await asyncio.wait_for(initialize, timeout=2)
+
+        for session_id, update in (
+            ("missing-tag", {"sessionUpdate": "state_update"}),
+            ("tagged", {"sessionUpdate": "state_update", "state": "idle"}),
+        ):
+            await peer.send({
+                "jsonrpc": "2.0",
+                "method": "session/update",
+                "params": {"sessionId": session_id, "update": update},
+            })
+        assert await asyncio.wait_for(handler.updates.get(), timeout=2) == v2.schema.UpdateSessionNotification(
+            session_id="tagged", update=v2.schema.IdleSessionStateUpdate()
+        )
+
+        status = asyncio.create_task(client.session_status("tagged"))
+        request = await asyncio.wait_for(peer.receive(), timeout=2)
+        await peer.send({"jsonrpc": "2.0", "id": request["id"], "result": {"status": "open", "state": {}}})
+        assert (await asyncio.wait_for(status, timeout=2)).state is None

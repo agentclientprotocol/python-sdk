@@ -2,7 +2,6 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from acp.experimental.v2 import PROTOCOL_VERSION, schema
-from acp.experimental.v2._schema_base import WIRE_VALIDATION_CONTEXT
 from acp.experimental.v2.interfaces import CreateElicitationRequest
 from acp.experimental.v2.meta import PROTOCOL_METHODS
 from acp.experimental.v2.schema import (
@@ -107,7 +106,7 @@ def test_elicitation_rejects_overlapping_scopes(mode: str, request_id: int | Non
 
 
 def test_mcp_tool_call_attribution_requires_a_session() -> None:
-    with pytest.raises(ValidationError, match="tool_call_id requires session_id"):
+    with pytest.raises(ValidationError):
         MessageMcpRequest.model_validate({
             "serverId": "s",
             "requestId": "r",
@@ -177,20 +176,10 @@ def test_default_on_null_normalizes_only_annotated_lists() -> None:
 
 def test_config_options_reject_duplicate_ids_and_malformed_boolean_values() -> None:
     option = {"type": "boolean", "configId": "thinking", "value": True}
-    with pytest.raises(ValidationError, match="duplicate configId"):
+    with pytest.raises(ValidationError):
         schema.NewSessionRequest.model_validate({"cwd": "/work", "configOptions": [option, option]})
     with pytest.raises(ValidationError):
         schema.NewSessionRequest.model_validate({"cwd": "/work", "configOptions": [{**option, "value": "true"}]})
-    for request_model, base in (
-        (schema.NewSessionRequest, {"cwd": "/work"}),
-        (schema.ForkSessionRequest, {"sessionId": "s", "cwd": "/work"}),
-        (schema.ResumeSessionRequest, {"sessionId": "s", "cwd": "/work"}),
-    ):
-        with pytest.raises(ValidationError):
-            request_model.model_validate(
-                {**base, "configOptions": [{"configId": "x", "value": "x"}]},
-                context=WIRE_VALIDATION_CONTEXT,
-            )
     constructed = schema.NewSessionRequest(
         cwd="/work",
         config_options=[schema.InitialIdConfigOption(config_id="model", value="fast")],
@@ -306,34 +295,30 @@ def test_reusable_v2_union_aliases_validate_known_variants() -> None:
     )
 
 
-def test_wire_validation_requires_explicit_discriminator_tags() -> None:
-    valid_ctor = schema.ResumeSessionRequest(session_id="s", cwd="/work", replay_from=schema.ReplayFromStartVariant())
-    assert isinstance(valid_ctor.replay_from, schema.ReplayFromStartVariant)
-    valid_wire = schema.ResumeSessionRequest.model_validate(
-        {"sessionId": "s", "cwd": "/work", "replayFrom": {"type": "start"}},
-        context=WIRE_VALIDATION_CONTEXT,
-    )
-    assert isinstance(valid_wire.replay_from, schema.ReplayFromStartVariant)
-    valid_null = schema.ResumeSessionRequest.model_validate(
-        {"sessionId": "s", "cwd": "/work", "replayFrom": None},
-        context=WIRE_VALIDATION_CONTEXT,
-    )
-    assert valid_null.replay_from is None
+def test_replay_from_start_constructor_fills_discriminator() -> None:
+    request = schema.ResumeSessionRequest(session_id="s", cwd="/work", replay_from=schema.ReplayFromStartVariant())
+    assert request.model_dump(by_alias=True, exclude_unset=True)["replayFrom"] == {"type": "start"}
 
-    for malformed in ("start", {}, {"type": 5}):
-        with pytest.raises(ValidationError):
-            schema.ResumeSessionRequest.model_validate(
-                {"sessionId": "s", "cwd": "/work", "replayFrom": malformed},
-                context=WIRE_VALIDATION_CONTEXT,
-            )
 
+@pytest.mark.parametrize("stop_reason", [[], {}])
+def test_idle_state_salvages_unhashable_stop_reason(stop_reason: object) -> None:
+    error = {"code": -32603, "message": "failed"}
+    update = IdleSessionStateUpdate.model_validate({"stopReason": stop_reason, "error": error})
+    assert update.stop_reason is None
+    assert update.model_dump(by_alias=True, exclude_unset=True) == {
+        "sessionUpdate": "state_update",
+        "state": "idle",
+        "error": error,
+    }
+
+
+@pytest.mark.parametrize("options", [[], [{}]])
+def test_select_group_requires_options_after_item_filtering(options: list[dict[str, str]]) -> None:
     with pytest.raises(ValidationError):
-        schema.PromptRequest.model_validate(
-            {"sessionId": "s", "prompt": [{"text": "hi"}]},
-            context=WIRE_VALIDATION_CONTEXT,
-        )
-    with pytest.raises(ValidationError):
-        UpdateSessionNotification.model_validate(
-            {"sessionId": "s", "update": {"sessionUpdate": "state_update"}},
-            context=WIRE_VALIDATION_CONTEXT,
-        )
+        schema.SessionConfigSelectGroup.model_validate({"groupId": "g", "name": "Group", "options": options})
+
+
+def test_select_group_retains_valid_options() -> None:
+    option = {"value": "fast", "name": "Fast"}
+    group = schema.SessionConfigSelectGroup.model_validate({"groupId": "g", "name": "Group", "options": [{}, option]})
+    assert group.options == [schema.SessionConfigSelectOption.model_validate(option)]

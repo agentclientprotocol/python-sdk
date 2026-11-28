@@ -72,6 +72,11 @@ def test_skip_invalid_items_on_generated_model() -> None:
     assert len(update.content or []) == 1
 
 
+def test_dual_annotated_optional_list_salvages_a_malformed_container() -> None:
+    update = ToolCallUpdate.model_validate({"toolCallId": "t", "locations": {"path": "/p"}})
+    assert update.locations is None
+
+
 class _Item(BaseModel):
     n: int
 

@@ -15,6 +15,7 @@ from acp.interfaces import Agent as V1Agent
 
 from . import v2
 from .v2._connection import open_connection
+from .v2._initialization import read_protocol_version
 from .v2.agent import AgentSideConnection as V2AgentSideConnection
 from .v2.meta import AGENT_METHODS as V2_AGENT_METHODS
 
@@ -31,23 +32,13 @@ def _dump(model: BaseModel) -> dict[str, Any]:
     return model.model_dump(mode="json", by_alias=True, exclude_none=True, exclude_unset=True)
 
 
-def _read_protocol_version(params: Any) -> int:
-    if not isinstance(params, dict):
-        raise RequestError.invalid_params({"details": "initialize params must be an object"})
-    version = params.get("protocolVersion")
-    if isinstance(version, bool) or not isinstance(version, int) or not 0 <= version <= 0xFFFF:
-        raise RequestError.invalid_params({"details": "initialize.protocolVersion must be an integer from 0 to 65535"})
-    return version
-
-
 def _v2_initialize_to_v1(request: v2.schema.InitializeRequest) -> v1_schema.InitializeRequest:
     capabilities = None
     if request.capabilities is not None:
         raw_caps = _dump(request.capabilities)
-        auth = raw_caps.get("auth")
-        if isinstance(auth, dict) and isinstance(auth.get("terminal"), dict):
-            auth = {**auth, "terminal": True}
-            raw_caps["auth"] = auth
+        auth = request.capabilities.auth
+        if auth is not None and auth.terminal is not None:
+            raw_caps["auth"]["terminal"] = True
         capabilities = v1_schema.ClientCapabilities.model_validate(raw_caps)
     return v1_schema.InitializeRequest(
         protocol_version=v1_meta.PROTOCOL_VERSION,
@@ -57,12 +48,7 @@ def _v2_initialize_to_v1(request: v2.schema.InitializeRequest) -> v1_schema.Init
     )
 
 
-def _normalize_initialize(params: Any, selected_version: int) -> dict[str, Any]:
-    requested_version = _read_protocol_version(params)
-    if selected_version == v2.PROTOCOL_VERSION:
-        request = v2.schema.InitializeRequest.model_validate(params)
-        request.protocol_version = v2.PROTOCOL_VERSION
-        return _dump(request)
+def _normalize_v1_initialize(params: Any, requested_version: int) -> dict[str, Any]:
     if requested_version >= v2.PROTOCOL_VERSION:
         request = v2.schema.InitializeRequest.model_validate(params)
         return _dump(_v2_initialize_to_v1(request))
@@ -90,21 +76,19 @@ class _AgentNegotiationHandler:
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
         async with self._lock:
-            is_initialize = not is_notification and method == V2_AGENT_METHODS["initialize"]
-            if self._selected is None:
-                return await self._initialize(method, params, is_notification)
-            if is_initialize:
+            if not is_notification and method == V2_AGENT_METHODS["initialize"]:
                 if self._locked:
                     raise RequestError.invalid_request({"details": "ACP connections may only be initialized once"})
-                return await self._initialize(method, params, is_notification)
-            self._locked = True
+                return await self._initialize(method, params)
             handler = self._selected
+            if handler is None:
+                raise RequestError.invalid_request({"details": "The first ACP request must be initialize"})
+            if not is_notification:
+                self._locked = True
         return await handler(method, params, is_notification)
 
-    async def _initialize(self, method: str, params: Any, is_notification: bool) -> Any:
-        if is_notification or method != V2_AGENT_METHODS["initialize"]:
-            raise RequestError.invalid_request({"details": "The first ACP request must be initialize"})
-        requested = _read_protocol_version(params)
+    async def _initialize(self, method: str, params: Any) -> Any:
+        requested = read_protocol_version(params)
         connection = self._connection
         if connection is None:
             raise RuntimeError("Protocol router is not connected")
@@ -133,9 +117,14 @@ class _AgentNegotiationHandler:
                 if implementation is not None
             ]
             raise RequestError.unsupported_protocol_version(requested, supported)
-        normalized = _normalize_initialize(params, selected)
-        response = await handler(method, normalized, False)
-        parsed_version = _read_protocol_version(_dump(response) if isinstance(response, BaseModel) else response)
+        if selected == v1_meta.PROTOCOL_VERSION:
+            params = _normalize_v1_initialize(params, requested)
+        response = await handler(method, params, False)
+        parsed_version = (
+            response.protocol_version
+            if isinstance(response, v2.schema.InitializeResponse)
+            else read_protocol_version(_dump(response) if isinstance(response, BaseModel) else response)
+        )
         if parsed_version != selected:
             raise RequestError.invalid_request({
                 "details": f"initialize response selected protocol {parsed_version}, expected {selected}"
