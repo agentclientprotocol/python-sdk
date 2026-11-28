@@ -1,13 +1,8 @@
 # Quickstart
 
-Launch a working ACP agent and client in minutes.
+Launch a streaming ACP agent and connect a client in a few minutes (requires Python 3.10–3.15).
 
-## Prerequisites
-
-- Python 3.10–3.15 with `pip` or `uv`
-- An ACP client (such as Zed, Toad, Lody, or T3 Code) or the SDK's programmatic client helpers
-
-## 1. Install the SDK
+## 1. Install
 
 ```bash
 pip install agent-client-protocol
@@ -15,21 +10,15 @@ pip install agent-client-protocol
 uv add agent-client-protocol
 ```
 
-## 2. Run the echo agent
+## 2. Run the echo agent and connect a client
 
-`examples/echo_agent.py` implements a minimal streaming agent over stdio:
+`examples/echo_agent.py` is a runnable stdio agent that streams incoming prompt text back as `session/update` notifications:
 
 ```bash
 python examples/echo_agent.py
 ```
 
-The process reads newline-delimited JSON-RPC frames from `stdin` and writes responses and `session/update` notifications to `stdout`.
-
-## 3. Connect from an ACP client
-
-### Zed
-
-Add an entry to Zed's `settings.json`:
+Point any stdio ACP client (such as Zed, Toad, Lody, or T3 Code) at that command. For example, in Zed's `settings.json`:
 
 ```json
 {
@@ -37,24 +26,15 @@ Add an entry to Zed's `settings.json`:
     "Echo Agent (Python)": {
       "type": "custom",
       "command": "uv",
-      "args": [
-        "run",
-        "/abs/path/to/python-sdk/examples/echo_agent.py"
-      ]
+      "args": ["run", "/abs/path/to/python-sdk/examples/echo_agent.py"]
     }
   }
 }
 ```
 
-Open the Agents panel, select **Echo Agent (Python)**, and send a message to observe streamed `session/update` responses.
+## 3. Drive an agent from Python
 
-### Other stdio clients
-
-Any ACP-compatible stdio client (including Toad, Lody, and T3 Code) can launch the same command and arguments directly.
-
-### Programmatic launch
-
-Use `spawn_agent_process` to start an agent subprocess, attach stdio framing, and close both the connection and subprocess on exit:
+Use `spawn_agent_process` to start an agent subprocess, exchange JSON-RPC messages over stdio, and close both cleanly on exit:
 
 ```python
 import asyncio
@@ -79,20 +59,17 @@ async def main() -> None:
     async with spawn_agent_process(SimpleClient(), sys.executable, str(script)) as (conn, _proc):
         await conn.initialize(protocol_version=PROTOCOL_VERSION)
         session = await conn.new_session(cwd=str(script.parent), mcp_servers=[])
-        await conn.prompt(
-            session_id=session.session_id,
-            prompt=[TextContentBlock(text="Hello from spawn!")],
-        )
+        await conn.prompt(session_id=session.session_id, prompt=[TextContentBlock(text="Hello from spawn!")])
 
 
 asyncio.run(main())
 ```
 
-`spawn_client_process` provides the corresponding helper for spawning an ACP client subprocess from an agent.
+`spawn_client_process` provides the matching helper when an agent spawns a client subprocess.
 
-## 4. Build a custom agent
+## 4. Write your own agent
 
-Subclass `acp.Agent`, implement the methods your agent supports, and start the stdio loop with `acp.run_agent()`:
+Subclass `acp.Agent`, implement the methods your agent supports, and start serving with `acp.run_agent()`:
 
 ```python
 import asyncio
@@ -126,30 +103,9 @@ if __name__ == "__main__":
     asyncio.run(run_agent(MyAgent()))
 ```
 
-Generated schema models provide defaults for discriminator fields such as `type` and `sessionUpdate`, enabling direct construction:
-
-```python
-from acp.schema import AgentMessageChunk, TextContentBlock
-
-update = AgentMessageChunk(content=TextContentBlock(text="File opened."))
-```
-
-Handlers and connection methods accept expanded snake_case parameters, with additional keyword arguments serialized as request `_meta`.
-
-## Runnable examples
-
-- [`examples/echo_agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/echo_agent.py) — minimal streaming agent
-- [`examples/agent.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/agent.py) — agent with capability negotiation and richer updates
-- [`examples/client.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/client.py) — interactive stdio client
-- [`examples/duet.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/duet.py) — in-process client/agent pairing with `spawn_agent_process`
-- [`examples/mcp_over_acp.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/mcp_over_acp.py) — stateless MCP-over-ACP exchange
-- [`examples/gemini.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/gemini.py) — bridge to the Gemini CLI (`gemini --acp`)
-- [`examples/http_server.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/http_server.py), [`examples/http_client.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/http_client.py), [`examples/ws_client.py`](https://github.com/agentclientprotocol/python-sdk/blob/main/examples/ws_client.py) — Streamable HTTP and WebSocket demos
+Generated schema models populate discriminator fields (`type`, `sessionUpdate`) automatically, so models like `AgentMessageChunk(content=TextContentBlock(text="Hello!"))` can be constructed directly. Extra keyword arguments on connection calls and handlers carry JSON-RPC `_meta`.
 
 ## Next steps
 
-- Explore v1 capabilities in [Protocol Features (v1)](protocol-features.md).
-- Serve agents remotely with [Web Transport (HTTP & WebSocket)](web-transport.md).
-- Try the preview protocol in [Experimental Protocol v2](experimental-v2.md).
-- Reuse stateful UI/agent helpers from [Contrib Utilities](contrib.md).
-- Validate integrations with [Testing & Conformance](testing.md).
+- Browse [`examples/`](https://github.com/agentclientprotocol/python-sdk/tree/main/examples) for fuller agent, client, HTTP/WS, MCP-over-ACP, and Gemini CLI demos.
+- Continue to [Protocol Features (v1)](protocol-features.md), [Web Transport](web-transport.md), or [Experimental Protocol v2](experimental-v2.md).
