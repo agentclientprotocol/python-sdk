@@ -149,6 +149,31 @@ def test_signature_generation_preserves_union_signatures(expression) -> None:
     assert ast.dump(tree) == before
 
 
+def test_signature_generation_reuses_named_union_aliases() -> None:
+    import ast
+    from types import SimpleNamespace
+    from typing import Annotated
+
+    from pydantic import BaseModel
+
+    from scripts.gen_signature import NodeTransformer
+
+    class Request(BaseModel):
+        value: int | str
+        optional_value: str | int | None = None
+
+    schema = SimpleNamespace(Request=Request, Value=Annotated[str | int, "value"])
+    tree = ast.parse("from .schema import Request\n@param_model(Request)\nasync def request(self): ...\n")
+    NodeTransformer(schema).visit(tree)
+    ast.fix_missing_locations(tree)
+    assert ast.unparse(tree) == (
+        "from .schema import Request, Value\n\n"
+        "@param_model(Request)\n"
+        "async def request(self, value: Value, optional_value: Value | None=None):\n"
+        "    ..."
+    )
+
+
 @pytest.mark.parametrize(
     "expression",
     [

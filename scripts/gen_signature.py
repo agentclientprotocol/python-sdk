@@ -4,6 +4,7 @@ import inspect
 import sys
 import types
 import typing as t
+from collections import defaultdict
 from pathlib import Path
 
 from pydantic import AnyUrl, BaseModel
@@ -42,6 +43,17 @@ class NodeTransformer(ast.NodeTransformer):
         self._literals = {
             name: value for name, value in self._schema.__dict__.items() if t.get_origin(value) is t.Literal
         }
+        union_aliases: dict[frozenset[t.Any], list[str]] = defaultdict(list)
+        for name, value in self._schema.__dict__.items():
+            if name.startswith("_"):
+                continue
+            while t.get_origin(value) is t.Annotated:
+                value = t.get_args(value)[0]
+            if t.get_origin(value) in (t.Union, types.UnionType):
+                members = frozenset(t.get_args(value))
+                if type(None) not in members:
+                    union_aliases[members].append(name)
+        self._unions = {members: names[0] for members, names in union_aliases.items() if len(names) == 1}
         self._current_model_name: str | None = None
         self._type_aliases: dict[str, ast.expr] = {}
         self._schema_names: dict[str, str] = {}
@@ -201,7 +213,16 @@ class NodeTransformer(ast.NodeTransformer):
         if origin is t.Annotated:
             return self._format_annotation(t.get_args(annotation)[0])
         if origin in (t.Union, types.UnionType):
-            first, *rest = t.get_args(annotation)
+            args = t.get_args(annotation)
+            has_none = type(None) in args
+            members = tuple(arg for arg in args if arg is not type(None))
+            if alias_name := self._unions.get(frozenset(members)):
+                self._add_schema_import(alias_name)
+                reference = self._schema_reference(alias_name)
+                if has_none:
+                    return ast.BinOp(left=reference, op=ast.BitOr(), right=ast.Constant(value=None))
+                return reference
+            first, *rest = args
             formatted = self._format_annotation(first)
             for argument in rest:
                 formatted = ast.BinOp(left=formatted, op=ast.BitOr(), right=self._format_annotation(argument))
