@@ -2,6 +2,7 @@ import pytest
 from pydantic import TypeAdapter, ValidationError
 
 from acp.experimental.v2 import PROTOCOL_VERSION, schema
+from acp.experimental.v2._schema_base import WIRE_VALIDATION_CONTEXT
 from acp.experimental.v2.interfaces import CreateElicitationRequest
 from acp.experimental.v2.meta import PROTOCOL_METHODS
 from acp.experimental.v2.schema import (
@@ -115,50 +116,6 @@ def test_mcp_tool_call_attribution_requires_a_session() -> None:
         })
 
 
-def test_request_envelopes_select_params_by_method_and_preserve_extensions() -> None:
-    params = {"sessionId": "s", "cwd": "/work", "cursorId": "cursor"}
-    request = schema.ClientRequest.model_validate({"id": 1, "method": "session/fork", "params": params})
-    assert isinstance(request.params, schema.ForkSessionRequest)
-    assert request.model_dump(by_alias=True, exclude_unset=True)["params"] == params
-    with pytest.raises(ValidationError):
-        schema.ClientRequest.model_validate({"id": 1, "method": "session/prompt", "params": params})
-    with pytest.raises(ValidationError):
-        schema.ClientRequest.model_validate({"id": 1, "method": "session/prompt"})
-    with pytest.raises(ValidationError):
-        schema.ClientRequest.model_validate({"id": 1, "method": "session/prompt", "params": None})
-    with pytest.raises(ValidationError):
-        schema.ClientRequest.model_validate({"id": 1, "method": "session/cancel", "params": {"sessionId": "s"}})
-    with pytest.raises(ValidationError):
-        schema.ClientRequest.model_validate({"id": 1, "method": "unknown/method", "params": {}})
-
-    logout = schema.ClientRequest.model_validate({"id": 2, "method": "auth/logout"})
-    assert logout.params is None
-
-    extension_params = {**params, "opaque": True}
-    extension = schema.ClientRequest.model_validate({"id": 1, "method": "_vendor/custom", "params": extension_params})
-    assert extension.model_dump(by_alias=True, exclude_unset=True)["params"] == extension_params
-
-
-def test_method_dispatch_distinguishes_request_and_notification_payloads() -> None:
-    params = {"serverId": "mcp", "requestId": "r", "method": "tools/list", "sessionId": "s"}
-    request = schema.AgentRequest.model_validate({"id": 1, "method": "mcp/message", "params": params})
-    notification = schema.ClientNotification.model_validate({"method": "mcp/message", "params": params})
-    assert isinstance(request.params, schema.MessageMcpRequest)
-    assert request.params.session_id == "s"
-    assert isinstance(notification.params, schema.MessageMcpNotification)
-
-    proxy = schema.ProxyRequest.model_validate({
-        "id": 1,
-        "method": "proxy/successor",
-        "params": {"method": "session/list", "params": {}},
-    })
-    assert isinstance(proxy.params, schema.ProxySuccessorRequest)
-    with pytest.raises(ValidationError):
-        schema.ProxyRequest.model_validate({"id": 1, "method": "proxy/initialize"})
-    with pytest.raises(ValidationError):
-        schema.AgentNotification.model_validate({"method": "session/update", "params": None})
-
-
 def test_proxy_response_preserves_an_opaque_successor_result() -> None:
     wire = {
         "id": 1,
@@ -229,8 +186,11 @@ def test_config_options_reject_duplicate_ids_and_malformed_boolean_values() -> N
         (schema.ForkSessionRequest, {"sessionId": "s", "cwd": "/work"}),
         (schema.ResumeSessionRequest, {"sessionId": "s", "cwd": "/work"}),
     ):
-        with pytest.raises(ValidationError, match="explicit 'type'"):
-            request_model.model_validate({**base, "configOptions": [{"configId": "x", "value": "x"}]})
+        with pytest.raises(ValidationError):
+            request_model.model_validate(
+                {**base, "configOptions": [{"configId": "x", "value": "x"}]},
+                context=WIRE_VALIDATION_CONTEXT,
+            )
     constructed = schema.NewSessionRequest(
         cwd="/work",
         config_options=[schema.InitialIdConfigOption(config_id="model", value="fast")],
@@ -238,13 +198,14 @@ def test_config_options_reject_duplicate_ids_and_malformed_boolean_values() -> N
     assert constructed.config_options == [schema.InitialIdConfigOption(config_id="model", value="fast")]
 
 
-def test_version_error_requires_typed_data_and_other_errors_preserve_opaque_data() -> None:
-    with pytest.raises(ValidationError):
-        schema.Error.model_validate({"code": -32022, "message": "Version unavailable"})
+def test_error_preserves_version_and_opaque_data() -> None:
     data = {"requested": 1, "supported": [2]}
     version_error = schema.Error.model_validate({"code": -32022, "message": "Version unavailable", "data": data})
-    assert isinstance(version_error.data, schema.UnsupportedProtocolVersionErrorData)
-    assert version_error.model_dump(mode="json", by_alias=True, exclude_unset=True)["data"] == data
+    assert version_error.data == data
+    parsed_data = schema.UnsupportedProtocolVersionErrorData.model_validate(version_error.data)
+    assert parsed_data.model_dump(mode="json", by_alias=True, exclude_unset=True) == data
+    no_data = schema.Error.model_validate({"code": -32022, "message": "Version unavailable"})
+    assert no_data.data is None
     opaque = {**data, "vendor": True}
     other_error = schema.Error.model_validate({"code": -32603, "message": "Failed", "data": opaque})
     assert other_error.data == opaque
@@ -345,18 +306,34 @@ def test_reusable_v2_union_aliases_validate_known_variants() -> None:
     )
 
 
-def test_resume_session_replay_from_requires_explicit_type_on_wire() -> None:
+def test_wire_validation_requires_explicit_discriminator_tags() -> None:
     valid_ctor = schema.ResumeSessionRequest(session_id="s", cwd="/work", replay_from=schema.ReplayFromStartVariant())
     assert isinstance(valid_ctor.replay_from, schema.ReplayFromStartVariant)
-    valid_wire = schema.ResumeSessionRequest.model_validate({
-        "sessionId": "s",
-        "cwd": "/work",
-        "replayFrom": {"type": "start"},
-    })
+    valid_wire = schema.ResumeSessionRequest.model_validate(
+        {"sessionId": "s", "cwd": "/work", "replayFrom": {"type": "start"}},
+        context=WIRE_VALIDATION_CONTEXT,
+    )
     assert isinstance(valid_wire.replay_from, schema.ReplayFromStartVariant)
-    valid_null = schema.ResumeSessionRequest.model_validate({"sessionId": "s", "cwd": "/work", "replayFrom": None})
+    valid_null = schema.ResumeSessionRequest.model_validate(
+        {"sessionId": "s", "cwd": "/work", "replayFrom": None},
+        context=WIRE_VALIDATION_CONTEXT,
+    )
     assert valid_null.replay_from is None
 
     for malformed in ("start", {}, {"type": 5}):
         with pytest.raises(ValidationError):
-            schema.ResumeSessionRequest.model_validate({"sessionId": "s", "cwd": "/work", "replayFrom": malformed})
+            schema.ResumeSessionRequest.model_validate(
+                {"sessionId": "s", "cwd": "/work", "replayFrom": malformed},
+                context=WIRE_VALIDATION_CONTEXT,
+            )
+
+    with pytest.raises(ValidationError):
+        schema.PromptRequest.model_validate(
+            {"sessionId": "s", "prompt": [{"text": "hi"}]},
+            context=WIRE_VALIDATION_CONTEXT,
+        )
+    with pytest.raises(ValidationError):
+        UpdateSessionNotification.model_validate(
+            {"sessionId": "s", "update": {"sessionUpdate": "state_update"}},
+            context=WIRE_VALIDATION_CONTEXT,
+        )

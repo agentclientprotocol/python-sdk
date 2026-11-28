@@ -56,16 +56,6 @@ def render_meta(*, protocol_version: int = 1) -> str:
     client_methods = data.get("clientMethods", {})
     protocol_methods = data.get("protocolMethods")
     proxy_methods = data.get("proxyMethods") if protocol_version == 2 else None
-    method_schemas = None
-    if protocol_version == 2:
-        schema = json.loads((schema_dir / "schema.json").read_text("utf-8"))
-        method_schemas = {
-            side: {
-                method: {kind: ref.removeprefix("#/$defs/") for kind, ref in payloads.items()}
-                for method, payloads in methods.items()
-            }
-            for side, methods in schema["x-methods"].items()
-        }
     version = data.get("version", 1)
     header_lines = [f"# Generated from {meta_json.relative_to(ROOT).as_posix()}. Do not edit by hand."]
     if version_file.exists():
@@ -80,7 +70,6 @@ def render_meta(*, protocol_version: int = 1) -> str:
         + f"CLIENT_METHODS = {json.dumps(client_methods, indent=4)}\n"
         + (f"PROTOCOL_METHODS = {json.dumps(protocol_methods, indent=4)}\n" if protocol_methods is not None else "")
         + (f"PROXY_METHODS = {json.dumps(proxy_methods, indent=4)}\n" if proxy_methods is not None else "")
-        + (f"METHOD_SCHEMAS = {json.dumps(method_schemas, indent=4)}\n" if method_schemas is not None else "")
         + f"PROTOCOL_VERSION = {int(version)}\n"
     )
     result = subprocess.run(  # noqa: S603

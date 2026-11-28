@@ -10,10 +10,8 @@ from acp._deserialize import empty_list_on_null, skip_invalid_items, use_default
 from acp.experimental.v2._schema_base import (
     BaseModel,
     ElicitationContent,
-    ErrorModel,
     IdleStateUpdateModel,
     InitialConfigRequestModel,
-    MethodParamsModel,
     SessionConfigSelectModel,
 )
 from pydantic import (
@@ -4688,7 +4686,7 @@ class McpErrorResponse(BaseModel):
     """
 
 
-class ClientNotification(MethodParamsModel):
+class ClientNotification(BaseModel):
     method: str
     """
     The notification method name.
@@ -4699,7 +4697,7 @@ class ClientNotification(MethodParamsModel):
     """
 
 
-class ProxyNotification(MethodParamsModel):
+class ProxyNotification(BaseModel):
     method: str
     """
     The notification method name.
@@ -4878,7 +4876,7 @@ class UnknownState(UnknownStateUpdate):
     state: Literal["unknown"] = "unknown"
 
 
-class Error(ErrorModel):
+class Error(BaseModel):
     code: StrictInt
     """
     A number indicating the error type that occurred.
@@ -7023,7 +7021,7 @@ class UpdateSessionNotification(BaseModel):
     """
 
 
-class ClientRequest(MethodParamsModel):
+class ClientRequest(BaseModel):
     id: Union[int, str]
     """
     The request id used to correlate the matching response.
@@ -7066,7 +7064,7 @@ class ClientRequest(MethodParamsModel):
     """
 
 
-class ProxyRequest(MethodParamsModel):
+class ProxyRequest(BaseModel):
     id: Union[int, str]
     """
     The request id used to correlate the matching response.
@@ -7176,7 +7174,7 @@ class AgentResponse(RootModel[Union[AgentResponseMessage, AgentErrorMessage]]):
     """
 
 
-class AgentNotification(MethodParamsModel):
+class AgentNotification(BaseModel):
     method: str
     """
     The notification method name.
@@ -7207,7 +7205,7 @@ class ProxyResponse(RootModel[Union[ProxyResponseMessage, ProxyErrorMessage]]):
     """
 
 
-class AgentRequest(MethodParamsModel):
+class AgentRequest(BaseModel):
     id: Union[int, str]
     """
     The request id used to correlate the matching response.

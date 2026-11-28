@@ -963,3 +963,35 @@ async def test_v2_initialize_negotiation_and_repeat_semantics(via_router: bool) 
         })
         resp11 = await asyncio.wait_for(client_transport.receive(), timeout=2)
         assert resp11["error"]["code"] == -32600
+
+
+@pytest.mark.asyncio
+async def test_v2_live_wire_dispatch_rejects_missing_discriminator_tags() -> None:
+    class TagCheckAgent(Agent):
+        async def resume_session(self, session_id: str, cwd: str, **kwargs: Any) -> v2.schema.ResumeSessionResponse:
+            return v2.schema.ResumeSessionResponse()
+
+        async def prompt(
+            self, session_id: str, prompt: list[v2.schema.ContentBlock], **kwargs: Any
+        ) -> v2.schema.PromptResponse:
+            return v2.schema.PromptResponse(message_id="m-1")
+
+    client_transport, agent_transport = memory_transport_pair()
+    async with v2.AgentSideConnection(TagCheckAgent(), agent_transport):
+        await client_transport.send({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "initialize",
+            "params": {"protocolVersion": 2, "info": {"name": "raw", "version": "1"}},
+        })
+        await asyncio.wait_for(client_transport.receive(), timeout=2)
+
+        for req_id, method, params in (
+            (2, "session/new", {"cwd": "/w", "configOptions": [{"configId": "x", "value": "x"}]}),
+            (3, "session/resume", {"sessionId": "s", "cwd": "/w", "replayFrom": {}}),
+            (4, "session/prompt", {"sessionId": "s", "prompt": [{"text": "hi"}]}),
+        ):
+            await client_transport.send({"jsonrpc": "2.0", "id": req_id, "method": method, "params": params})
+            resp = await asyncio.wait_for(client_transport.receive(), timeout=2)
+            assert resp["id"] == req_id
+            assert resp["error"]["code"] == -32602

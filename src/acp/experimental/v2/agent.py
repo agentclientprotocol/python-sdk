@@ -15,6 +15,7 @@ from ._initialization import InitializationState
 from ._methods import CLIENT_REQUESTS_BY_METHOD
 from ._params import build_elicitation_request, build_request
 from ._router import MethodRouter
+from ._schema_base import WIRE_VALIDATION_CONTEXT
 from .interfaces import Agent, CreateElicitationRequest, CreateElicitationResponse
 from .meta import CLIENT_METHODS
 
@@ -253,7 +254,7 @@ class AgentSideConnection:
         response = await self._conn.send_request(method, _dump(request))
         if response is None and spec.empty_response:
             response = {}
-        return spec.response.validate_python(response)
+        return spec.response.validate_python(response, context=WIRE_VALIDATION_CONTEXT)
 
     async def _notify(self, method: str, notification: BaseModel) -> None:
         await self._state.require(method)

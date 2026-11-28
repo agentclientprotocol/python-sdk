@@ -12,6 +12,7 @@ from ._initialization import InitializationState
 from ._methods import AGENT_REQUESTS_BY_METHOD
 from ._params import build_config_request, build_request
 from ._router import MethodRouter
+from ._schema_base import WIRE_VALIDATION_CONTEXT
 from .agent import _dump, _extension_method
 from .interfaces import Client, SetConfigOptionRequest
 from .meta import AGENT_METHODS
@@ -61,7 +62,7 @@ class ClientSideConnection:
         self._state.begin(request)
         try:
             response = await self._conn.send_request(AGENT_METHODS["initialize"], _dump(request))
-            parsed = schema.InitializeResponse.model_validate(response)
+            parsed = schema.InitializeResponse.model_validate(response, context=WIRE_VALIDATION_CONTEXT)
             self._state.complete(parsed)
         except BaseException as error:
             self._state.fail(error)
@@ -375,7 +376,7 @@ class ClientSideConnection:
         response = await self._conn.send_request(method, _dump(request))
         if response is None and spec.empty_response:
             response = {}
-        return spec.response.validate_python(response)
+        return spec.response.validate_python(response, context=WIRE_VALIDATION_CONTEXT)
 
     async def _notify(self, method: str, notification: BaseModel) -> None:
         await self._state.require(method)

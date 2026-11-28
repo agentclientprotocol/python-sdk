@@ -1,15 +1,12 @@
 from __future__ import annotations
 
 from functools import cache
-from typing import Any, ClassVar
+from typing import Any, ClassVar, Literal, get_args, get_origin
 
 import pydantic
 from pydantic import (
     ModelWrapValidatorHandler,
-    TypeAdapter,
     ValidationInfo,
-    ValidatorFunctionWrapHandler,
-    field_validator,
     model_validator,
 )
 from pydantic.alias_generators import to_snake
@@ -17,10 +14,18 @@ from pydantic.alias_generators import to_snake
 from acp._deserialize import pop_defaulted_fields, push_defaulted_fields
 from acp._schema_base import BaseModel as _BaseModel
 
-from .meta import METHOD_SCHEMAS
-
 ElicitationContent = dict[str, Any]
+WIRE_VALIDATION_CONTEXT: dict[str, bool] = {"require_tags": True}
 _NON_ERROR_STOP_REASONS = frozenset({None, "end_turn", "max_tokens", "max_turn_requests", "refusal", "cancelled"})
+
+
+@cache
+def _required_literal_fields(model_cls: type[pydantic.BaseModel]) -> tuple[tuple[str, str], ...]:
+    fields: list[tuple[str, str]] = []
+    for name, field in model_cls.model_fields.items():
+        if get_origin(field.annotation) is Literal and len(get_args(field.annotation)) == 1:
+            fields.append((name, field.alias or name))
+    return tuple(fields)
 
 
 class BaseModel(_BaseModel):
@@ -106,14 +111,11 @@ class BaseModel(_BaseModel):
 
     @model_validator(mode="before")
     @classmethod
-    def _validate_replay_from_tag(cls, value: Any) -> Any:
-        if (
-            cls.__name__ == "ResumeSessionRequest"
-            and isinstance(value, dict)
-            and isinstance((replay_from := value.get("replayFrom", value.get("replay_from"))), dict)
-            and "type" not in replay_from
-        ):
-            raise ValueError("replayFrom requires an explicit 'type' field")
+    def _require_wire_tags(cls, value: Any, info: ValidationInfo) -> Any:
+        if isinstance(value, dict) and info.context and info.context.get("require_tags"):
+            for name, alias in _required_literal_fields(cls):
+                if alias not in value and name not in value:
+                    raise ValueError(f"Field required: {alias!r}")
         return value
 
     @model_validator(mode="before")
@@ -145,16 +147,6 @@ class BaseModel(_BaseModel):
         return self
 
 
-class ErrorModel(BaseModel):
-    @model_validator(mode="after")
-    def _validate_version_error_data(self) -> ErrorModel:
-        if self.__dict__.get("code") == -32022:
-            from .schema import UnsupportedProtocolVersionErrorData
-
-            self.__dict__["data"] = UnsupportedProtocolVersionErrorData.model_validate(self.__dict__.get("data"))
-        return self
-
-
 class IdleStateUpdateModel(BaseModel):
     @model_validator(mode="before")
     @classmethod
@@ -175,73 +167,7 @@ class SessionConfigSelectModel(BaseModel):
         return self
 
 
-@cache
-def _payload_adapter(model_name: str) -> TypeAdapter[Any]:
-    from . import schema
-
-    return TypeAdapter(getattr(schema, model_name))
-
-
-class MethodParamsModel(BaseModel):
-    # Envelope names identify the sender. The schema registry is keyed by receiver.
-    _payload_route: ClassVar[dict[str, tuple[str, str]]] = {
-        "AgentNotification": ("client", "notification"),
-        "AgentRequest": ("client", "request"),
-        "ClientNotification": ("agent", "notification"),
-        "ClientRequest": ("agent", "request"),
-        "ProxyNotification": ("proxy", "notification"),
-        "ProxyRequest": ("proxy", "request"),
-    }
-
-    @classmethod
-    def _resolve_method_payload(cls, method: str, value: Any) -> Any:
-        side, kind = next(
-            cls._payload_route[base.__name__] for base in cls.__mro__ if base.__name__ in cls._payload_route
-        )
-        method_spec = METHOD_SCHEMAS[side].get(method)
-        if method_spec is None and kind == "notification" and side != "proxy":
-            method_spec = METHOD_SCHEMAS.get("protocol", {}).get(method)
-        if method_spec is not None:
-            model_name = method_spec.get(kind)
-            if model_name is None:
-                raise ValueError(f"{method!r} is not a valid {side} {kind}")
-            adapter = _payload_adapter(model_name)
-            if value is None:
-                adapter.validate_python({})
-                return None
-            return adapter.validate_python(value)
-        if side != "proxy" and method.startswith("_"):
-            return value
-        raise ValueError(f"Unknown {side} {kind} method: {method!r}")
-
-    @field_validator("params", mode="wrap", check_fields=False)
-    @classmethod
-    def _validate_method_params(cls, value: Any, _handler: ValidatorFunctionWrapHandler, info: ValidationInfo) -> Any:
-        method = info.data.get("method") if info.data is not None else None
-        if not isinstance(method, str):
-            return value
-        return cls._resolve_method_payload(method, value)
-
-    @model_validator(mode="after")
-    def _validate_omitted_params(self) -> MethodParamsModel:
-        if "params" not in self.model_fields_set:
-            self._resolve_method_payload(self.__dict__["method"], None)
-        return self
-
-
 class InitialConfigRequestModel(BaseModel):
-    @model_validator(mode="before")
-    @classmethod
-    def _validate_config_option_tags(cls, value: Any) -> Any:
-        if not isinstance(value, dict):
-            return value
-        options = value.get("configOptions", value.get("config_options"))
-        if isinstance(options, list | tuple):
-            for option in options:
-                if isinstance(option, dict) and "type" not in option:
-                    raise ValueError("configOptions entries require an explicit 'type' field")
-        return value
-
     @model_validator(mode="after")
     def _validate_config_ids(self) -> InitialConfigRequestModel:
         options = self.__dict__.get("config_options", ())

@@ -9,6 +9,7 @@ from acp.exceptions import RequestError
 from acp.utils import model_to_kwargs
 
 from ._methods import NotificationSpec, RequestSpec, protocol_specs
+from ._schema_base import WIRE_VALIDATION_CONTEXT
 
 ExtensionRequest = Callable[[str, Any], Awaitable[Any]]
 ExtensionNotification = Callable[[str, Any], Awaitable[None]]
@@ -39,7 +40,7 @@ class MethodRouter:
         handler = self._handler(spec.handler)
         if handler is None:
             raise RequestError.method_not_found(spec.method)
-        request = spec.request.validate_python({} if params is None else params)
+        request = spec.request.validate_python({} if params is None else params, context=WIRE_VALIDATION_CONTEXT)
         response = await handler(**model_to_kwargs(request, type(request)))
         if response is None and spec.empty_response:
             response = {}
@@ -56,7 +57,7 @@ class MethodRouter:
         handler = self._handler(spec.handler)
         if handler is None:
             return
-        request = spec.params.validate_python({} if params is None else params)
+        request = spec.params.validate_python({} if params is None else params, context=WIRE_VALIDATION_CONTEXT)
         await handler(**model_to_kwargs(request, type(request)))
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:

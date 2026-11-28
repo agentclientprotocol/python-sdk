@@ -6,6 +6,7 @@ from typing import Any, Literal
 from acp.exceptions import RequestError
 
 from . import schema
+from ._schema_base import WIRE_VALIDATION_CONTEXT
 from .meta import PROTOCOL_VERSION
 
 InitializationPhase = Literal["uninitialized", "initializing", "initialized", "failed"]
@@ -49,7 +50,7 @@ class InitializationState:
             raise RequestError.unsupported_protocol_version(requested, [PROTOCOL_VERSION])
         normalized = dict(params)
         normalized["protocolVersion"] = PROTOCOL_VERSION
-        schema.InitializeRequest.model_validate(normalized)
+        schema.InitializeRequest.model_validate(normalized, context=WIRE_VALIDATION_CONTEXT)
         previous_phase = self._phase
         self._phase = "initializing"
         return normalized, previous_phase

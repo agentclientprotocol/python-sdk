@@ -350,20 +350,8 @@ SessionUpdate = (
     coerce_legacy_protocol_version=False,
     prepare_schema=_prepare_schema,
     base_class_map={
-        "Error": "acp.experimental.v2._schema_base.ErrorModel",
         "IdleStateUpdate": "acp.experimental.v2._schema_base.IdleStateUpdateModel",
         "SessionConfigSelect": "acp.experimental.v2._schema_base.SessionConfigSelectModel",
-        **dict.fromkeys(
-            (
-                "AgentNotification",
-                "AgentRequest",
-                "ClientNotification",
-                "ClientRequest",
-                "ProxyNotification",
-                "ProxyRequest",
-            ),
-            "acp.experimental.v2._schema_base.MethodParamsModel",
-        ),
         **dict.fromkeys(
             ("ForkSessionRequest", "NewSessionRequest", "ResumeSessionRequest"),
             "acp.experimental.v2._schema_base.InitialConfigRequestModel",
