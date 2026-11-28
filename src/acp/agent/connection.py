@@ -11,7 +11,6 @@ from ..connection import Connection, MethodHandler
 from ..interfaces import Agent
 from ..meta import CLIENT_METHODS
 from ..schema import (
-    AcceptElicitationResponse,
     AgentMessageChunk,
     AgentPlanContentUpdate,
     AgentPlanRemovedUpdate,
@@ -20,7 +19,6 @@ from ..schema import (
     AuthAccount,
     AuthStatusUpdateNotification,
     AvailableCommandsUpdate,
-    CancelElicitationResponse,
     CompleteElicitationNotification,
     ConfigOptionUpdate,
     CreateElicitationResponse,
@@ -33,7 +31,6 @@ from ..schema import (
     CreateUrlRequestElicitationRequest,
     CreateUrlSessionElicitationRequest,
     CurrentModeUpdate,
-    DeclineElicitationResponse,
     ElicitationFormRequestMode,
     ElicitationFormSessionMode,
     ElicitationMode,
@@ -275,9 +272,7 @@ class AgentSideConnection:
             KillTerminalResponse,
         )
 
-    async def create_elicitation(
-        self, message: str, mode: ElicitationMode, **kwargs: Any
-    ) -> AcceptElicitationResponse | DeclineElicitationResponse | CancelElicitationResponse:
+    async def create_elicitation(self, message: str, mode: ElicitationMode, **kwargs: Any) -> CreateElicitationResponse:
         request = _create_elicitation_request(message, mode, kwargs or None)
         response = await self._conn.send_request(CLIENT_METHODS["elicitation_create"], serialize_params(request))
         return _CREATE_ELICITATION_RESPONSE_ADAPTER.validate_python(response)
