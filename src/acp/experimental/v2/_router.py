@@ -3,10 +3,13 @@ from __future__ import annotations
 from collections.abc import Awaitable, Callable
 from typing import Any
 
+from pydantic import ValidationError
+
 from acp.exceptions import RequestError
 from acp.utils import model_to_kwargs
 
 from ._methods import NotificationSpec, RequestSpec, protocol_specs
+from ._schema_base import WIRE_VALIDATION_CONTEXT
 
 ExtensionRequest = Callable[[str, Any], Awaitable[Any]]
 ExtensionNotification = Callable[[str, Any], Awaitable[None]]
@@ -24,32 +27,37 @@ class MethodRouter:
         self._requests = {spec.method: spec for spec in requests}
         self._notifications = {spec.method: spec for spec in notifications}
 
+    def request_spec(self, method: str) -> RequestSpec | None:
+        return self._requests.get(method)
+
     def _handler(self, name: str) -> Any:
         handler = getattr(self._target, name, None)
         if getattr(handler, "__func__", handler) is getattr(self._protocol, name, None):
             return None
         return handler
 
-    def request_spec(self, method: str) -> RequestSpec | None:
-        return self._requests.get(method)
-
     async def handle_request(self, spec: RequestSpec, params: Any) -> Any:
         handler = self._handler(spec.handler)
         if handler is None:
             raise RequestError.method_not_found(spec.method)
-        request = spec.request.validate_python(params)
+        request = spec.request.validate_python({} if params is None else params, context=WIRE_VALIDATION_CONTEXT)
         response = await handler(**model_to_kwargs(request, type(request)))
         if response is None and spec.empty_response:
             response = {}
         if spec.adapt_result is not None:
             response = spec.adapt_result(response)
-        return spec.response.validate_python(response)
+        try:
+            return spec.response.validate_python(response)
+        except ValidationError as exc:
+            raise RequestError.internal_error({
+                "errors": exc.errors(include_context=False, include_input=False)
+            }) from exc
 
     async def handle_notification(self, spec: NotificationSpec, params: Any) -> None:
         handler = self._handler(spec.handler)
         if handler is None:
             return
-        request = spec.params.validate_python(params)
+        request = spec.params.validate_python({} if params is None else params, context=WIRE_VALIDATION_CONTEXT)
         await handler(**model_to_kwargs(request, type(request)))
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:

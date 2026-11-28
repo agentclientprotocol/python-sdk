@@ -30,6 +30,7 @@ SIGNATURE_OPTIONAL_FIELDS: set[tuple[str, str]] = {
     ("LoadSessionRequest", "mcp_servers"),
     ("NewSessionRequest", "mcp_servers"),
 }
+SIGNATURE_TRAILING_FIELDS: set[tuple[str, str]] = {("ForkSessionRequest", "cursor_id")}
 
 
 class NodeTransformer(ast.NodeTransformer):
@@ -77,11 +78,11 @@ class NodeTransformer(ast.NodeTransformer):
         with source_file.open("r", encoding="utf-8") as f:
             source_code = f.read()
         tree = ast.parse(source_code)
-        before = ast.dump(tree, include_attributes=False)
+        before = ast.unparse(tree)
         self.visit(tree)
-        if ast.dump(tree, include_attributes=False) != before:
+        new_code = ast.unparse(tree)
+        if new_code != before:
             print("Rewriting signatures in", source_file)
-            new_code = ast.unparse(tree)
             with source_file.open("w", encoding="utf-8") as f:
                 f.write(new_code)
 
@@ -160,9 +161,14 @@ class NodeTransformer(ast.NodeTransformer):
             param_defaults = [
                 self._to_param_def(name, field) for name, field in model.model_fields.items() if name != "field_meta"
             ]
+            param_defaults.sort(
+                key=lambda parameter: (
+                    parameter[1] is not None,
+                    (self._current_model_name, parameter[0].arg) in SIGNATURE_TRAILING_FIELDS,
+                )
+            )
         finally:
             self._current_model_name = None
-        param_defaults.sort(key=lambda x: x[1] is not None)
         node.args.args[1:] = [param for param, _ in param_defaults]
         node.args.defaults = [default for _, default in param_defaults if default is not None]
         if "field_meta" in model.model_fields:
@@ -180,7 +186,9 @@ class NodeTransformer(ast.NodeTransformer):
         else:
             if field.default is PydanticUndefined:
                 default = None
-            elif isinstance(field.default, dict | BaseModel):
+            elif isinstance(field.default, dict | list | BaseModel):
+                if ann is not None and not _allows_none(ann):
+                    ann = ann | None
                 default = ast.Constant(None)
             else:
                 default = ast.Constant(value=field.default)
@@ -250,6 +258,16 @@ class NodeTransformer(ast.NodeTransformer):
             slice=values[0] if len(values) == 1 else ast.Tuple(elts=values, ctx=ast.Load()),
             ctx=ast.Load(),
         )
+
+
+def _allows_none(annotation: t.Any) -> bool:
+    while t.get_origin(annotation) is t.Annotated:
+        annotation = t.get_args(annotation)[0]
+    if annotation is None or annotation is type(None):
+        return True
+    if t.get_origin(annotation) in (t.Union, types.UnionType):
+        return any(_allows_none(arg) for arg in t.get_args(annotation))
+    return False
 
 
 def gen_signature(source_dir: Path, *, protocol_version: int = 1) -> None:

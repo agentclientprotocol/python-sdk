@@ -55,6 +55,7 @@ def render_meta(*, protocol_version: int = 1) -> str:
     agent_methods = data.get("agentMethods", {})
     client_methods = data.get("clientMethods", {})
     protocol_methods = data.get("protocolMethods")
+    proxy_methods = data.get("proxyMethods") if protocol_version == 2 else None
     version = data.get("version", 1)
     header_lines = [f"# Generated from {meta_json.relative_to(ROOT).as_posix()}. Do not edit by hand."]
     if version_file.exists():
@@ -68,6 +69,7 @@ def render_meta(*, protocol_version: int = 1) -> str:
         + f"AGENT_METHODS = {json.dumps(agent_methods, indent=4)}\n"
         + f"CLIENT_METHODS = {json.dumps(client_methods, indent=4)}\n"
         + (f"PROTOCOL_METHODS = {json.dumps(protocol_methods, indent=4)}\n" if protocol_methods is not None else "")
+        + (f"PROXY_METHODS = {json.dumps(proxy_methods, indent=4)}\n" if proxy_methods is not None else "")
         + f"PROTOCOL_VERSION = {int(version)}\n"
     )
     result = subprocess.run(  # noqa: S603

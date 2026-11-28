@@ -8,11 +8,26 @@ Referenced by ``field_validator`` methods that ``scripts/gen_schema.py`` injects
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, ValidationError, ValidationInfo
 from pydantic_core import PydanticUseDefault
+
+_DEFAULTED_FIELDS = ContextVar[set[str] | None]("_acp_defaulted_fields", default=None)
+
+
+@contextmanager
+def track_defaulted_fields() -> Iterator[set[str]]:
+    """Record which fields on this model were salvaged to their defaults."""
+    fields: set[str] = set()
+    token = _DEFAULTED_FIELDS.set(fields)
+    try:
+        yield fields
+    finally:
+        _DEFAULTED_FIELDS.reset(token)
 
 
 def coerce_protocol_version(value: Any, _info: Any = None) -> int:
@@ -25,12 +40,27 @@ def coerce_protocol_version(value: Any, _info: Any = None) -> int:
         return 1
 
 
-def use_default_on_error(value: Any, handler: Callable[[Any], Any], _info: Any = None) -> Any:
+def use_default_on_error(value: Any, handler: Callable[[Any], Any], info: ValidationInfo | None = None) -> Any:
     """Ask Pydantic to use the declared field default after validation fails."""
     try:
         return handler(value)
     except ValidationError:
+        if isinstance(value, BaseModel) or (
+            isinstance(value, list | tuple) and any(isinstance(item, BaseModel) for item in value)
+        ):
+            raise
+        if (
+            info is not None
+            and (field_name := info.field_name) is not None
+            and (fields := _DEFAULTED_FIELDS.get()) is not None
+        ):
+            fields.add(field_name)
         raise PydanticUseDefault() from None
+
+
+def empty_list_on_null(value: Any, _info: Any = None) -> Any:
+    """Treat explicit null as the empty list for annotated receiver fields."""
+    return [] if value is None else value
 
 
 def salvage_on_error(value: Any, handler: Callable[[Any], Any], fallback: Callable[[], Any]) -> Any:

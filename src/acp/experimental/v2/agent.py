@@ -2,7 +2,8 @@ from __future__ import annotations
 
 import asyncio
 from collections.abc import Callable
-from typing import Any
+from functools import partial
+from typing import Any, Literal, cast
 
 from pydantic import AnyUrl, BaseModel
 
@@ -12,9 +13,10 @@ from acp.utils import param_model
 from . import schema
 from ._connection import open_connection
 from ._initialization import InitializationState
-from ._methods import CLIENT_REQUESTS_BY_METHOD
+from ._methods import CLIENT_REQUESTS_BY_METHOD, RequestSpec
 from ._params import build_elicitation_request, build_request
 from ._router import MethodRouter
+from ._schema_base import WIRE_VALIDATION_CONTEXT
 from .interfaces import Agent, CreateElicitationRequest, CreateElicitationResponse
 from .meta import CLIENT_METHODS
 
@@ -29,21 +31,12 @@ class _AgentRouter:
     def __init__(self, agent: object, state: InitializationState) -> None:
         self._router = MethodRouter(agent, Agent)
         self._state = state
+        self._initialize = cast("RequestSpec", self._router.request_spec("initialize"))
 
     async def __call__(self, method: str, params: Any | None, is_notification: bool) -> Any:
-        initialize = self._router.request_spec("initialize")
-        if not is_notification and initialize is not None and method == initialize.method:
-            request: schema.InitializeRequest = initialize.request.validate_python(params)
-            self._state.begin(request)
-            try:
-                response: schema.InitializeResponse = await self._router.handle_request(initialize, params)
-                self._state.complete(response)
-            except BaseException as error:
-                self._state.fail(error)
-                raise
-            return response
-
-        await self._state.require(method)
+        if not is_notification and method == self._initialize.method:
+            return await self._state.initialize_agent(params, partial(self._router.handle_request, self._initialize))
+        await self._state.require(method, lock=not is_notification)
         return await self._router(method, params, is_notification)
 
 
@@ -141,6 +134,9 @@ class AgentSideConnection:
         | schema.SessionNotice
         | schema.SessionCompactionUpdate
         | schema.SessionCompactionSummaryChunk
+        | schema.SessionReplayComplete
+        | schema.SessionPromptSuggestionsUpdate
+        | schema.SessionCursorUpdate
         | schema.SessionSubagentUpdate
         | schema.SessionMessageUpdate
         | schema.SessionMessageChunkUpdate
@@ -159,13 +155,27 @@ class AgentSideConnection:
 
     @param_model(schema.MessageMcpRequest)
     async def mcp_message(
-        self, server_id: str, request_id: str, method: str, params: dict[str, Any] | None = None, **kwargs: Any
+        self,
+        server_id: str,
+        request_id: str,
+        method: str,
+        params: dict[str, Any] | None = None,
+        session_id: str | None = None,
+        tool_call_id: str | None = None,
+        **kwargs: Any,
     ) -> schema.MessageMcpResponse:
         return await self._request(
             CLIENT_METHODS["mcp_message"],
             build_request(
                 schema.MessageMcpRequest,
-                {"server_id": server_id, "request_id": request_id, "method": method, "params": params},
+                {
+                    "server_id": server_id,
+                    "request_id": request_id,
+                    "method": method,
+                    "params": params,
+                    "session_id": session_id,
+                    "tool_call_id": tool_call_id,
+                },
                 kwargs,
             ),
         )
@@ -204,6 +214,22 @@ class AgentSideConnection:
             build_request(schema.CompleteElicitationNotification, {"elicitation_id": elicitation_id}, kwargs),
         )
 
+    @param_model(schema.AuthStatusUpdateNotification)
+    async def auth_status_update(
+        self,
+        state: Literal["authenticated"]
+        | Literal["unauthenticated"]
+        | Literal["not_required"]
+        | Literal["unknown"]
+        | str,
+        accounts: list[schema.AuthAccount] | None = None,
+        **kwargs: Any,
+    ) -> None:
+        await self._notify(
+            CLIENT_METHODS["auth_status_update"],
+            build_request(schema.AuthStatusUpdateNotification, {"state": state, "accounts": accounts}, kwargs),
+        )
+
     async def send_extension_request(self, method: str, params: Any = None) -> Any:
         await self._state.require(method)
         return await self._conn.send_request(_extension_method(method), params)
@@ -221,7 +247,7 @@ class AgentSideConnection:
         response = await self._conn.send_request(method, _dump(request))
         if response is None and spec.empty_response:
             response = {}
-        return spec.response.validate_python(response)
+        return spec.response.validate_python(response, context=WIRE_VALIDATION_CONTEXT)
 
     async def _notify(self, method: str, notification: BaseModel) -> None:
         await self._state.require(method)

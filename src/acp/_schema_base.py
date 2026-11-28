@@ -7,6 +7,7 @@ from pydantic import (
     ConfigDict,
     SerializationInfo,
     SerializerFunctionWrapHandler,
+    ValidationInfo,
     field_validator,
     model_serializer,
     model_validator,
@@ -83,8 +84,8 @@ class BaseModel(pydantic.BaseModel):
 
     @field_validator("field_meta", mode="wrap", check_fields=False)
     @classmethod
-    def _use_meta_default_on_error(cls, value: Any, handler: Any) -> Any:
-        return use_default_on_error(value, handler)
+    def _use_meta_default_on_error(cls, value: Any, handler: Any, info: ValidationInfo) -> Any:
+        return use_default_on_error(value, handler, info)
 
     @model_validator(mode="before")
     @classmethod
@@ -94,6 +95,6 @@ class BaseModel(pydantic.BaseModel):
             return value
         wire_field, reserved = rule
         tag = value.get(wire_field, value.get(to_snake(wire_field)))
-        if tag in reserved:
+        if isinstance(tag, str) and tag in reserved:
             raise ValueError(f"{wire_field} value is reserved by a known variant")
         return value

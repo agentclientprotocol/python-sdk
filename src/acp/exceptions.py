@@ -43,6 +43,10 @@ class RequestError(Exception):
         return cls(-32002, "Resource not found", data)
 
     @classmethod
+    def unsupported_protocol_version(cls, requested: int, supported: list[int]) -> RequestError:
+        return cls(-32022, "Unsupported protocol version", {"requested": requested, "supported": supported})
+
+    @classmethod
     def request_cancelled(cls, data: dict[str, Any] | None = None) -> RequestError:
         return cls(-32800, "Request cancelled", data)
 

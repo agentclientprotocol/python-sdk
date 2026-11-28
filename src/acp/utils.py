@@ -56,13 +56,10 @@ def _param_model_field_names(request_type: Any) -> tuple[str, ...]:
 
 
 def model_to_kwargs(model_obj: BaseModel, request_type: Any) -> dict[str, Any]:
-    kwargs = {
-        field_name: getattr(model_obj, field_name)
-        for field_name in _param_model_field_names(request_type)
-        if field_name != "field_meta"
-    }
-    if meta := getattr(model_obj, "field_meta", None):
-        kwargs.update(meta)
+    kwargs: dict[str, Any] = dict(getattr(model_obj, "field_meta", None) or {})
+    for field_name in _param_model_field_names(request_type):
+        if field_name != "field_meta":
+            kwargs[field_name] = getattr(model_obj, field_name)
     return kwargs
 
 

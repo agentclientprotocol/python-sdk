@@ -72,6 +72,11 @@ def test_skip_invalid_items_on_generated_model() -> None:
     assert len(update.content or []) == 1
 
 
+def test_dual_annotated_optional_list_salvages_a_malformed_container() -> None:
+    update = ToolCallUpdate.model_validate({"toolCallId": "t", "locations": {"path": "/p"}})
+    assert update.locations is None
+
+
 class _Item(BaseModel):
     n: int
 
@@ -95,6 +100,11 @@ def test_skip_invalid_items_raises_for_local_model_instances() -> None:
     # ...but a wrong model built in code is a programming error, not data from a newer peer.
     with pytest.raises(ValidationError):
         _SkipModels(xs=[_Item(n=1), _Other(s="x")])  # type: ignore[list-item]
+    with pytest.raises(ValidationError):
+        ToolCallUpdate(
+            tool_call_id="t",
+            locations=(ToolCallLocation(path="/p"), _Other(s="x")),  # type: ignore[arg-type]
+        )
 
 
 def test_new_session_request_rejects_untagged_mcp_server_instance() -> None:

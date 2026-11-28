@@ -89,6 +89,8 @@ def render_schema(semantics: SchemaSemantics) -> str:
         raise FileNotFoundError(f"{schema_json.relative_to(ROOT)} is missing; fetch a pinned schema release first")
 
     schema = json.loads(schema_json.read_text(encoding="utf-8"))
+    if semantics.prepare_schema is not None:
+        semantics.prepare_schema(schema)
     generated = generate(
         schema,
         input_file_type=InputFileType.JsonSchema,
@@ -98,13 +100,19 @@ def render_schema(semantics: SchemaSemantics) -> str:
         skip_root_model=True,
         output_model_type=DataModelType.PydanticV2BaseModel,
         base_class=semantics.base_class,
+        base_class_map=semantics.base_class_map,
         use_specialized_enum=False,
         use_standard_collections=False,
         use_union_operator=False,
         additional_imports=["enum.Enum"],
         enum_field_as_literal=LiteralType.All,
         use_one_literal_as_default=True,
-        validators=_build_validators_config(schema),
+        validators=_build_validators_config(
+            schema,
+            semantics.model_name_map if semantics.validate_renamed_models else {},
+            extra_validators=semantics.extra_validators,
+            coerce_legacy_protocol_version=semantics.coerce_legacy_protocol_version,
+        ),
         formatters=[Formatter.BUILTIN],
         infer_union_variant_names=True,
         naming_strategy=NamingStrategy.PrimaryFirst,
@@ -128,29 +136,49 @@ def render_schema(semantics: SchemaSemantics) -> str:
     return _format_python(f"{source}\n", semantics.schema_out)
 
 
-def _build_validators_config(schema: dict[str, Any]) -> dict[str, ModelValidators]:
-    validators: dict[str, list[ValidatorDefinition]] = {
-        "InitializeRequest": [
+def _build_validators_config(
+    schema: dict[str, Any],
+    model_names: dict[str, str],
+    *,
+    extra_validators: dict[str, list[ValidatorDefinition]],
+    coerce_legacy_protocol_version: bool,
+) -> dict[str, ModelValidators]:
+    validators: dict[str, list[ValidatorDefinition]] = {}
+    if coerce_legacy_protocol_version:
+        validators["InitializeRequest"] = [
             ValidatorDefinition(
                 field="protocol_version",
                 function="acp._deserialize.coerce_protocol_version",
                 mode=ValidatorMode.BEFORE,
             )
         ]
-    }
     for class_name, definition in schema.get("$defs", {}).items():
         if not isinstance(definition, dict):
             continue
         default_fields, skip_fields = _deserialize_field_specs(definition)
-        definitions = validators.setdefault(class_name, [])
+        generated_name = model_names.get(f"#/$defs/{class_name}", class_name)
+        definitions = validators.setdefault(generated_name, [])
         definitions.extend(
             ValidatorDefinition(fields=sorted(fields), function=function, mode=ValidatorMode.WRAP)
             for fields, function in (
-                (default_fields, "acp._deserialize.use_default_on_error"),
                 (skip_fields, "acp._deserialize.skip_invalid_items"),
+                (default_fields, "acp._deserialize.use_default_on_error"),
             )
             if fields
         )
+        null_fields = sorted(
+            to_snake(name)
+            for name, field in definition.get("properties", {}).items()
+            if field.get("x-deserialize-default-on-null") and field.get("default") == []
+        )
+        if null_fields:
+            definitions.append(
+                ValidatorDefinition(
+                    fields=null_fields, function="acp._deserialize.empty_list_on_null", mode=ValidatorMode.BEFORE
+                )
+            )
+    for class_name, definitions in extra_validators.items():
+        validators.setdefault(class_name, []).extend(definitions)
     return {
         class_name: ModelValidators(validators=definitions)
         for class_name, definitions in validators.items()
@@ -166,12 +194,15 @@ def _deserialize_field_specs(definition: dict[str, Any]) -> tuple[list[str], lis
         if not isinstance(property_schema, dict) or property_name == "_meta":
             continue
         field_name = to_snake(property_name)
-        if property_schema.get("x-deserialize-skip-invalid-items"):
+        has_skip = bool(property_schema.get("x-deserialize-skip-invalid-items"))
+        if has_skip:
             skip.append(field_name)
-        elif property_schema.get("x-deserialize-default-on-error"):
+        if property_schema.get("x-deserialize-default-on-error"):
             if property_name in required:
-                raise ValueError(f"{property_name!r} requests default-on-error but is required")
-            use_default.append(field_name)
+                if not has_skip:
+                    raise ValueError(f"{property_name!r} requests default-on-error but is required")
+            else:
+                use_default.append(field_name)
     return use_default, skip
 
 

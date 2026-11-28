@@ -1,9 +1,11 @@
 # Experimental Protocol v2
 
-> **Experimental.** Protocol v2 is a draft. Import it from `acp.experimental` and
-> expect its API and generated models to change with the upstream schema.
+> **Experimental.** Protocol v2 is in preview. Import it from `acp.experimental`
+> and expect its API and generated models to change with the upstream schema.
 
-The bindings use `schema-v2.0.0-alpha.7`.
+The bindings use [`schema-v2.0.0-beta.4`](https://github.com/agentclientprotocol/agent-client-protocol/releases/tag/schema-v2.0.0-beta.4).
+The upstream schema removes Next Edit Suggestions (`nes/*`) and the associated
+document notifications from v2.
 
 The v2 runtime is separate from the stable v1 API. Like v1, connection methods
 and agent/client handlers accept expanded, snake-case parameters. Responses and
@@ -19,7 +21,7 @@ from acp.experimental import v2
 
 class MyClient(v2.Client):
     async def session_update(
-        self, session_id: str, update: Any, **kwargs: Any,
+        self, session_id: str, update: v2.schema.SessionUpdate, **kwargs: Any,
     ) -> None:
         handle_update(session_id, update)
 
@@ -50,6 +52,7 @@ class MyAgent(v2.Agent):
         return v2.schema.InitializeResponse(
             protocol_version=v2.PROTOCOL_VERSION,
             info=v2.schema.Implementation(name="my-agent", version="1.0.0"),
+            capabilities=v2.schema.AgentCapabilities(session=v2.schema.SessionCapabilities()),
         )
 
     async def new_session(
@@ -91,14 +94,16 @@ await agent_connection.create_elicitation(
 )
 ```
 
-For elicitation, `session_id` selects session scope; otherwise `request_id`
-selects request scope (including `None`). Pass `requested_schema` for form mode,
+For elicitation, pass either `session_id` for session scope or a string or integer
+`request_id` for request scope. Pass `requested_schema` for form mode,
 or `elicitation_id` and `url` for URL mode. Handlers receive the validated
 branch's fields, including `type` for config options and `mode` for elicitation.
 
 `session/prompt` returns after the agent inserts the user message into the ACP
-conversation, without waiting for processing to finish. The response requires a
-non-null `message_id`. Agents return `v2.schema.PromptResponse(message_id=...)`
+conversation, without waiting for processing to finish. Callers can pass a
+bounded `idempotency_key` (1–255 characters) so retries of the same submission
+return the original `message_id` instead of inserting a duplicate. The response
+requires a non-null `message_id`. Agents return `v2.schema.PromptResponse(message_id=...)`
 and echo the user message in a `UserMessageUpdate` or `UserMessageChunk` carrying
 the same ID. That update may arrive before or after the response; use
 `accepted.message_id` to match it. Other session updates are independent traffic
@@ -118,8 +123,8 @@ terminal updates and patch metadata. When applying received patches, use
 
 Setting `replay_from=v2.schema.ReplayFromStartVariant()` on `connection.resume_session(...)`
 requests all retained conversation history; agents need not retain every message.
-Accepted elicitation content validates scalar values and string lists; nested
-objects are not valid form values.
+Accepted elicitation content preserves scalar values, string lists, and any
+custom or extension JSON values.
 
 Agents that serve both versions use `AgentProtocolRouter`:
 

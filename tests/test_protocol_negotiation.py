@@ -24,6 +24,7 @@ class V1Agent:
     def __init__(self) -> None:
         self.initialize_calls = 0
         self.client_name: str | None = None
+        self.client_capabilities: acp.schema.ClientCapabilities | None = None
 
     async def initialize(
         self,
@@ -34,6 +35,7 @@ class V1Agent:
     ) -> acp.InitializeResponse:
         self.initialize_calls += 1
         self.client_name = client_info.name if client_info is not None else None
+        self.client_capabilities = client_capabilities
         return acp.InitializeResponse(protocol_version=protocol_version)
 
 
@@ -102,6 +104,7 @@ class RoutedV2Agent(V2Agent):
             | v2.schema.AudioContentBlock
             | v2.schema.ResourceContentBlock
             | v2.schema.EmbeddedResourceContentBlock
+            | v2.schema.SkillContentBlock
             | v2.schema.OtherContentBlock
         ],
         **kwargs: Any,
@@ -181,12 +184,18 @@ async def test_agent_protocol_router_normalizes_v2_initialize_for_v1() -> None:
     try:
         response = await client_connection.send_request(
             AGENT_METHODS["initialize"],
-            v2_initialize().model_dump(mode="json", by_alias=True, exclude_none=True),
+            {
+                **v2_initialize().model_dump(mode="json", by_alias=True, exclude_none=True),
+                "capabilities": {"auth": {"terminal": {}}},
+            },
         )
 
         assert response["protocolVersion"] == acp.PROTOCOL_VERSION
         assert agent.initialize_calls == 1
         assert agent.client_name == "v2-client"
+        assert agent.client_capabilities is not None
+        assert agent.client_capabilities.auth is not None
+        assert agent.client_capabilities.auth.terminal is True
         assert _initialize_count(wire) == 1
     finally:
         await client_connection.close()
