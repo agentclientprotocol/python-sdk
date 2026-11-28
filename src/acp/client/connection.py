@@ -314,11 +314,11 @@ class ClientSideConnection:
         self,
         session_id: str,
         cwd: str,
-        cursor_id: str | None = None,
         additional_directories: list[str] | None = None,
         mcp_servers: list[HttpMcpServer | SseMcpServer | AcpMcpServer | McpServerStdio] | None = None,
         system_prompt: SystemPrompt | None = None,
         config_options: list[InitialSessionConfigOption1 | InitialSessionConfigOption2] | None = None,
+        cursor_id: str | None = None,
         **kwargs: Any,
     ) -> ForkSessionResponse:
         return await request_model(

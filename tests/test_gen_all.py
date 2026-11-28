@@ -1,11 +1,13 @@
 from pathlib import Path
+from shutil import copytree
 
 import pytest
 
 from acp.schema import ReadTextFileRequest
-from scripts.gen_all import resolve_ref, schema_source_paths
+from scripts.gen_all import ROOT, resolve_ref, schema_source_paths
 from scripts.gen_meta import generate_meta
 from scripts.gen_schema import generate_schema
+from scripts.gen_signature import gen_signature
 
 
 def test_generated_field_descriptions_are_introspectable() -> None:
@@ -72,6 +74,20 @@ def test_codegen_check_is_clean_and_read_only() -> None:
     assert generate_schema(check=True, protocol_version=2)
     assert generate_meta(check=True, protocol_version=2)
     assert {output: output.read_bytes() for output in outputs} == before
+
+
+@pytest.mark.parametrize("protocol_version", [1, 2])
+def test_generated_signatures_are_in_sync(tmp_path: Path, protocol_version: int) -> None:
+    source = ROOT / "src" / "acp"
+    if protocol_version == 2:
+        source = source / "experimental" / "v2"
+    generated = copytree(source, tmp_path / source.name)
+
+    gen_signature(generated, protocol_version=protocol_version)
+
+    for output in generated.rglob("*.py"):
+        relative_path = output.relative_to(generated)
+        assert output.read_bytes() == (source / relative_path).read_bytes(), relative_path
 
 
 def test_signature_generation_preserves_inline_literal_values() -> None:
@@ -207,8 +223,6 @@ def test_v2_signature_generation_uses_v2_schema_and_qualified_types() -> None:
 
 
 def test_v1_signature_generation_does_not_rewrite_experimental_files(tmp_path) -> None:
-    from scripts.gen_signature import gen_signature
-
     experimental = tmp_path / "experimental" / "v2"
     experimental.mkdir(parents=True)
     target = experimental / "interfaces.py"
