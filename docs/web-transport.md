@@ -128,11 +128,9 @@ asyncio.run(hypercorn.asyncio.serve(app, config))
 
 ## HTTP headers and stream routing
 
-| Header / Field | Role |
-| --- | --- |
-| `Acp-Connection-Id` | Returned on `initialize`; sent on subsequent HTTP `POST`/`GET`/`DELETE` requests |
-| `Acp-Session-Id` | Sent on session-scoped `POST` requests and session-scoped `GET` SSE streams |
-| `sessionId` | JSON-RPC payload field used to route server-to-client messages to the matching session stream |
+- **`Acp-Connection-Id`** — Returned on `initialize`; sent on subsequent HTTP `POST`, `GET`, and `DELETE` requests.
+- **`Acp-Session-Id`** — Sent on session-scoped `POST` requests and session-scoped `GET` SSE streams.
+- **`sessionId`** — JSON-RPC payload field used to route server-to-client messages to the matching session stream.
 
 ## Examples
 

@@ -14,23 +14,21 @@ pip install agent-client-protocol
 uv add agent-client-protocol
 ```
 
-Install optional extras when you need remote transports or telemetry:
+Optional extras:
 
 ```bash
 pip install "agent-client-protocol[http]"     # Streamable HTTP + WebSocket
 pip install "agent-client-protocol[logfire]"  # Logfire / OpenTelemetry
 ```
 
-## SDK overview
+## Modules
 
-| Module | Purpose |
-| --- | --- |
-| `acp` & `acp.schema` | Stable ACP v1 runtime (`run_agent`, `connect_to_agent`, `spawn_agent_process`, `Agent`, `Client`) and generated Pydantic models (`schema-v1.35.0`) |
-| `acp.experimental.v2` | Preview ACP v2 runtime and generated models (`schema-v2.0.0-beta.4`), plus `AgentProtocolRouter` for dual-stack negotiation |
-| `acp.http` & `acp.ws` | Experimental Streamable HTTP (SSE + HTTP/2) and WebSocket client/server transports (`[http]` extra) |
-| `acp.contrib` | Experimental stateful helpers: `SessionAccumulator`, `ToolCallTracker`, and `PermissionBroker` |
+- **`acp` and `acp.schema`** — Stable ACP v1 runtime (`run_agent`, `connect_to_agent`, `spawn_agent_process`, `Agent`, `Client`) and generated Pydantic models (`schema-v1.35.0`).
+- **`acp.experimental.v2`** — Preview ACP v2 runtime and generated models (`schema-v2.0.0-beta.4`), plus `AgentProtocolRouter` for dual-stack negotiation.
+- **`acp.http` and `acp.ws`** — Experimental Streamable HTTP (SSE + HTTP/2) and WebSocket client/server transports (`[http]` extra).
+- **`acp.contrib`** — Experimental stateful helpers: `SessionAccumulator`, `ToolCallTracker`, and `PermissionBroker`.
 
-## Documentation guide
+## Guides
 
 - **[Quickstart](quickstart.md)** — Install the SDK, run the echo agent, connect from an ACP client, and launch processes programmatically.
 - **[Protocol Features (v1)](protocol-features.md)** — Session management, authentication, providers, notices, elicitation, stateless MCP-over-ACP, request cancellation, and extension methods.

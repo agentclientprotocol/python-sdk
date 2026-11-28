@@ -22,11 +22,8 @@ uv add agent-client-protocol
 Optional extras:
 
 ```bash
-# Streamable HTTP and WebSocket transports (experimental)
-pip install "agent-client-protocol[http]"
-
-# Logfire / OpenTelemetry instrumentation
-pip install "agent-client-protocol[logfire]"
+pip install "agent-client-protocol[http]"     # Streamable HTTP and WebSocket transports (experimental)
+pip install "agent-client-protocol[logfire]"  # Logfire / OpenTelemetry instrumentation
 ```
 
 Requires Python 3.10–3.15.
@@ -95,31 +92,15 @@ async def main() -> None:
 asyncio.run(main())
 ```
 
-## Protocol and transport support
+## Capabilities and documentation
 
-| Capability | Import / Extra | Status | Reference |
-| --- | --- | --- | --- |
-| ACP v1 (`schema-v1.35.0`) | `acp`, `acp.schema` | Stable | [Quickstart](https://agentclientprotocol.github.io/python-sdk/quickstart/) · [Protocol Features](https://agentclientprotocol.github.io/python-sdk/protocol-features/) |
-| ACP v2 (`schema-v2.0.0-beta.4`) + dual-stack router | `acp.experimental.v2`, `acp.experimental.AgentProtocolRouter` | Preview | [Experimental v2](https://agentclientprotocol.github.io/python-sdk/experimental-v2/) |
-| Stdio JSON-RPC (NDJSON) | Built-in (`run_agent`, `connect_to_agent`, `spawn_agent_process`) | Stable | [Quickstart](https://agentclientprotocol.github.io/python-sdk/quickstart/) |
-| Streamable HTTP & WebSocket | `acp.http`, `acp.ws` (`[http]`) | Experimental | [Web Transport](https://agentclientprotocol.github.io/python-sdk/web-transport/) |
-| Stateless MCP-over-ACP | `acp` / `acp.experimental.v2` | Unstable / Preview | [Protocol Features](https://agentclientprotocol.github.io/python-sdk/protocol-features/#stateless-mcp-over-acp) |
-| Session, tool call, and permission helpers | `acp.contrib` | Experimental | [Contrib Utilities](https://agentclientprotocol.github.io/python-sdk/contrib/) |
+- **ACP v1 (`acp`, `acp.schema`)** — Stable bindings for `schema-v1.35.0` with stdio JSON-RPC framing (`run_agent`, `connect_to_agent`, `spawn_agent_process`). Read the [Quickstart](https://agentclientprotocol.github.io/python-sdk/quickstart/) and [Protocol Features](https://agentclientprotocol.github.io/python-sdk/protocol-features/).
+- **Experimental ACP v2 (`acp.experimental.v2`)** — Preview bindings for `schema-v2.0.0-beta.4` and dual-stack version negotiation via `AgentProtocolRouter`. Read [Experimental Protocol v2](https://agentclientprotocol.github.io/python-sdk/experimental-v2/).
+- **Web transports (`acp.http`, `acp.ws`)** — Experimental Streamable HTTP (SSE + HTTP/2) and WebSocket client/server support via the `[http]` extra. Read [Web Transport](https://agentclientprotocol.github.io/python-sdk/web-transport/).
+- **Stateless MCP-over-ACP** — Typed `mcp/message` request and notification envelopes across stdio, HTTP, and WebSocket. Read [MCP-over-ACP](https://agentclientprotocol.github.io/python-sdk/protocol-features/#stateless-mcp-over-acp).
+- **Contrib utilities (`acp.contrib`)** — Experimental `SessionAccumulator`, `ToolCallTracker`, and `PermissionBroker` helpers. Read [Contrib Utilities](https://agentclientprotocol.github.io/python-sdk/contrib/).
 
-## Documentation
-
-| Topic | Link |
-| --- | --- |
-| Documentation hub | <https://agentclientprotocol.github.io/python-sdk/> |
-| Quickstart | <https://agentclientprotocol.github.io/python-sdk/quickstart/> |
-| Protocol features (v1) | <https://agentclientprotocol.github.io/python-sdk/protocol-features/> |
-| Web transport (HTTP & WebSocket) | <https://agentclientprotocol.github.io/python-sdk/web-transport/> |
-| Experimental protocol v2 | <https://agentclientprotocol.github.io/python-sdk/experimental-v2/> |
-| Contrib utilities | <https://agentclientprotocol.github.io/python-sdk/contrib/> |
-| Use cases | <https://agentclientprotocol.github.io/python-sdk/use-cases/> |
-| Testing & conformance | <https://agentclientprotocol.github.io/python-sdk/testing/> |
-| Releasing | <https://agentclientprotocol.github.io/python-sdk/releasing/> |
-| Runnable examples | <https://github.com/agentclientprotocol/python-sdk/tree/main/examples> |
+More resources: [Documentation Hub](https://agentclientprotocol.github.io/python-sdk/) · [Examples](https://github.com/agentclientprotocol/python-sdk/tree/main/examples) · [Use Cases](https://agentclientprotocol.github.io/python-sdk/use-cases/) · [Testing & Conformance](https://agentclientprotocol.github.io/python-sdk/testing/) · [Releasing](https://agentclientprotocol.github.io/python-sdk/releasing/)
 
 ## Development
 
@@ -131,7 +112,7 @@ make gen-check   # Verify generated schema bindings match schema/
 make docs-test   # Build MkDocs site strictly
 ```
 
-To regenerate protocol bindings when upstream schemas advance, run `ACP_SCHEMA_VERSION=<ref> make gen-all` (or `make gen-v2` for v2).
+Regenerate bindings when upstream schemas advance with `ACP_SCHEMA_VERSION=<ref> make gen-all` (or `make gen-v2` for experimental v2).
 
 ## Community
 
