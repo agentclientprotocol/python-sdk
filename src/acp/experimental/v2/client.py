@@ -59,13 +59,13 @@ class ClientSideConnection:
             {"protocol_version": protocol_version, "info": info, "capabilities": capabilities},
             kwargs,
         )
-        self._state.begin_client(request)
+        self._state.begin(request)
         try:
-            with self._state.attempt():
-                response = await self._conn.send_request(AGENT_METHODS["initialize"], _dump(request))
-                parsed = schema.InitializeResponse.model_validate(response, context=WIRE_VALIDATION_CONTEXT)
-                self._state.check_response(parsed)
-        except BaseException:
+            response = await self._conn.send_request(AGENT_METHODS["initialize"], _dump(request))
+            parsed = schema.InitializeResponse.model_validate(response, context=WIRE_VALIDATION_CONTEXT)
+            self._state.complete(parsed)
+        except BaseException as error:
+            self._state.fail(error)
             await self._conn.close()
             raise
         return parsed

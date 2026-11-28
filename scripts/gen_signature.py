@@ -30,6 +30,7 @@ SIGNATURE_OPTIONAL_FIELDS: set[tuple[str, str]] = {
     ("LoadSessionRequest", "mcp_servers"),
     ("NewSessionRequest", "mcp_servers"),
 }
+SIGNATURE_TRAILING_FIELDS: set[tuple[str, str]] = {("ForkSessionRequest", "cursor_id")}
 
 
 class NodeTransformer(ast.NodeTransformer):
@@ -160,15 +161,14 @@ class NodeTransformer(ast.NodeTransformer):
             param_defaults = [
                 self._to_param_def(name, field) for name, field in model.model_fields.items() if name != "field_meta"
             ]
+            param_defaults.sort(
+                key=lambda parameter: (
+                    parameter[1] is not None,
+                    (self._current_model_name, parameter[0].arg) in SIGNATURE_TRAILING_FIELDS,
+                )
+            )
         finally:
             self._current_model_name = None
-        # Keep existing positional fork arguments ahead of the cursor.
-        param_defaults.sort(
-            key=lambda parameter: (
-                parameter[1] is not None,
-                model.__name__ == "ForkSessionRequest" and parameter[0].arg == "cursor_id",
-            )
-        )
         node.args.args[1:] = [param for param, _ in param_defaults]
         node.args.defaults = [default for _, default in param_defaults if default is not None]
         if "field_meta" in model.model_fields:

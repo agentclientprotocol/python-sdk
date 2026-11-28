@@ -27,6 +27,9 @@ class MethodRouter:
         self._requests = {spec.method: spec for spec in requests}
         self._notifications = {spec.method: spec for spec in notifications}
 
+    def request_spec(self, method: str) -> RequestSpec | None:
+        return self._requests.get(method)
+
     def _handler(self, name: str) -> Any:
         handler = getattr(self._target, name, None)
         if getattr(handler, "__func__", handler) is getattr(self._protocol, name, None):

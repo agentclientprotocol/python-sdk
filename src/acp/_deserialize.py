@@ -8,8 +8,9 @@ Referenced by ``field_validator`` methods that ``scripts/gen_schema.py`` injects
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from contextvars import ContextVar, Token
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
+from contextvars import ContextVar
 from typing import Any
 
 from pydantic import BaseModel, ValidationError, ValidationInfo
@@ -18,14 +19,15 @@ from pydantic_core import PydanticUseDefault
 _DEFAULTED_FIELDS = ContextVar[set[str] | None]("_acp_defaulted_fields", default=None)
 
 
-def push_defaulted_fields(fields: set[str]) -> Token[set[str] | None]:
+@contextmanager
+def track_defaulted_fields() -> Iterator[set[str]]:
     """Record which fields on this model were salvaged to their defaults."""
-    return _DEFAULTED_FIELDS.set(fields)
-
-
-def pop_defaulted_fields(token: Token[set[str] | None]) -> None:
-    """Restore the enclosing model's defaulted fields."""
-    _DEFAULTED_FIELDS.reset(token)
+    fields: set[str] = set()
+    token = _DEFAULTED_FIELDS.set(fields)
+    try:
+        yield fields
+    finally:
+        _DEFAULTED_FIELDS.reset(token)
 
 
 def coerce_protocol_version(value: Any, _info: Any = None) -> int:

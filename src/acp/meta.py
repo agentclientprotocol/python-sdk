@@ -42,5 +42,4 @@ CLIENT_METHODS = {
     "auth_status_update": "auth/status_update",
 }
 PROTOCOL_METHODS = {"cancel_request": "$/cancel_request"}
-PROXY_METHODS = {"proxy_initialize": "proxy/initialize", "proxy_successor": "proxy/successor"}
 PROTOCOL_VERSION = 1

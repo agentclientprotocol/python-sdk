@@ -11,7 +11,7 @@ from pydantic import (
     model_validator,
 )
 
-from acp._deserialize import pop_defaulted_fields, push_defaulted_fields
+from acp._deserialize import track_defaulted_fields
 from acp._schema_base import BaseModel as _BaseModel
 
 if TYPE_CHECKING:
@@ -108,14 +108,9 @@ class BaseModel(_BaseModel):
     @model_validator(mode="wrap")
     @classmethod
     def _discard_defaulted_fields(cls, value: Any, handler: ModelWrapValidatorHandler[Any]) -> Any:
-        discarded: set[str] = set()
-        token = push_defaulted_fields(discarded)
-        try:
+        with track_defaulted_fields() as discarded:
             model = handler(value)
-        finally:
-            pop_defaulted_fields(token)
-        if discarded:
-            model.model_fields_set.difference_update(discarded)
+        model.model_fields_set.difference_update(discarded)
         return model
 
     @model_validator(mode="before")

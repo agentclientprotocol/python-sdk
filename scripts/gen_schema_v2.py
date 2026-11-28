@@ -248,7 +248,7 @@ MODEL_NAME_MAP.update({
 })
 
 
-def _prepare_schema(schema: dict[str, Any]) -> str:
+def _prepare_schema(schema: dict[str, Any]) -> None:
     definitions = schema["$defs"]
     for definition in definitions.values():
         for field in definition.get("properties", {}).values():
@@ -278,8 +278,6 @@ def _prepare_schema(schema: dict[str, Any]) -> str:
         maxLength=max_length,
     )
 
-    return f"IdempotencyKey = Annotated[str, Field(min_length={min_length}, max_length={max_length})]"
-
 
 SEMANTICS = SchemaSemantics(
     schema_json=ROOT / "schema" / "v2" / "schema.json",
@@ -287,6 +285,9 @@ SEMANTICS = SchemaSemantics(
     schema_out=ROOT / "src" / "acp" / "experimental" / "v2" / "schema.py",
     base_class="acp.experimental.v2._schema_base.BaseModel",
     compatibility_aliases="""\
+IdempotencyKey = Annotated[str, Field(min_length=1, max_length=255)]
+
+
 MessageMcpResponse = Annotated[Union[McpResultResponse, McpErrorResponse], Field(union_mode="left_to_right")]
 SetSessionConfigOptionRequest = (
     SetSessionConfigOptionIdRequest | SetSessionConfigOptionBooleanRequest | SetSessionConfigOptionOtherRequest

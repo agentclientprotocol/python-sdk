@@ -3,8 +3,9 @@ from __future__ import annotations
 import asyncio
 from typing import Any
 
-from acp._transport import Transport
+from acp._transport import NdjsonTransport, Transport
 from acp.connection import Connection, MethodHandler
+from acp.task import MessageSender
 
 
 def open_connection(
@@ -21,5 +22,10 @@ def open_connection(
         return Connection(handler, input_stream, listening=listening, **connection_kwargs)
     if not isinstance(input_stream, asyncio.StreamWriter) or not isinstance(output_stream, asyncio.StreamReader):
         raise TypeError("Expected an asyncio StreamWriter/StreamReader pair or a message transport")
-    connection_kwargs.setdefault("reject_batches", True)
-    return Connection(handler, input_stream, output_stream, listening=listening, **connection_kwargs)
+    transport = NdjsonTransport(
+        output_stream,
+        MessageSender(input_stream),
+        receive_timeout=connection_kwargs.pop("receive_timeout", None),
+        reject_batches=connection_kwargs.pop("reject_batches", True),
+    )
+    return Connection(handler, transport, listening=listening, **connection_kwargs)

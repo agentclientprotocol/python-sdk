@@ -55,7 +55,7 @@ def render_meta(*, protocol_version: int = 1) -> str:
     agent_methods = data.get("agentMethods", {})
     client_methods = data.get("clientMethods", {})
     protocol_methods = data.get("protocolMethods")
-    proxy_methods = data.get("proxyMethods")
+    proxy_methods = data.get("proxyMethods") if protocol_version == 2 else None
     version = data.get("version", 1)
     header_lines = [f"# Generated from {meta_json.relative_to(ROOT).as_posix()}. Do not edit by hand."]
     if version_file.exists():

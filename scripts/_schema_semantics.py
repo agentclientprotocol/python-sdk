@@ -31,7 +31,7 @@ class SchemaSemantics:
     extra_validators: dict[str, list[ValidatorDefinition]] = field(default_factory=dict)
     validate_renamed_models: bool = False
     coerce_legacy_protocol_version: bool = True
-    prepare_schema: Callable[[dict[str, Any]], str] | None = None
+    prepare_schema: Callable[[dict[str, Any]], None] | None = None
 
 
 class _SemanticsModule(Protocol):

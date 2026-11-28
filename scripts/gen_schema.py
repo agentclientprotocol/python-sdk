@@ -89,7 +89,8 @@ def render_schema(semantics: SchemaSemantics) -> str:
         raise FileNotFoundError(f"{schema_json.relative_to(ROOT)} is missing; fetch a pinned schema release first")
 
     schema = json.loads(schema_json.read_text(encoding="utf-8"))
-    prepared_aliases = semantics.prepare_schema(schema) if semantics.prepare_schema is not None else ""
+    if semantics.prepare_schema is not None:
+        semantics.prepare_schema(schema)
     generated = generate(
         schema,
         input_file_type=InputFileType.JsonSchema,
@@ -130,9 +131,8 @@ def render_schema(semantics: SchemaSemantics) -> str:
     if not isinstance(generated, str):
         raise TypeError("Schema generation did not produce a single Python module")
     source = generated.rstrip()
-    for aliases in (prepared_aliases, semantics.compatibility_aliases):
-        if aliases:
-            source = f"{source}\n\n\n{aliases}"
+    if semantics.compatibility_aliases:
+        source = f"{source}\n\n\n{semantics.compatibility_aliases}"
     return _format_python(f"{source}\n", semantics.schema_out)
 
 
