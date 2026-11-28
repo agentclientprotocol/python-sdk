@@ -1,7 +1,7 @@
 [project]
 name = "agent-client-protocol"
 version = "0.12.1"
-description = "A Python implement of Agent Client Protocol (ACP, by Zed Industries)"
+description = "A Python implementation of the Agent Client Protocol (ACP)"
 authors = [
     { name = "Chojan Shang", email = "psiace@apache.org" },
     { name = "Frost Ming", email = "me@frostming.com" },
