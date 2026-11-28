@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import asyncio
+import inspect
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
 from typing import Any
@@ -11,6 +12,8 @@ from acp._transport import memory_transport_pair
 from acp.connection import Connection
 from acp.exceptions import RequestError
 from acp.experimental import v2
+from acp.experimental.v2._methods import protocol_specs
+from acp.experimental.v2.meta import AGENT_METHODS, CLIENT_METHODS
 
 PEER_INFO = v2.schema.Implementation(name="peer", version="1")
 
@@ -38,6 +41,29 @@ async def _agent_peer(agent: _Agent) -> AsyncIterator[Connection]:
             timeout=2,
         )
         yield peer
+
+
+@pytest.mark.parametrize(
+    ("protocol", "connection", "methods"),
+    [
+        (v2.Agent, v2.ClientSideConnection, AGENT_METHODS),
+        (v2.Client, v2.AgentSideConnection, CLIENT_METHODS),
+    ],
+)
+def test_protocols_cover_wire_methods_and_match_connection_signatures(
+    protocol: type, connection: type, methods: dict[str, str]
+) -> None:
+    requests, notifications = protocol_specs(protocol)
+    specs = (*requests, *notifications)
+
+    assert {spec.method for spec in specs} == set(methods.values())
+    assert ("mcp/message" in {spec.method for spec in requests}) == (protocol is v2.Client)
+    assert ("mcp/message" in {spec.method for spec in notifications}) == (protocol is v2.Agent)
+
+    for spec in specs:
+        assert inspect.signature(getattr(protocol, spec.handler)) == inspect.signature(
+            getattr(connection, spec.handler)
+        )
 
 
 @pytest.mark.asyncio
