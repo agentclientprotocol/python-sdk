@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from functools import partial
-from typing import Any, Literal, Protocol
+from typing import TYPE_CHECKING, Any, Literal, Protocol
 
 from pydantic import AnyUrl, TypeAdapter
 
@@ -11,6 +11,10 @@ from acp.utils import param_model
 from . import schema
 from .meta import AGENT_METHODS, CLIENT_METHODS
 
+if TYPE_CHECKING:
+    from .agent import AgentSideConnection
+    from .client import ClientSideConnection
+
 SetConfigOptionRequest = schema.SetSessionConfigOptionRequest
 CreateElicitationRequest = schema.CreateElicitationRequest
 CreateElicitationResponse = schema.CreateElicitationResponse
@@ -18,6 +22,12 @@ CreateElicitationResponse = schema.CreateElicitationResponse
 
 class Agent(Protocol):
     """Agent handlers for ACP v2; only override the methods you support."""
+
+    def on_connect(self, conn: AgentSideConnection) -> None: ...
+
+    async def handle_extension_request(self, method: str, params: Any) -> Any: ...
+
+    async def handle_extension_notification(self, method: str, params: Any) -> None: ...
 
     @param_model(schema.InitializeRequest, method=AGENT_METHODS["initialize"])
     async def initialize(
@@ -188,6 +198,12 @@ class Agent(Protocol):
 
 class Client(Protocol):
     """Client handlers for ACP v2; only override the methods you support."""
+
+    def on_connect(self, conn: ClientSideConnection) -> None: ...
+
+    async def handle_extension_request(self, method: str, params: Any) -> Any: ...
+
+    async def handle_extension_notification(self, method: str, params: Any) -> None: ...
 
     @param_model(schema.RequestPermissionRequest, method=CLIENT_METHODS["session_request_permission"])
     async def request_permission(
